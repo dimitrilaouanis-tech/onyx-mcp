@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: onyx-actions
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn server_http:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ONYX_RECEIVE_ADDRESS
+        value: 0x4326acB1A35e6B744BaAeA850c702Ca71dF86Cd5
+      - key: ONYX_NETWORK
+        value: base-sepolia
+      - key: ONYX_FACILITATOR_URL
+        value: https://x402.org/facilitator
