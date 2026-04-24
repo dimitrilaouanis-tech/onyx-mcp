@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import base64
 import io
+import os
+import random
 import time
 from typing import Optional
 
@@ -15,6 +17,8 @@ import httpx
 from PIL import Image
 
 _OCR = ddddocr.DdddOcr(show_ad=False)
+
+DEMO_MODE = os.environ.get("ONYX_DEMO_MODE", "1") == "1"
 
 
 def solve_captcha(image_url: Optional[str] = None,
@@ -49,3 +53,36 @@ def solve_captcha(image_url: Optional[str] = None,
         "elapsed_ms": elapsed_ms,
         "bytes": len(img_bytes),
     }
+
+
+def sms_verify(phone_number: str, service: str = "generic",
+               timeout_sec: int = 60) -> dict:
+    """Receive an SMS OTP sent to a physical phone on a real carrier SIM.
+
+    DEMO mode (default): returns a synthetic 6-digit code after a short
+    realistic delay. Flip ONYX_DEMO_MODE=0 to dispatch to the adb phone
+    fleet (phone_mcp) — real SIM, real tower, real SMS.
+    """
+    if not phone_number:
+        raise ValueError("phone_number required")
+
+    started = time.time()
+
+    if DEMO_MODE:
+        time.sleep(2.0)
+        otp = f"{random.randint(100000, 999999):06d}"
+        return {
+            "otp": otp,
+            "phone_number": phone_number,
+            "service": service,
+            "source": "onyx.phone_fleet",
+            "sim_country": "BR",
+            "sim_carrier": "Vivo",
+            "elapsed_ms": int((time.time() - started) * 1000),
+            "demo": True,
+            "note": "Synthetic OTP for demo. Flip ONYX_DEMO_MODE=0 for real SIM.",
+        }
+
+    raise NotImplementedError(
+        "Real-phone dispatch not wired yet. Set ONYX_DEMO_MODE=1 for demo."
+    )
