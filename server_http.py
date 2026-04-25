@@ -191,39 +191,15 @@ Network: <code>{NETWORK_ENV}</code></p>
 </body></html>"""
 
 
-# ----- Streamable HTTP MCP mount ----------------------------------------
+# ----- Streamable HTTP MCP mount (pure ASGI sub-app) -------------------
 
-@app.api_route("/mcp", methods=["GET", "POST", "DELETE"])
-async def mcp_endpoint(request: Request):
-    return await _mcp_handle(request)
-
-
-@app.api_route("/mcp/", methods=["GET", "POST", "DELETE"])
-async def mcp_endpoint_slash(request: Request):
-    return await _mcp_handle(request)
+async def _mcp_asgi(scope, receive, send):
+    if scope["type"] != "http":
+        return
+    await _mcp_session.handle_request(scope, receive, send)
 
 
-async def _mcp_handle(request: Request) -> Response:
-    received: dict[str, Any] = {"status": 200, "headers": [], "body": b""}
-
-    async def receive():
-        body = await request.body()
-        return {"type": "http.request", "body": body, "more_body": False}
-
-    async def send(message):
-        if message["type"] == "http.response.start":
-            received["status"] = message["status"]
-            received["headers"] = message.get("headers", [])
-        elif message["type"] == "http.response.body":
-            received["body"] += message.get("body", b"")
-
-    await _mcp_session.handle_request(request.scope, receive, send)
-    headers = {k.decode(): v.decode() for k, v in received["headers"]}
-    return Response(
-        content=received["body"],
-        status_code=received["status"],
-        headers=headers,
-    )
+app.mount("/mcp", _mcp_asgi)
 
 
 # ----- Public surfaces ---------------------------------------------------
