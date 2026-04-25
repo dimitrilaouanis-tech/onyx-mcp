@@ -1,30 +1,34 @@
-"""Onyx x402-gated HTTP endpoint for solve_captcha.
+"""Onyx Actions — paid MCP over x402.
 
-Returns HTTP 402 Payment Required until the caller supplies a valid
-x402 payment header. Uses Coinbase's public facilitator on Base Sepolia
-testnet (free) so self-test costs $0.
+Surfaces the same tool registry over three transports:
+  1. /mcp          — Streamable HTTP MCP (JSON-RPC, what Smithery/Cursor/Cline install)
+  2. /v1/<tool>    — REST fallback (POST JSON, x402-gated, for non-MCP agents)
+  3. /             — HTML landing + JSON manifest (content-negotiated)
 
-To switch to mainnet: edit .env → ONYX_NETWORK=base, add funded wallet.
-
-Run:
-    uvicorn server_http:app --host 0.0.0.0 --port 8080
+Tools are auto-discovered from tools_pkg/. Drop a new file in there to add a tool.
 """
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import json
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
-from pydantic import BaseModel
+from fastapi.responses import HTMLResponse, JSONResponse, Response
+
+import mcp.types as mcp_types
+from mcp.server import Server as MCPServer
+from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 
 from x402 import FacilitatorConfig, x402ResourceServer
 from x402.http.facilitator_client import HTTPFacilitatorClient
 from x402.http.middleware.fastapi import payment_middleware
 from x402.mechanisms.evm.exact import register_exact_evm_server
 
-from tools import solve_captcha, sms_verify
+import tools_pkg
 
 # ----- env ---------------------------------------------------------------
 
@@ -46,12 +50,14 @@ FACILITATOR_URL = os.environ.get(
 if not RECEIVE_ADDR:
     raise RuntimeError("ONYX_RECEIVE_ADDRESS missing — run gen_wallet.py first")
 
-# Map friendly names → CAIP-2 ids
-NETWORK_CAIP = {
-    "base": "eip155:8453",
-    "base-sepolia": "eip155:84532",
-}
+NETWORK_CAIP = {"base": "eip155:8453", "base-sepolia": "eip155:84532"}
 NETWORK = NETWORK_CAIP.get(NETWORK_ENV, NETWORK_ENV)
+
+# ----- tool registry -----------------------------------------------------
+
+TOOLS = tools_pkg.discover()
+TOOLS_BY_NAME = {t.NAME: t for t in TOOLS}
+MANIFEST_TOOLS = tools_pkg.manifest(TOOLS)
 
 # ----- x402 resource server ---------------------------------------------
 
@@ -59,51 +65,60 @@ _facilitator = HTTPFacilitatorClient(FacilitatorConfig(url=FACILITATOR_URL))
 _x402_server = x402ResourceServer(facilitator_clients=_facilitator)
 register_exact_evm_server(_x402_server)
 
+# ----- MCP server (Streamable HTTP) -------------------------------------
+
+mcp_server: MCPServer = MCPServer("onyx-actions")
+
+
+@mcp_server.list_tools()
+async def _mcp_list_tools() -> list[mcp_types.Tool]:
+    return [
+        mcp_types.Tool(
+            name=t.NAME,
+            description=f"{t.DESCRIPTION} (price: ${t.PRICE_USDC} USDC, tier: {t.TIER})",
+            inputSchema=t.INPUT_SCHEMA,
+        )
+        for t in TOOLS
+    ]
+
+
+@mcp_server.call_tool()
+async def _mcp_call_tool(name: str, arguments: dict) -> list[mcp_types.TextContent]:
+    tool = TOOLS_BY_NAME.get(name)
+    if tool is None:
+        raise ValueError(f"Unknown tool: {name}")
+    result = await asyncio.to_thread(tool.run, **(arguments or {}))
+    return [mcp_types.TextContent(type="text", text=json.dumps(result))]
+
+
+_mcp_session = StreamableHTTPSessionManager(
+    app=mcp_server,
+    json_response=False,
+    stateless=True,
+)
+
 # ----- FastAPI -----------------------------------------------------------
 
-app = FastAPI(title="Onyx Actions", version="0.1.0")
+
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with _mcp_session.run():
+        yield
 
 
-class SolveCaptchaBody(BaseModel):
-    image_url: Optional[str] = None
-    image_b64: Optional[str] = None
-
-
-class SmsVerifyBody(BaseModel):
-    phone_number: str
-    service: Optional[str] = "generic"
-    timeout_sec: Optional[int] = 60
-
-
-TOOLS = [
-    {
-        "name": "onyx_solve_captcha",
-        "path": "/v1/solve_captcha",
-        "method": "POST",
-        "price_usdc": "0.003",
-        "description": "Solve an image-based text captcha. OCR via ddddocr, 70-90% accuracy, ~30ms.",
-        "input": {"image_url | image_b64": "string"},
-    },
-    {
-        "name": "onyx_sms_verify",
-        "path": "/v1/sms_verify",
-        "method": "POST",
-        "price_usdc": "0.050",
-        "description": "Receive an SMS OTP on a physical carrier SIM. Real phone, real tower, no VoIP.",
-        "input": {"phone_number": "string", "service": "string (optional)"},
-    },
-]
+app = FastAPI(title="Onyx Actions", version="0.2.0", lifespan=lifespan)
 
 
 def _manifest() -> dict:
     return {
         "service": "onyx-actions",
         "version": "0.2.0",
-        "pitch": "Paid agent tools. Physical SIMs. No API keys. x402 USDC per call.",
+        "pitch": "Paid agent tools. x402 USDC per call. No API keys.",
         "network": NETWORK_ENV,
         "receive_wallet": RECEIVE_ADDR,
         "facilitator": FACILITATOR_URL,
-        "tools": TOOLS,
+        "mcp_endpoint": "/mcp",
+        "tools": MANIFEST_TOOLS,
         "docs": "https://github.com/dimitrilaouanis-tech/onyx-mcp",
         "x402": "https://x402.org",
     }
@@ -111,81 +126,107 @@ def _manifest() -> dict:
 
 def _landing_html() -> str:
     rows = "\n".join(
-        f'''      <tr>
-        <td><code>{t["name"]}</code></td>
-        <td class="price">${t["price_usdc"]} USDC</td>
-        <td>{t["description"]}</td>
-        <td><code>{t["method"]} {t["path"]}</code></td>
-      </tr>'''
-        for t in TOOLS
+        f"      <tr><td><code>{t['name']}</code></td>"
+        f"<td class='price'>${t['price_usdc']} USDC</td>"
+        f"<td>{t['description']}</td>"
+        f"<td><span class='tier'>{t['tier']}</span></td></tr>"
+        for t in MANIFEST_TOOLS
     )
     return f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
+<html lang="en"><head><meta charset="utf-8">
 <title>Onyx Actions — Paid Tools for AI Agents</title>
 <style>
-  :root {{ color-scheme: dark; }}
-  body {{ font: 15px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-         background:#0a0a0a; color:#ddd; margin:0; padding:48px 24px; max-width:880px; margin:0 auto; }}
-  h1 {{ color:#fff; font-size:28px; margin:0 0 8px; letter-spacing:-.02em; }}
-  h2 {{ color:#fff; font-size:16px; margin:40px 0 12px; border-bottom:1px solid #222; padding-bottom:8px; }}
-  .tag {{ display:inline-block; padding:2px 8px; border:1px solid #444; border-radius:3px; color:#aaa; font-size:12px; margin-right:6px; }}
-  .pitch {{ color:#888; margin:0 0 28px; font-size:16px; }}
-  table {{ width:100%; border-collapse:collapse; font-size:14px; }}
-  th,td {{ text-align:left; padding:10px 12px; border-bottom:1px solid #222; vertical-align:top; }}
-  th {{ color:#888; font-weight:normal; font-size:12px; text-transform:uppercase; letter-spacing:.08em; }}
-  code {{ background:#161616; padding:2px 6px; border-radius:3px; color:#7ee787; font-size:13px; }}
-  .price {{ color:#ffd166; white-space:nowrap; }}
-  pre {{ background:#111; border:1px solid #222; padding:14px; border-radius:4px; overflow:auto; font-size:13px; color:#ccc; }}
-  a {{ color:#79c0ff; }}
-  .wallet {{ color:#888; font-size:12px; word-break:break-all; }}
-</style>
-</head>
-<body>
+:root {{ color-scheme: dark; }}
+body {{ font: 15px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+       background:#0a0a0a; color:#ddd; margin:0; padding:48px 24px; max-width:880px; margin:0 auto; }}
+h1 {{ color:#fff; font-size:28px; margin:0 0 8px; letter-spacing:-.02em; }}
+h2 {{ color:#fff; font-size:16px; margin:36px 0 12px; border-bottom:1px solid #222; padding-bottom:8px; }}
+.tag {{ display:inline-block; padding:2px 8px; border:1px solid #444; border-radius:3px; color:#aaa; font-size:12px; margin-right:6px; }}
+.pitch {{ color:#888; margin:0 0 28px; font-size:16px; }}
+table {{ width:100%; border-collapse:collapse; font-size:14px; }}
+th,td {{ text-align:left; padding:10px 12px; border-bottom:1px solid #222; vertical-align:top; }}
+th {{ color:#888; font-weight:normal; font-size:12px; text-transform:uppercase; letter-spacing:.08em; }}
+code {{ background:#161616; padding:2px 6px; border-radius:3px; color:#7ee787; font-size:13px; }}
+.price {{ color:#ffd166; white-space:nowrap; }}
+.tier {{ color:#79c0ff; font-size:12px; }}
+pre {{ background:#111; border:1px solid #222; padding:14px; border-radius:4px; overflow:auto; font-size:13px; color:#ccc; }}
+a {{ color:#79c0ff; }}
+.wallet {{ color:#888; font-size:12px; word-break:break-all; }}
+</style></head><body>
 
 <h1>Onyx Actions</h1>
-<p class="pitch">Paid tools for AI agents. Real physical SIMs. No API keys, no accounts, no subscriptions. HTTP 402 → sign USDC transfer → 200. That's the whole auth flow.</p>
+<p class="pitch">Paid tools for AI agents. HTTP 402 → sign a USDC transfer → 200. The whole auth flow.</p>
 
-<span class="tag">x402</span>
-<span class="tag">{NETWORK_ENV}</span>
-<span class="tag">USDC on Base</span>
-<span class="tag">MCP-compatible</span>
+<span class="tag">x402</span><span class="tag">{NETWORK_ENV}</span>
+<span class="tag">USDC on Base</span><span class="tag">MCP-native</span>
 
 <h2>Tools</h2>
-<table>
-<thead><tr><th>Name</th><th>Price</th><th>Description</th><th>Endpoint</th></tr></thead>
-<tbody>
-{rows}
-</tbody>
-</table>
+<table><thead><tr><th>Name</th><th>Price</th><th>Description</th><th>Tier</th></tr></thead>
+<tbody>{rows}</tbody></table>
 
-<h2>How an agent calls this</h2>
-<pre>curl -X POST https://onyx-actions.onrender.com/v1/sms_verify \\
+<h2>Install (MCP)</h2>
+<pre>// claude_desktop_config.json — Streamable HTTP MCP
+{{
+  "mcpServers": {{
+    "onyx": {{
+      "url": "https://onyx-actions.onrender.com/mcp"
+    }}
+  }}
+}}</pre>
+
+<h2>REST fallback</h2>
+<pre>curl -X POST https://onyx-actions.onrender.com/v1/onyx_solve_captcha \\
      -H "content-type: application/json" \\
-     -d '{{"phone_number":"+55 11 98765 4321"}}'
-
-# → HTTP 402 Payment Required with accepts[] describing the price.
-# Your agent signs an x402 EIP-3009 authorization with its wallet, retries,
-# and receives the OTP. One loop. Any x402-aware SDK handles it in ~5 lines.</pre>
-
-<h2>For humans</h2>
-<p>Clone the free stdio version and run it locally (no payment):</p>
-<pre>git clone https://github.com/dimitrilaouanis-tech/onyx-mcp
-cd onyx-mcp &amp;&amp; pip install -r requirements.txt
-python server.py  # stdio MCP — wire into Claude Desktop / Cursor / Cline</pre>
+     -d '{{"image_url":"https://example.com/captcha.png"}}'
+# → 402 Payment Required. Agent signs x402 EIP-3009 auth, retries, gets answer.</pre>
 
 <h2>Settlement</h2>
-<p class="wallet">Receive wallet: <code>{RECEIVE_ADDR}</code><br>
+<p class="wallet">Wallet: <code>{RECEIVE_ADDR}</code><br>
 Facilitator: <code>{FACILITATOR_URL}</code><br>
 Network: <code>{NETWORK_ENV}</code></p>
 
-<h2>Machine-readable manifest</h2>
-<p>Agents that prefer JSON: <code>curl -H "accept: application/json" /</code> returns the same info as a manifest. <a href="/manifest">/manifest</a> also works.</p>
+<h2>Manifest</h2>
+<p><a href="/manifest">/manifest</a> · <a href="/health">/health</a> · <a href="https://github.com/dimitrilaouanis-tech/onyx-mcp">source</a></p>
 
-</body>
-</html>"""
+</body></html>"""
 
+
+# ----- Streamable HTTP MCP mount ----------------------------------------
+
+@app.api_route("/mcp", methods=["GET", "POST", "DELETE"])
+async def mcp_endpoint(request: Request):
+    return await _mcp_handle(request)
+
+
+@app.api_route("/mcp/", methods=["GET", "POST", "DELETE"])
+async def mcp_endpoint_slash(request: Request):
+    return await _mcp_handle(request)
+
+
+async def _mcp_handle(request: Request) -> Response:
+    received: dict[str, Any] = {"status": 200, "headers": [], "body": b""}
+
+    async def receive():
+        body = await request.body()
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    async def send(message):
+        if message["type"] == "http.response.start":
+            received["status"] = message["status"]
+            received["headers"] = message.get("headers", [])
+        elif message["type"] == "http.response.body":
+            received["body"] += message.get("body", b"")
+
+    await _mcp_session.handle_request(request.scope, receive, send)
+    headers = {k.decode(): v.decode() for k, v in received["headers"]}
+    return Response(
+        content=received["body"],
+        status_code=received["status"],
+        headers=headers,
+    )
+
+
+# ----- Public surfaces ---------------------------------------------------
 
 @app.get("/")
 async def root(request: Request):
@@ -202,48 +243,54 @@ async def manifest():
 
 @app.get("/health")
 async def health():
-    return {"ok": True, "network": NETWORK_ENV, "receive": RECEIVE_ADDR,
-            "tools": [t["name"] for t in TOOLS]}
+    return {
+        "ok": True,
+        "network": NETWORK_ENV,
+        "receive": RECEIVE_ADDR,
+        "tools": [t.NAME for t in TOOLS],
+        "mcp": "/mcp",
+    }
 
 
-@app.post("/v1/solve_captcha")
-async def solve_captcha_endpoint(body: SolveCaptchaBody):
-    if not body.image_url and not body.image_b64:
-        raise HTTPException(400, "provide image_url or image_b64")
-    return solve_captcha(image_url=body.image_url, image_b64=body.image_b64)
+# REST per-tool endpoints (auto-generated)
+def _make_rest_handler(tool):
+    async def handler(request: Request):
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        try:
+            return await asyncio.to_thread(tool.run, **(body or {}))
+        except (ValueError, NotImplementedError) as e:
+            raise HTTPException(400, str(e))
+    handler.__name__ = f"rest_{tool.NAME}"
+    return handler
 
 
-@app.post("/v1/sms_verify")
-async def sms_verify_endpoint(body: SmsVerifyBody):
-    return sms_verify(phone_number=body.phone_number,
-                      service=body.service or "generic",
-                      timeout_sec=body.timeout_sec or 60)
+for _tool in TOOLS:
+    app.add_api_route(
+        f"/v1/{_tool.NAME}",
+        _make_rest_handler(_tool),
+        methods=["POST"],
+        name=_tool.NAME,
+    )
 
 
 # ----- x402 payment middleware ------------------------------------------
 
-ROUTES = {
-    "POST /v1/solve_captcha": {
-        "accepts": {
-            "scheme": "exact",
-            "network": NETWORK,
-            "price": "$0.003",
-            "payTo": RECEIVE_ADDR,
-            "description": "Solve image captcha, returns text answer.",
-            "mimeType": "application/json",
+ROUTES = {}
+for _tool in TOOLS:
+    if _tool.TIER in ("metered", "premium"):
+        ROUTES[f"POST /v1/{_tool.NAME}"] = {
+            "accepts": {
+                "scheme": "exact",
+                "network": NETWORK,
+                "price": f"${_tool.PRICE_USDC}",
+                "payTo": RECEIVE_ADDR,
+                "description": _tool.DESCRIPTION[:120],
+                "mimeType": "application/json",
+            }
         }
-    },
-    "POST /v1/sms_verify": {
-        "accepts": {
-            "scheme": "exact",
-            "network": NETWORK,
-            "price": "$0.05",
-            "payTo": RECEIVE_ADDR,
-            "description": "SMS OTP via physical carrier SIM.",
-            "mimeType": "application/json",
-        }
-    },
-}
 
 
 @app.middleware("http")
