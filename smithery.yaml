@@ -1,11 +1,51 @@
+name: onyx-actions
+description: |-
+  Paid agent tools over x402 USDC on Base. HTTP 402 -> sign payment -> 200.
+  No API keys, no signup, no subscription. Captcha OCR (~30ms, 70-90% accuracy)
+  and SMS OTP via real carrier SIMs. The first MCP that price-meters per-call
+  directly through the protocol agents already speak.
+homepage: https://github.com/dimitrilaouanis-tech/onyx-mcp
+repository: https://github.com/dimitrilaouanis-tech/onyx-mcp
+license: MIT
+keywords:
+  - x402
+  - usdc
+  - base
+  - captcha
+  - sms
+  - otp
+  - payments
+  - agentic
+  - paid-mcp
+  - ddddocr
+
 startCommand:
   type: stdio
   configSchema:
     type: object
+    description: Optional config for self-hosted stdio mode. Remote HTTP MCP at https://onyx-actions.onrender.com/mcp/ requires no config.
+    properties:
+      ONYX_RECEIVE_ADDRESS:
+        type: string
+        description: Wallet address that receives USDC payments (only for self-hosted paid mode).
+      ONYX_NETWORK:
+        type: string
+        enum: [base, base-sepolia]
+        default: base-sepolia
+        description: Base mainnet (real USDC) or sepolia testnet (free).
+      ONYX_DEMO_MODE:
+        type: string
+        enum: ["0", "1"]
+        default: "1"
+        description: 1 returns synthetic OTPs for SMS tool. 0 dispatches to real phone fleet.
     required: []
-    properties: {}
   commandFunction: |-
     (config) => ({
       command: "python",
-      args: ["server.py"]
+      args: ["server.py"],
+      env: {
+        ONYX_RECEIVE_ADDRESS: config.ONYX_RECEIVE_ADDRESS || "",
+        ONYX_NETWORK: config.ONYX_NETWORK || "base-sepolia",
+        ONYX_DEMO_MODE: config.ONYX_DEMO_MODE || "1"
+      }
     })

@@ -217,6 +217,60 @@ async def manifest():
     return _manifest()
 
 
+# ----- Bazaar / x402 service discovery ----------------------------------
+# https://docs.cdp.coinbase.com/x402/bazaar — crawler reads this manifest
+
+USDC_BY_NETWORK = {
+    "base": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "base-sepolia": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+}
+
+
+def _x402_manifest() -> dict:
+    services = []
+    for t in TOOLS:
+        if t.TIER not in ("metered", "premium"):
+            continue
+        amount_atomic = str(int(round(float(t.PRICE_USDC) * 1_000_000)))
+        services.append({
+            "resource": f"https://onyx-actions.onrender.com/v1/{t.NAME}",
+            "type": "http",
+            "x402Version": 1,
+            "accepts": [{
+                "scheme": "exact",
+                "network": NETWORK,
+                "maxAmountRequired": amount_atomic,
+                "asset": USDC_BY_NETWORK.get(NETWORK_ENV, ""),
+                "payTo": RECEIVE_ADDR,
+                "resource": f"https://onyx-actions.onrender.com/v1/{t.NAME}",
+                "description": t.DESCRIPTION,
+                "mimeType": "application/json",
+                "outputSchema": {"type": "object"},
+                "extra": {
+                    "name": t.NAME,
+                    "tier": t.TIER,
+                    "price_usdc": t.PRICE_USDC,
+                    "input_schema": t.INPUT_SCHEMA,
+                },
+            }],
+        })
+    return {
+        "x402Version": 1,
+        "services": services,
+        "facilitator": FACILITATOR_URL,
+    }
+
+
+@app.get("/.well-known/x402.json")
+async def well_known_x402():
+    return _x402_manifest()
+
+
+@app.get("/services.json")
+async def services_json():
+    return _x402_manifest()
+
+
 @app.get("/health")
 async def health():
     return {
