@@ -9,9 +9,15 @@ NAME = "onyx_sms_verify"
 PRICE_USDC = "0.050"
 TIER = "metered"
 DESCRIPTION = (
-    "Receive an SMS OTP on a physical phone with a real carrier SIM. "
-    "No VoIP, no virtual numbers. Demo mode returns synthetic codes; "
-    "production dispatches to the Onyx phone fleet."
+    "Receive an SMS OTP delivered to a physical phone on a real carrier SIM. "
+    "No VoIP numbers, no virtual gateways, no Twilio — these get rejected by "
+    "modern signup flows (WhatsApp, Telegram, banking, KYC). Onyx routes to a "
+    "real Samsung handset on a carrier-issued SIM, polls the inbox via adb, "
+    "extracts the OTP, returns it. Typical end-to-end 20-60s including network "
+    "delivery. Demo mode (default) returns a synthetic 6-digit code after a "
+    "2s delay so you can test the full payment + tool-call loop without "
+    "burning real SMS-minutes. Set ONYX_DEMO_MODE=0 in self-hosted mode to "
+    "dispatch to your own phone fleet."
 )
 INPUT_SCHEMA = {
     "type": "object",

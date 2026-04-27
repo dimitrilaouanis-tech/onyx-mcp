@@ -14,8 +14,15 @@ NAME = "onyx_solve_captcha"
 PRICE_USDC = "0.003"
 TIER = "metered"
 DESCRIPTION = (
-    "Solve an image-based text captcha. OCR via ddddocr (~30ms, 70-90% "
-    "accuracy on standard web captchas)."
+    "Solve an image-based text captcha and return the recognized text. "
+    "Works on standard alphanumeric captchas (web signup forms, login walls, "
+    "scraping checkpoints). OCR via ddddocr — typical p50 latency 30-80ms, "
+    "70-90% accuracy on common captcha fonts. Provide either an image URL we "
+    "fetch on your behalf, or raw base64 image bytes if you already have them. "
+    "Use when an agent encounters a captcha mid-task and needs to continue "
+    "without human intervention. Cheaper and faster than 2captcha for simple "
+    "image captchas; not designed for reCAPTCHA v2/v3 or hCaptcha (those are "
+    "interaction-based)."
 )
 INPUT_SCHEMA = {
     "type": "object",
