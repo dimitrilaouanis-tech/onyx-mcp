@@ -1,9 +1,10 @@
 name: onyx-actions
 description: |-
-  Paid agent tools over x402 USDC on Base. HTTP 402 -> sign payment -> 200.
-  No API keys, no signup, no subscription. Captcha OCR (~30ms, 70-90% accuracy)
-  and SMS OTP via real carrier SIMs. The first MCP that price-meters per-call
-  directly through the protocol agents already speak.
+  12 paid agent tools over x402 USDC on Base. HTTP 402 -> sign payment -> 200.
+  No API keys, no signup, no subscription. Captcha OCR, SMS OTP via real carrier SIMs,
+  HLR lookup, URL text extraction, DNS, WHOIS, email validation, IP geolocation,
+  user-agent parsing, password strength, FX conversion. The first MCP that
+  price-meters per-call directly through the protocol agents already speak.
 homepage: https://github.com/dimitrilaouanis-tech/onyx-mcp
 repository: https://github.com/dimitrilaouanis-tech/onyx-mcp
 license: MIT
@@ -14,10 +15,16 @@ keywords:
   - captcha
   - sms
   - otp
+  - hlr
+  - whois
+  - dns
+  - email-validate
+  - ip-geolocate
   - payments
   - agentic
   - paid-mcp
   - ddddocr
+  - mcp
 
 startCommand:
   type: stdio

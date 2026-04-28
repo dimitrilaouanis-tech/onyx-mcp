@@ -1,0 +1,55 @@
+{
+  "name": "@onyx/x402-bridge",
+  "version": "0.1.0",
+  "description": "Universal stdio MCP bridge for any x402-paid HTTP MCP server. Lets Claude/Cline/Cursor consume paid MCPs without native x402 support.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "onyx-x402-bridge": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/cli.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "x402",
+    "usdc",
+    "base",
+    "stdio",
+    "bridge",
+    "agent",
+    "payments",
+    "claude",
+    "cline",
+    "cursor"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dimitrilaouanis-tech/onyx-mcp.git",
+    "directory": "x402-bridge"
+  },
+  "homepage": "https://github.com/dimitrilaouanis-tech/onyx-mcp#x402-bridge",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.0",
+    "viem": "^2.21.0",
+    "x402": "^0.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
