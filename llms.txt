@@ -1,0 +1,61 @@
+# Onyx Actions — Paid Agent MCP (x402 USDC on Base)
+
+> Onyx Actions is a paid Model Context Protocol server. AI agents pay per call in USDC over the x402 protocol — no API keys, no signup, no subscriptions. Twelve verification-bypass and OSINT tools live today.
+
+## Endpoints
+
+- Remote MCP (HTTP, recommended): https://onyx-actions.onrender.com/mcp/
+- Local stdio: `pip install onyx-paid-mcp && python -m onyx_paid_mcp.server`
+- Source: https://github.com/dimitrilaouanis-tech/onyx-mcp
+- Payment protocol: https://x402.org
+- Network: Base mainnet (USDC). Base Sepolia for testing.
+
+## How agents pay
+
+1. Agent calls a tool. Server replies HTTP 402 with payment requirements (recipient, amount, scheme).
+2. Agent signs an EIP-3009 USDC authorization with its wallet, includes it in the next request.
+3. Server settles via the CDP x402 facilitator and returns the tool result.
+
+No state is held between calls. No account exists. The wallet IS the identity.
+
+## Tools (each priced per-call in USDC)
+
+| Tool | What it does | Price |
+| --- | --- | --- |
+| solve_captcha | OCR-based bypass for image captchas (~30ms, 70-90% accuracy) | $0.003 |
+| sms_verify | Receive an SMS OTP on a real carrier-backed number, return the code | $0.05 |
+| hlr_lookup | Carrier / line-type / portability lookup for any E.164 number | $0.005 |
+| url_text | Fetch a URL and return clean main-content text (Trafilatura) | $0.002 |
+| url_unshorten | Resolve any redirect chain to its final URL | $0.001 |
+| dns_lookup | A / AAAA / MX / NS / TXT / CNAME records for a host | $0.001 |
+| whois_lookup | WHOIS registration data for a domain or IP | $0.001 |
+| email_validate | Syntax + MX + role-account + disposable-domain check | $0.002 |
+| ip_geolocate | Country, region, city, ASN for an IPv4/IPv6 | $0.001 |
+| user_agent_parse | Browser, OS, device, bot/crawler detection | $0.0005 |
+| password_strength | Entropy + zxcvbn-style score for a candidate password | $0.0005 |
+| fx_convert | Mid-market FX conversion across 150+ currencies | $0.0005 |
+
+## Why this exists
+
+Most MCP servers expect free unlimited use. Real services cost money. x402 lets an MCP server bill per call without forcing the agent to open an account or hold an API key. Onyx Actions is the reference implementation of that pattern — every tool is real, every call settles on-chain, every agent pays the same price.
+
+## Author
+
+Onyx Council — https://github.com/dimitrilaouanis-tech/onyx-mcp
+
+## Discovery
+
+- agentic.market: indexed automatically on first settled mainnet payment
+- x402 directories: x402-list.com · x402list.fun · x402.direct · signal402.com · x402daily.xyz
+- MCP Registry: PR #295 (modelcontextprotocol/registry)
+- Smithery: smithery.ai/server/onyx-actions
+- npm bridge (HTTP→stdio): @onyx/x402-bridge
+
+## Build your own paid MCP
+
+The `onyx-paid-mcp` Python framework that runs Onyx Actions is published on PyPI. Five lines stand up your own paid server. See the GitHub README for the full pattern.
+
+## Contact
+
+- GitHub Issues: https://github.com/dimitrilaouanis-tech/onyx-mcp/issues
+- Repo discussions: https://github.com/dimitrilaouanis-tech/onyx-mcp/discussions
