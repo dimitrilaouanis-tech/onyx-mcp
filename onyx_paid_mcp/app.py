@@ -250,6 +250,17 @@ class App:
                 "mcp": "/mcp/",
             }
 
+        # Serve llms.txt from CWD if present, so crawlers + LLMs can index us
+        from fastapi.responses import PlainTextResponse
+        from pathlib import Path as _Path
+
+        @api.get("/llms.txt", response_class=PlainTextResponse)
+        async def _llms_txt():
+            for p in (_Path("llms.txt"), _Path(__file__).parent.parent / "llms.txt"):
+                if p.exists():
+                    return p.read_text(encoding="utf-8")
+            return f"# {self.name}\nSee {self.public_url or '/manifest'} for tool list.\n"
+
         # REST per-tool endpoints
         def _make(t: Tool):
             async def handler(request: Request):
