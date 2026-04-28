@@ -47,9 +47,9 @@ Onyx Council — https://github.com/dimitrilaouanis-tech/onyx-mcp
 
 - agentic.market: indexed automatically on first settled mainnet payment
 - x402 directories: x402-list.com · x402list.fun · x402.direct · signal402.com · x402daily.xyz
-- MCP Registry: PR #295 (modelcontextprotocol/registry)
-- Smithery: smithery.ai/server/onyx-actions
-- npm bridge (HTTP→stdio): @onyx/x402-bridge
+- awesome-x402: https://github.com/xpaysh/awesome-x402/pull/295 (open)
+- Smithery: https://smithery.ai/servers/dimitrilaouanis/onyx-mcp
+- Official MCP Registry submission via `mcp-publisher` (in flight)
 
 ## Build your own paid MCP
 
