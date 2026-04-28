@@ -10,8 +10,10 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.9
       - key: ONYX_RECEIVE_ADDRESS
-        value: 0x4326acB1A35e6B744BaAeA850c702Ca71dF86Cd5
+        value: 0xA60939FFf9c04a61c0c0649943675e16A12D7074
       - key: ONYX_NETWORK
-        value: base-sepolia
+        value: base
       - key: ONYX_FACILITATOR_URL
         value: https://x402.org/facilitator
+      - key: ONYX_PUBLIC_URL
+        value: https://onyx-actions.onrender.com
