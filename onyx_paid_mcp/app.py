@@ -201,6 +201,37 @@ class App:
             t = tools_by_name.get(name)
             if t is None:
                 raise ValueError(f"Unknown tool: {name}")
+            # Paid tools cannot be settled through the MCP JSON-RPC transport —
+            # x402 needs an HTTP request/response pair so the wallet can sign the
+            # EIP-3009 authorization and the facilitator can settle on-chain.
+            # Return a structured 402 message pointing the agent at the REST
+            # endpoint. Bridges like @onyx/x402-bridge handle this transparently.
+            if t.tier in ("metered", "premium"):
+                base = (self.public_url or "").rstrip("/")
+                challenge = {
+                    "x402Version": 1,
+                    "error": "payment_required",
+                    "message": (
+                        f"Tool '{t.name}' is paid (${t.price_usdc} USDC). "
+                        f"MCP JSON-RPC cannot carry x402 payments — call the "
+                        f"HTTP endpoint instead."
+                    ),
+                    "accepts": [{
+                        "scheme": "exact",
+                        "network": self.network_caip,
+                        "maxAmountRequired": str(int(round(float(t.price_usdc) * 1_000_000))),
+                        "asset": self.usdc_address,
+                        "payTo": self.receive_address,
+                        "resource": f"{base}/v1/{t.name}",
+                        "description": t.description[:200],
+                        "mimeType": "application/json",
+                    }],
+                    "facilitator": self.facilitator_url,
+                    "docs": "https://x402.org/clients",
+                    "bridge": "npx @onyx/x402-bridge " + base + "/mcp/",
+                }
+                return [mcp_types.TextContent(type="text", text=json.dumps(challenge))]
+            # Free-tier tool — run normally.
             result = t.handler(**(arguments or {}))
             if asyncio.iscoroutine(result):
                 result = await result
