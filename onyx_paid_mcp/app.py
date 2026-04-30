@@ -329,7 +329,22 @@ class App:
 
         @api.middleware("http")
         async def _gate(request, call_next):
-            return await payment_middleware(routes, x402_server)(request, call_next)
+            try:
+                return await payment_middleware(routes, x402_server)(request, call_next)
+            except Exception as e:
+                import traceback
+                from fastapi.responses import JSONResponse
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "diag": "payment_middleware threw",
+                        "type": type(e).__name__,
+                        "msg": str(e)[:400],
+                        "trace": traceback.format_exc().splitlines()[-12:],
+                        "path": request.url.path,
+                        "method": request.method,
+                    },
+                )
 
         return api
 
