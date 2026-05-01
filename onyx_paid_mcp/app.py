@@ -239,10 +239,26 @@ class App:
 
         session = StreamableHTTPSessionManager(app=mcp_app, json_response=False, stateless=True)
 
+        from . import bazaar as _bazaar
+
+        async def _bazaar_loop():
+            while True:
+                try:
+                    await _bazaar.cache.refresh()
+                except Exception:
+                    pass
+                await asyncio.sleep(_bazaar.REFRESH_SEC)
+
         @contextlib.asynccontextmanager
         async def lifespan(_):
-            async with session.run():
-                yield
+            # Kick bazaar refresh + background loop alongside the MCP session
+            asyncio.create_task(_bazaar.cache.refresh())
+            loop_task = asyncio.create_task(_bazaar_loop())
+            try:
+                async with session.run():
+                    yield
+            finally:
+                loop_task.cancel()
 
         api = FastAPI(title=self.name, version="0.1.0", lifespan=lifespan)
 
@@ -273,21 +289,7 @@ class App:
             return self.x402_manifest()
 
         # ------- Bazaar leaderboard (public x402 stats) ----------------
-        from . import bazaar as _bazaar
-
-        async def _bazaar_refresh_loop():
-            while True:
-                try:
-                    await _bazaar.cache.refresh()
-                except Exception:
-                    pass
-                await asyncio.sleep(_bazaar.REFRESH_SEC)
-
-        @api.on_event("startup")
-        async def _start_bazaar():
-            # Kick an immediate fetch + background refresh task
-            asyncio.create_task(_bazaar.cache.refresh())
-            asyncio.create_task(_bazaar_refresh_loop())
+        # Cron started in lifespan above; routes below.
 
         @api.get("/bazaar")
         async def _bazaar_view(request: Request, view: str = "volume",
