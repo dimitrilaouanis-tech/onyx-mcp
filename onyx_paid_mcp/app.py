@@ -272,6 +272,45 @@ class App:
         async def _services():
             return self.x402_manifest()
 
+        # ------- Bazaar leaderboard (public x402 stats) ----------------
+        from . import bazaar as _bazaar
+
+        async def _bazaar_refresh_loop():
+            while True:
+                try:
+                    await _bazaar.cache.refresh()
+                except Exception:
+                    pass
+                await asyncio.sleep(_bazaar.REFRESH_SEC)
+
+        @api.on_event("startup")
+        async def _start_bazaar():
+            # Kick an immediate fetch + background refresh task
+            asyncio.create_task(_bazaar.cache.refresh())
+            asyncio.create_task(_bazaar_refresh_loop())
+
+        @api.get("/bazaar")
+        async def _bazaar_view(request: Request, view: str = "volume",
+                               format: str = "html", limit: int = 100):
+            view = view if view in {"volume", "payers", "newest", "cheapest"} else "volume"
+            rows = _bazaar.ranked(view=view, limit=min(max(limit, 1), 500))
+            if format == "json" or "application/json" in request.headers.get("accept", ""):
+                return JSONResponse({
+                    "view": view,
+                    "rows": rows,
+                    "stats": _bazaar.stats_summary(),
+                })
+            return HTMLResponse(_bazaar.render_html(view, rows, _bazaar.stats_summary()))
+
+        @api.get("/bazaar.json")
+        async def _bazaar_json(view: str = "volume", limit: int = 100):
+            view = view if view in {"volume", "payers", "newest", "cheapest"} else "volume"
+            return {
+                "view": view,
+                "rows": _bazaar.ranked(view=view, limit=min(max(limit, 1), 500)),
+                "stats": _bazaar.stats_summary(),
+            }
+
         @api.get("/health")
         async def _health():
             return {
