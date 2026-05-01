@@ -52,6 +52,80 @@ _DEFAULT_FACILITATORS = {
 }
 
 
+def _make_cdp_header_factory(facilitator_url: str, key_id: str, key_secret: str):
+    """Returns a callable that mints fresh CDP-JWT auth headers per request.
+
+    The Coinbase CDP facilitator authenticates every request with a short-lived
+    JWT signed with the customer's API key (Ed25519). The cdp-sdk handles JWT
+    signing; if the SDK isn't installed we fall back to a manual JWT mint via
+    PyNaCl + base64. Either path returns {"Authorization": "Bearer <jwt>"}.
+    """
+    from urllib.parse import urlparse
+    parsed = urlparse(facilitator_url)
+    host = parsed.netloc
+    base_path = parsed.path.rstrip("/") or "/"
+
+    def _build_uri(method: str, path: str) -> str:
+        # CDP JWT spec: uri is "<METHOD> <host><path>" without scheme
+        full = f"{base_path}{path}" if path.startswith("/") else f"{base_path}/{path}"
+        return f"{method.upper()} {host}{full}"
+
+    try:
+        from cdp.auth.utils.jwt import generate_jwt, JwtOptions  # type: ignore
+
+        def make(method: str = "POST", path: str = "/verify") -> dict[str, str]:
+            jwt = generate_jwt(JwtOptions(
+                api_key_id=key_id,
+                api_key_secret=key_secret,
+                request_method=method.upper(),
+                request_host=host,
+                request_path=f"{base_path}{path}" if path.startswith("/") else f"{base_path}/{path}",
+                expires_in=120,
+            ))
+            return {"Authorization": f"Bearer {jwt}"}
+        return make
+    except ImportError:
+        pass
+
+    # Manual JWT mint fallback (Ed25519 via cryptography).
+    import base64, json as _json, time as _time, secrets as _secrets
+
+    def _b64url(data: bytes) -> str:
+        return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+    try:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    except ImportError as e:
+        raise RuntimeError(
+            "Either install cdp-sdk or cryptography to use CDP facilitator auth"
+        ) from e
+
+    # CDP secrets are typically base64-PKCS8 Ed25519 private key
+    try:
+        priv_bytes = base64.b64decode(key_secret)
+    except Exception as e:
+        raise RuntimeError(f"CDP_API_KEY_SECRET must be base64-encoded: {e}")
+    priv_key = Ed25519PrivateKey.from_private_bytes(priv_bytes[-32:])
+
+    def make(method: str = "POST", path: str = "/verify") -> dict[str, str]:
+        now = int(_time.time())
+        header = {"alg": "EdDSA", "typ": "JWT", "kid": key_id, "nonce": _secrets.token_hex(16)}
+        payload = {
+            "iss": "cdp",
+            "sub": key_id,
+            "aud": ["cdp_service"],
+            "nbf": now,
+            "exp": now + 120,
+            "uri": _build_uri(method, path),
+        }
+        signing_input = f"{_b64url(_json.dumps(header, separators=(',', ':')).encode())}." \
+                        f"{_b64url(_json.dumps(payload, separators=(',', ':')).encode())}"
+        sig = priv_key.sign(signing_input.encode("ascii"))
+        return {"Authorization": f"Bearer {signing_input}.{_b64url(sig)}"}
+
+    return make
+
+
 @dataclass
 class App:
     name: str
@@ -177,8 +251,22 @@ class App:
         tools = self.tools()
         tools_by_name = {t.name: t for t in tools}
 
-        # x402 facilitator
-        fac = HTTPFacilitatorClient(FacilitatorConfig(url=self.facilitator_url))
+        # x402 facilitator. When ONYX_NETWORK=base, the public x402.org
+        # facilitator does NOT support mainnet — Coinbase CDP is the only
+        # production-ready facilitator. Build a create_headers callable that
+        # mints a CDP JWT per request when API keys are present in env.
+        cdp_id = os.environ.get("CDP_API_KEY_ID", "").strip()
+        cdp_secret = os.environ.get("CDP_API_KEY_SECRET", "").strip()
+        create_headers = None
+        if cdp_id and cdp_secret:
+            create_headers = _make_cdp_header_factory(self.facilitator_url, cdp_id, cdp_secret)
+            print(f"[onyx-paid-mcp] CDP auth ENABLED for {self.facilitator_url}")
+        else:
+            print(f"[onyx-paid-mcp] CDP auth NOT set — using {self.facilitator_url} unauthenticated (testnet only)")
+        cfg = FacilitatorConfig(url=self.facilitator_url)
+        if create_headers is not None:
+            cfg["create_headers"] = create_headers
+        fac = HTTPFacilitatorClient(cfg)
         x402_server = x402ResourceServer(facilitator_clients=fac)
         register_exact_evm_server(x402_server)
 
@@ -373,18 +461,19 @@ class App:
             try:
                 return await payment_middleware(routes, x402_server)(request, call_next)
             except Exception as e:
-                import traceback
+                # Silent log to stderr (Render captures these). Do NOT leak
+                # internals to the response — return a generic 500.
+                import sys, traceback
                 from fastapi.responses import JSONResponse
+                sys.stderr.write(
+                    f"[gate-error] {type(e).__name__}: {str(e)[:300]} "
+                    f"path={request.url.path} method={request.method}\n"
+                    f"{traceback.format_exc()}\n"
+                )
+                sys.stderr.flush()
                 return JSONResponse(
                     status_code=500,
-                    content={
-                        "diag": "payment_middleware threw",
-                        "type": type(e).__name__,
-                        "msg": str(e)[:400],
-                        "trace": traceback.format_exc().splitlines()[-12:],
-                        "path": request.url.path,
-                        "method": request.method,
-                    },
+                    content={"error": "internal_error"},
                 )
 
         return api

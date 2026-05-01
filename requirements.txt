@@ -7,3 +7,7 @@ uvicorn[standard]>=0.30.0
 x402[evm,fastapi]>=2.8.0
 eth-account>=0.13.0
 pydantic>=2.0.0
+# Optional: enables Base mainnet via Coinbase CDP facilitator. If
+# CDP_API_KEY_ID + CDP_API_KEY_SECRET env vars are unset, falls back
+# to the public x402.org facilitator (testnet-only).
+cdp-sdk>=1.0.0; python_version >= "3.10"
