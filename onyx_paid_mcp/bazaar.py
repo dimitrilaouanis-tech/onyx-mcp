@@ -75,9 +75,15 @@ def _price(item: dict) -> str:
     if not accepts:
         return "?"
     a = accepts[0] if isinstance(accepts, list) else accepts
-    amt = a.get("maxAmountRequired") or "0"
+    # CDP discovery uses `amount`; some legacy/community manifests use `maxAmountRequired`
+    amt = a.get("amount") or a.get("maxAmountRequired") or "0"
     try:
-        return f"${int(amt) / 1_000_000:.4f}"
+        v = int(amt) / 1_000_000
+        if v >= 1:
+            return f"${v:.2f}"
+        if v >= 0.01:
+            return f"${v:.4f}"
+        return f"${v:.6f}"
     except (TypeError, ValueError):
         return "?"
 
@@ -87,9 +93,18 @@ def _network(item: dict) -> str:
     if not accepts:
         return "?"
     a = accepts[0] if isinstance(accepts, list) else accepts
-    n = a.get("network") or "?"
-    return {"eip155:8453": "Base", "eip155:84532": "Base-Sepolia",
-            "eip155:1": "Ethereum", "eip155:137": "Polygon"}.get(n, n)
+    n = (a.get("network") or "?").strip()
+    nlow = n.lower()
+    # Normalize the long Solana CAIP and the various Base aliases
+    if nlow in ("eip155:8453", "base"):
+        return "Base"
+    if nlow in ("eip155:84532", "base-sepolia"):
+        return "Base-Sepolia"
+    if nlow.startswith("solana:"):
+        return "Solana"
+    if nlow == "stellar:testnet":
+        return "Stellar-Testnet"
+    return {"eip155:1": "Ethereum", "eip155:137": "Polygon"}.get(n, n)
 
 
 def _short_desc(item: dict) -> str:
