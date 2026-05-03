@@ -516,24 +516,126 @@ class App:
     # ---------- landing ----------
 
     def _landing_html(self) -> str:
-        rows = "\n".join(
-            f"<tr><td><code>{t.name}</code></td>"
-            f"<td class='price'>${t.price_usdc}</td>"
-            f"<td>{t.description}</td><td>{t.tier}</td></tr>"
-            for t in self._tools.values()
+        # Hero tools — show the highest-value 6 first, then the rest collapsed
+        all_tools = sorted(self._tools.values(), key=lambda t: -float(t.price_usdc))
+        hero_names = {
+            "onyx_base_tx_explainer", "onyx_sms_verify", "onyx_solve_captcha",
+            "onyx_agent_signup_kit", "onyx_base_token_risk_scan", "onyx_base_tx_simulator",
+        }
+        hero = [t for t in all_tools if t.name in hero_names]
+        rest = [t for t in all_tools if t.name not in hero_names]
+
+        def card(t):
+            when = getattr(t.handler, "__when_to_use__", None)
+            vs = getattr(t.handler, "__vs_alternatives__", None)
+            extra = ""
+            if when:
+                extra += f"<div class='when'><strong>When:</strong> {when}</div>"
+            if vs:
+                extra += f"<div class='vs'><strong>vs:</strong> {vs}</div>"
+            return (
+                f"<div class='tool'>"
+                f"<div class='th'><code>{t.name}</code><span class='price'>${t.price_usdc}</span></div>"
+                f"<div class='desc'>{t.description}</div>"
+                f"{extra}"
+                f"<div class='probe'>Free probe: <code>GET {(self.public_url or '').rstrip('/')}/v1/{t.name}</code></div>"
+                f"</div>"
+            )
+
+        hero_html = "\n".join(card(t) for t in hero)
+        rest_rows = "\n".join(
+            f"<tr><td><code>{t.name}</code></td><td class='price'>${t.price_usdc}</td>"
+            f"<td>{t.description[:160]}...</td></tr>"
+            for t in rest
         )
-        return f"""<!doctype html><html><head><meta charset="utf-8">
-<title>{self.name} — paid MCP via x402</title>
-<style>body{{font:15px ui-monospace,Menlo,monospace;background:#0a0a0a;color:#ddd;max-width:900px;margin:auto;padding:48px 24px}}
-h1{{color:#fff}} table{{width:100%;border-collapse:collapse}} td,th{{padding:8px;border-bottom:1px solid #222;text-align:left}}
-code{{background:#161616;padding:2px 6px;border-radius:3px;color:#7ee787}}.price{{color:#ffd166}} a{{color:#79c0ff}}</style>
-</head><body>
+        n_tools = len(all_tools)
+        public = (self.public_url or "").rstrip("/")
+        return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{self.name} — {n_tools} paid agent tools, USDC on Base, no API key</title>
+<meta name="description" content="{n_tools} x402-paid agent tools on Base mainnet. Captcha, SMS OTP, HLR, on-chain primitives. Pay per call in USDC, no signup, no API key. MCP-native at /mcp/.">
+<style>
+:root {{ color-scheme: dark; }}
+body {{ font: 15px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+       background:#0a0a0a; color:#ddd; margin:0; padding:48px 24px; max-width:980px; margin:0 auto; }}
+h1 {{ color:#fff; font-size:34px; margin:0 0 8px; letter-spacing:-.02em; }}
+.tag {{ display:inline-block; padding:3px 10px; border:1px solid #2a2a2a; border-radius:3px; color:#aaa; font-size:12px; margin-right:6px; }}
+.lede {{ color:#ccc; font-size:17px; margin:18px 0 32px; line-height:1.5; }}
+h2 {{ color:#fff; font-size:18px; margin:42px 0 16px; border-bottom:1px solid #1f1f1f; padding-bottom:10px; }}
+.tool {{ background:#101010; border:1px solid #1c1c1c; border-radius:6px; padding:18px 20px; margin:14px 0; }}
+.th {{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }}
+.th code {{ color:#7ee787; font-size:15px; }}
+.price {{ color:#ffd166; font-weight:600; }}
+.desc {{ color:#bbb; font-size:13px; margin:8px 0; }}
+.when {{ color:#9aaccd; font-size:13px; margin:6px 0; }}
+.vs {{ color:#a48f6a; font-size:13px; margin:6px 0; }}
+.probe {{ color:#666; font-size:12px; margin-top:10px; }}
+.probe code {{ color:#79c0ff; }}
+table {{ width:100%; border-collapse:collapse; font-size:13px; margin-top:12px; }}
+th,td {{ text-align:left; padding:9px 12px; border-bottom:1px solid #1a1a1a; vertical-align:top; }}
+th {{ color:#888; font-weight:normal; font-size:11px; text-transform:uppercase; letter-spacing:.08em; }}
+td code {{ background:#161616; padding:2px 6px; border-radius:3px; color:#7ee787; font-size:13px; }}
+pre {{ background:#101010; border:1px solid #1c1c1c; padding:16px; border-radius:5px; overflow:auto; font-size:12.5px; color:#ddd; }}
+a {{ color:#79c0ff; }}
+.cta {{ background:#0e1418; border-left:3px solid #79c0ff; padding:14px 18px; margin:28px 0; font-size:14px; }}
+.cta strong {{ color:#fff; }}
+.wallet {{ color:#666; font-size:11px; word-break:break-all; }}
+.kpi {{ display:flex; gap:16px; margin:14px 0 28px; flex-wrap:wrap; }}
+.kpi span {{ background:#101010; border:1px solid #1c1c1c; padding:8px 14px; border-radius:4px; color:#ddd; font-size:12.5px; }}
+.kpi b {{ color:#7ee787; }}
+</style></head><body>
+
 <h1>{self.name}</h1>
-<p>{self.description}</p>
-<p>Network: <code>{self.network}</code> · Wallet: <code>{self.receive_address}</code></p>
-<h2>Tools</h2><table><thead><tr><th>Name</th><th>Price</th><th>Description</th><th>Tier</th></tr></thead>
-<tbody>{rows}</tbody></table>
-<h2>Install (MCP)</h2><pre>{{ "mcpServers": {{ "{self.name}": {{ "url": "{(self.public_url or '').rstrip('/')}/mcp/" }} }} }}</pre>
-<p><a href="/manifest">/manifest</a> · <a href="/.well-known/x402.json">/.well-known/x402.json</a> · <a href="/health">/health</a></p>
-<p>Built with <a href="https://github.com/dimitrilaouanis-tech/onyx-mcp">onyx-paid-mcp</a></p>
+<p class="lede">{self.description}</p>
+
+<div>
+  <span class="tag">{n_tools} paid tools</span>
+  <span class="tag">{self.network} mainnet</span>
+  <span class="tag">USDC settlement</span>
+  <span class="tag">No API key, no signup</span>
+  <span class="tag">MCP-native</span>
+</div>
+
+<div class="cta">
+  <strong>Try free, pay only when you call.</strong> Every paid endpoint accepts
+  <code>GET</code> for a free introspection card (price, when-to-use, comparison vs alternatives,
+  example request/response). When you're ready, <code>POST</code> with an x402 payment header
+  and your wallet settles USDC directly to ours. No middleman, no monthly fee, no minimum.
+</div>
+
+<h2>Top tools</h2>
+{hero_html}
+
+<h2>Install in any MCP client</h2>
+<pre>// claude_desktop_config.json / Cursor / Cline
+{{
+  "mcpServers": {{
+    "{self.name}": {{
+      "url": "{public}/mcp/"
+    }}
+  }}
+}}</pre>
+
+<h2>Free public x402 leaderboard</h2>
+<p>The only public dashboard of every paid x402 service indexed from Coinbase's CDP discovery API,
+refreshed every 15 minutes. Four views, JSON variant for programmatic consumers.</p>
+<pre>{public}/bazaar      — HTML leaderboard
+{public}/bazaar.json — JSON variant</pre>
+
+<h2>Other tools ({len(rest)})</h2>
+<table><thead><tr><th>Name</th><th>Price</th><th>Description</th></tr></thead>
+<tbody>{rest_rows}</tbody></table>
+
+<h2>Endpoints</h2>
+<p><a href="/manifest">/manifest</a> · <a href="/.well-known/x402.json">/.well-known/x402.json</a> · <a href="/bazaar">/bazaar</a> · <a href="/llms.txt">/llms.txt</a> · <a href="/health">/health</a></p>
+
+<h2>Settlement</h2>
+<p class="wallet">USDC settles on {self.network} to <code>{self.receive_address}</code><br>
+Facilitator: <code>{self.facilitator_url}</code></p>
+
+<p style="margin-top:48px;color:#555;font-size:12px">
+Built on the open-source <a href="https://github.com/dimitrilaouanis-tech/onyx-mcp">onyx-paid-mcp</a> framework.
+Ship a paid MCP in 5 lines · MIT licensed.
+</p>
+
 </body></html>"""
