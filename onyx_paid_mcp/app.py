@@ -445,7 +445,7 @@ class App:
             when_to_use = getattr(t.handler, "__when_to_use__", None)
             vs_alternatives = getattr(t.handler, "__vs_alternatives__", None)
 
-            async def introspect(request: Request):
+            async def introspect():
                 return {
                     "name": t.name,
                     "tier": t.tier,
