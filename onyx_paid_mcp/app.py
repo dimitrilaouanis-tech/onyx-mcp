@@ -438,8 +438,39 @@ class App:
             handler.__name__ = f"rest_{t.name}"
             return handler
 
+        def _make_introspect(t: Tool):
+            base = (self.public_url or "").rstrip("/")
+            example = getattr(t.handler, "__example_request__", None)
+            example_response = getattr(t.handler, "__example_response__", None)
+            when_to_use = getattr(t.handler, "__when_to_use__", None)
+            vs_alternatives = getattr(t.handler, "__vs_alternatives__", None)
+
+            async def introspect(request: Request):
+                return {
+                    "name": t.name,
+                    "tier": t.tier,
+                    "price_usdc": t.price_usdc,
+                    "endpoint": f"{base}/v1/{t.name}",
+                    "method": "POST",
+                    "input_schema": t.input_schema,
+                    "description": t.description,
+                    "when_to_use": when_to_use,
+                    "vs_alternatives": vs_alternatives,
+                    "example_request": example,
+                    "example_response": example_response,
+                    "settle_to": self.receive_address,
+                    "network": self.network,
+                    "facilitator": self.facilitator_url,
+                    "payment_required": t.tier in ("metered", "premium"),
+                    "free_introspection": True,
+                    "note": "GET this URL = free introspection card. POST with x402 payment header to call.",
+                }
+            introspect.__name__ = f"introspect_{t.name}"
+            return introspect
+
         for t in tools:
             api.add_api_route(f"/v1/{t.name}", _make(t), methods=["POST"], name=t.name)
+            api.add_api_route(f"/v1/{t.name}", _make_introspect(t), methods=["GET"], name=f"{t.name}_introspect")
 
         # x402 middleware
         routes = {}

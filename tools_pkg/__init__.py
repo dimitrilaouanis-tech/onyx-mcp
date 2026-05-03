@@ -17,12 +17,22 @@ from typing import Iterable
 
 
 def discover() -> list[ModuleType]:
-    """Walk this package, import every module, return those that look like tools."""
+    """Walk this package, import every module, return those that look like tools.
+
+    Also applies buyer-language metadata (when_to_use, vs_alternatives,
+    example_request, example_response) from _metadata.py — read by the
+    GET /v1/<tool> introspection card so agents see the value prop before
+    they pay.
+    """
+    from . import _metadata  # imported here to avoid circular at module load
     found: list[ModuleType] = []
     for info in pkgutil.iter_modules(__path__):
+        if info.name.startswith("_"):
+            continue
         mod = importlib.import_module(f"{__name__}.{info.name}")
         if all(hasattr(mod, k) for k in ("NAME", "PRICE_USDC", "DESCRIPTION",
                                          "INPUT_SCHEMA", "TIER", "run")):
+            _metadata.apply(mod)
             found.append(mod)
     return found
 
