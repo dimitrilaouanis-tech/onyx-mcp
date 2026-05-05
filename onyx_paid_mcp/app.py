@@ -368,6 +368,10 @@ class App:
         async def _manifest():
             return self.manifest()
 
+        @api.get("/.well-known/x402")
+        async def _well_known_x402_canonical():
+            return self.x402_manifest()
+
         @api.get("/.well-known/x402.json")
         async def _well_known():
             return self.x402_manifest()
