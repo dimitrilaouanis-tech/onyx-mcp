@@ -9,10 +9,18 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
+      # NOTE: x402.org/facilitator does NOT support Base mainnet (eip155:8453) —
+      # only Base Sepolia + Solana/Algorand/Aptos mainnets per its /supported
+      # endpoint. To accept REAL Base mainnet inbound, create free CDP API keys
+      # at portal.cdp.coinbase.com, set CDP_API_KEY_ID + CDP_API_KEY_SECRET in
+      # Render dashboard env, and flip ONYX_FACILITATOR_URL to
+      # https://api.cdp.coinbase.com/platform/v2/x402. The framework auto-detects
+      # auth keys and mints CDP JWTs. Until then, run on base-sepolia so the
+      # middleware doesn't 500 on every paid call.
       - key: ONYX_RECEIVE_ADDRESS
-        value: 0xA60939FFf9c04a61c0c0649943675e16A12D7074
+        value: 0x4326acB1A35e6B744BaAeA850c702Ca71dF86Cd5
       - key: ONYX_NETWORK
-        value: base
+        value: base-sepolia
       - key: ONYX_FACILITATOR_URL
         value: https://x402.org/facilitator
       - key: ONYX_PUBLIC_URL
