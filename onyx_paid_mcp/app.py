@@ -506,9 +506,20 @@ class App:
                     "network": self.network_caip,
                     "price": f"${t.price_usdc}",
                     "payTo": self.receive_address,
-                    "description": t.description[:300],
-                    "mimeType": "application/json",
+                    # PaymentOption fields are strict; description/mimeType
+                    # live at route level. Use `extra` for x402scan-required
+                    # fields (inputSchema/outputSchema): it's a free dict the
+                    # lib passes through to the 402 challenge verbatim.
+                    "extra": {
+                        "name": "USDC",
+                        "version": "2",
+                        "inputSchema": t.input_schema,
+                        "outputSchema": {"type": "object"},
+                        "tool": t.name,
+                    },
                 },
+                "description": t.description[:300],
+                "mime_type": "application/json",
                 "extensions": {
                     "bazaar": {
                         "info": {
@@ -518,10 +529,7 @@ class App:
                                 "bodyType": "json",
                                 "body": example_body,
                             },
-                            "output": {
-                                "type": "object",
-                                "format": "json",
-                            },
+                            "output": {"type": "object", "format": "json"},
                         },
                         "schema": t.input_schema,
                     },
