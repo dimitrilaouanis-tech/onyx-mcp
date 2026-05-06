@@ -25,10 +25,16 @@ REFRESH_SEC = int(os.environ.get("BAZAAR_REFRESH_SEC", "900"))  # 15 min
 PAGE_SIZE = int(os.environ.get("BAZAAR_PAGE_SIZE", "1000"))
 
 
+QUALITY_PROBE_LIMIT = int(os.environ.get("BAZAAR_PROBE_LIMIT", "200"))
+QUALITY_PROBE_TIMEOUT = float(os.environ.get("BAZAAR_PROBE_TIMEOUT", "8.0"))
+
+
 class Cache:
     def __init__(self) -> None:
         self.items: list[dict] = []
+        self.quality: dict[str, dict] = {}  # resource URL -> {ok, status, has_402_payload, ts}
         self.last_refresh_ts: float = 0
+        self.last_quality_ts: float = 0
         self.last_error: Optional[str] = None
         self._lock = asyncio.Lock()
 
@@ -45,6 +51,87 @@ class Cache:
                 self.last_error = None
             except Exception as e:
                 self.last_error = f"{type(e).__name__}: {str(e)[:200]}"
+
+    async def probe_quality(self) -> None:
+        """Probe top-N services for actual reachability + 402 protocol validity.
+
+        Quality scoring (0-100):
+            +40  endpoint resolves at TCP level (any HTTP response)
+            +30  returns HTTP 402 on POST without payment header
+            +20  402 body parses as JSON with `accepts` field (x402 spec)
+            +10  served TLS without errors
+        """
+        if not self.items:
+            return
+        ranked = sorted(
+            self.items,
+            key=lambda i: (i.get("quality") or {}).get("l30DaysTotalCalls") or 0,
+            reverse=True,
+        )[:QUALITY_PROBE_LIMIT]
+
+        async def probe_one(client: httpx.AsyncClient, item: dict) -> tuple[str, dict]:
+            res = item.get("resource") or ""
+            if not res or not res.startswith("http"):
+                return res, {"ok": False, "score": 0, "reason": "no_resource_url"}
+            try:
+                r = await client.post(
+                    res,
+                    json={},
+                    headers={"content-type": "application/json"},
+                    timeout=QUALITY_PROBE_TIMEOUT,
+                )
+                score = 40
+                ok = True
+                reason = "reachable"
+                returned_402 = r.status_code == 402
+                json_402 = False
+                if returned_402:
+                    score += 30
+                    reason = "402_returned"
+                    try:
+                        body = r.json()
+                        if isinstance(body, dict) and (
+                            "accepts" in body or "x402Version" in body
+                        ):
+                            score += 20
+                            json_402 = True
+                            reason = "402_with_accepts_payload"
+                    except Exception:
+                        pass
+                if res.startswith("https://"):
+                    score += 10
+                return res, {
+                    "ok": ok,
+                    "score": min(100, score),
+                    "status": r.status_code,
+                    "returned_402": returned_402,
+                    "json_402": json_402,
+                    "reason": reason,
+                    "ts": time.time(),
+                }
+            except httpx.TimeoutException:
+                return res, {"ok": False, "score": 0, "reason": "timeout", "ts": time.time()}
+            except httpx.RemoteProtocolError as e:
+                return res, {"ok": False, "score": 0, "reason": f"protocol_error: {str(e)[:80]}", "ts": time.time()}
+            except Exception as e:
+                return res, {"ok": False, "score": 0, "reason": f"{type(e).__name__}: {str(e)[:80]}", "ts": time.time()}
+
+        new_quality: dict[str, dict] = {}
+        async with httpx.AsyncClient(timeout=QUALITY_PROBE_TIMEOUT, follow_redirects=False) as client:
+            results = await asyncio.gather(
+                *[probe_one(client, it) for it in ranked],
+                return_exceptions=True,
+            )
+        for r in results:
+            if isinstance(r, Exception):
+                continue
+            if isinstance(r, tuple) and len(r) == 2:
+                k, v = r
+                if k:
+                    new_quality[k] = v
+        async with self._lock:
+            self.quality.update(new_quality)
+            self.last_quality_ts = time.time()
 
     def stale(self) -> bool:
         return (time.time() - self.last_refresh_ts) > REFRESH_SEC
@@ -121,8 +208,10 @@ def ranked(view: str = "volume", limit: int = 100) -> list[dict]:
     rows = []
     for it in cache.items:
         q = _q(it)
+        res = it.get("resource", "")
+        qual = cache.quality.get(res, {})
         rows.append({
-            "resource": it.get("resource", ""),
+            "resource": res,
             "domain": _domain(it),
             "price": _price(it),
             "network": _network(it),
@@ -130,6 +219,10 @@ def ranked(view: str = "volume", limit: int = 100) -> list[dict]:
             "payers_30d": q["payers_30d"],
             "last_called": q["last_called"],
             "description": _short_desc(it),
+            "quality_score": qual.get("score"),
+            "quality_status": qual.get("status"),
+            "quality_reason": qual.get("reason"),
+            "quality_ts": qual.get("ts"),
         })
     if view == "volume":
         rows.sort(key=lambda r: r["calls_30d"], reverse=True)
@@ -144,11 +237,15 @@ def ranked(view: str = "volume", limit: int = 100) -> list[dict]:
             except (ValueError, AttributeError):
                 return 1e9
         rows.sort(key=kp)
+    elif view == "quality":
+        rows.sort(key=lambda r: (r["quality_score"] or -1, r["calls_30d"]), reverse=True)
     return rows[:limit]
 
 
 def stats_summary() -> dict:
     items = cache.items
+    quality_scores = [v.get("score", 0) for v in cache.quality.values() if v.get("score") is not None]
+    qual_total = len(quality_scores)
     return {
         "total_indexed": len(items),
         "total_calls_30d": sum(_q(i)["calls_30d"] for i in items),
@@ -157,6 +254,16 @@ def stats_summary() -> dict:
         "last_refresh_ts": cache.last_refresh_ts,
         "stale": cache.stale(),
         "last_error": cache.last_error,
+        "quality": {
+            "probed": qual_total,
+            "last_probe_ts": cache.last_quality_ts,
+            "avg_score": round(sum(quality_scores) / qual_total, 1) if qual_total else None,
+            "buckets": {
+                "green_70_plus": sum(1 for s in quality_scores if s >= 70),
+                "yellow_40_69": sum(1 for s in quality_scores if 40 <= s < 70),
+                "red_below_40": sum(1 for s in quality_scores if s < 40),
+            },
+        },
     }
 
 
@@ -172,14 +279,26 @@ def render_html(view: str, rows: list[dict], stats: dict) -> str:
     view_links = " · ".join(
         f'<a href="?view={v}"{(" class=active" if v == view else "")}>{label}</a>'
         for v, label in [("volume", "Top by Volume"), ("payers", "Most Unique Payers"),
-                          ("newest", "Recently Active"), ("cheapest", "Cheapest")]
+                          ("newest", "Recently Active"), ("cheapest", "Cheapest"),
+                          ("quality", "Highest Quality")]
     )
     network_breakdown = " · ".join(f"{n}: {c}" for n, c in sorted(stats["by_network"].items(), key=lambda x: -x[1]))
+    def quality_dot(r: dict) -> str:
+        s = r.get("quality_score")
+        reason = r.get("quality_reason") or ""
+        if s is None:
+            return '<span class="qd qd-grey" title="not probed yet">·</span>'
+        if s >= 70:
+            return f'<span class="qd qd-green" title="score {s}/100 — {reason}">●</span>'
+        if s >= 40:
+            return f'<span class="qd qd-yellow" title="score {s}/100 — {reason}">●</span>'
+        return f'<span class="qd qd-red" title="score {s}/100 — {reason}">●</span>'
+
     body_rows = []
     for i, r in enumerate(rows, 1):
         body_rows.append(
             f"<tr><td class=rank>{i}</td>"
-            f"<td><span class=domain>{r['domain']}</span><div class=desc>{r['description']}</div></td>"
+            f"<td>{quality_dot(r)} <span class=domain>{r['domain']}</span><div class=desc>{r['description']}</div></td>"
             f"<td class=price>{r['price']}</td>"
             f"<td class=net>{r['network']}</td>"
             f"<td class=num>{r['calls_30d']:,}</td>"
@@ -209,6 +328,8 @@ th{{color:#888;font-weight:normal;font-size:11px;text-transform:uppercase;letter
 .domain{{color:#7ee787;font-size:14px}}
 .desc{{color:#888;font-size:12px;margin-top:4px;max-width:480px}}
 .price{{color:#ffd166;white-space:nowrap}}
+.qd{{display:inline-block;width:12px;text-align:center;font-size:14px;line-height:1;margin-right:4px;vertical-align:middle}}
+.qd-green{{color:#7ee787}}.qd-yellow{{color:#ffd166}}.qd-red{{color:#ff7b72}}.qd-grey{{color:#444}}
 .net{{color:#79c0ff;font-size:12px}}
 .num{{color:#ddd;text-align:right;font-variant-numeric:tabular-nums}}
 footer{{color:#555;font-size:11px;margin-top:48px;text-align:center}}

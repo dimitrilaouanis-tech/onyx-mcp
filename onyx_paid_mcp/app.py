@@ -476,24 +476,57 @@ class App:
             api.add_api_route(f"/v1/{t.name}", _make(t), methods=["POST"], name=t.name)
             api.add_api_route(f"/v1/{t.name}", _make_introspect(t), methods=["GET"], name=f"{t.name}_introspect")
 
-        # x402 middleware — match coinbase/x402 reference shape (price/network
-        # at top of route, config sub-key for description/mimeType/schemas).
-        # x402scan rejects 402 challenges that don't carry inputSchema.
+        # x402 middleware — proper shape per x402 python lib docs:
+        # - accepts: {scheme, network, payTo, price, ...} (flat)
+        # - extensions.bazaar: surfaces inputSchema/outputSchema to discovery
+        #   crawlers (x402scan, Coinbase Bazaar). Library auto-registers the
+        #   bazaar extension when it sees `extensions.bazaar` in any route.
         routes = {}
         for t in tools:
-            if t.tier in ("metered", "premium"):
-                routes[f"POST /v1/{t.name}"] = {
-                    "price": f"${t.price_usdc}",
+            if t.tier not in ("metered", "premium"):
+                continue
+            example_body = {}
+            if isinstance(t.input_schema, dict):
+                props = t.input_schema.get("properties", {}) or {}
+                # build a minimal example from required props
+                for req in t.input_schema.get("required", []) or []:
+                    spec = props.get(req, {})
+                    typ = spec.get("type", "string")
+                    if typ == "string":
+                        example_body[req] = spec.get("example", "")
+                    elif typ in ("integer", "number"):
+                        example_body[req] = 0
+                    elif typ == "boolean":
+                        example_body[req] = False
+                    else:
+                        example_body[req] = None
+            routes[f"POST /v1/{t.name}"] = {
+                "accepts": {
+                    "scheme": "exact",
                     "network": self.network_caip,
+                    "price": f"${t.price_usdc}",
                     "payTo": self.receive_address,
-                    "config": {
-                        "description": t.description[:300],
-                        "mimeType": "application/json",
-                        "maxTimeoutSeconds": 60,
-                        "inputSchema": t.input_schema,
-                        "outputSchema": {"type": "object"},
+                    "description": t.description[:300],
+                    "mimeType": "application/json",
+                },
+                "extensions": {
+                    "bazaar": {
+                        "info": {
+                            "input": {
+                                "type": "http",
+                                "method": "POST",
+                                "bodyType": "json",
+                                "body": example_body,
+                            },
+                            "output": {
+                                "type": "object",
+                                "format": "json",
+                            },
+                        },
+                        "schema": t.input_schema,
                     },
-                }
+                },
+            }
 
         @api.middleware("http")
         async def _gate(request, call_next):
