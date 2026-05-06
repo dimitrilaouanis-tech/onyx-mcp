@@ -357,33 +357,33 @@ class App:
 
         api.mount("/mcp", _mcp_asgi)
 
-        @api.get("/")
+        @api.get("/", include_in_schema=False)
         async def _root(request: Request):
             accept = request.headers.get("accept", "")
             if "text/html" in accept and "application/json" not in accept:
                 return HTMLResponse(self._landing_html())
             return JSONResponse(self.manifest())
 
-        @api.get("/manifest")
+        @api.get("/manifest", include_in_schema=False)
         async def _manifest():
             return self.manifest()
 
-        @api.get("/.well-known/x402")
+        @api.get("/.well-known/x402", include_in_schema=False)
         async def _well_known_x402_canonical():
             return self.x402_manifest()
 
-        @api.get("/.well-known/x402.json")
+        @api.get("/.well-known/x402.json", include_in_schema=False)
         async def _well_known():
             return self.x402_manifest()
 
-        @api.get("/services.json")
+        @api.get("/services.json", include_in_schema=False)
         async def _services():
             return self.x402_manifest()
 
         # ------- Bazaar leaderboard (public x402 stats) ----------------
         # Cron started in lifespan above; routes below.
 
-        @api.get("/bazaar")
+        @api.get("/bazaar", include_in_schema=False)
         async def _bazaar_view(request: Request, view: str = "volume",
                                format: str = "html", limit: int = 100):
             view = view if view in {"volume", "payers", "newest", "cheapest"} else "volume"
@@ -396,7 +396,7 @@ class App:
                 })
             return HTMLResponse(_bazaar.render_html(view, rows, _bazaar.stats_summary()))
 
-        @api.get("/bazaar.json")
+        @api.get("/bazaar.json", include_in_schema=False)
         async def _bazaar_json(view: str = "volume", limit: int = 100):
             view = view if view in {"volume", "payers", "newest", "cheapest"} else "volume"
             return {
@@ -405,7 +405,7 @@ class App:
                 "stats": _bazaar.stats_summary(),
             }
 
-        @api.get("/health")
+        @api.get("/health", include_in_schema=False)
         async def _health():
             return {
                 "ok": True, "network": self.network,
@@ -418,7 +418,7 @@ class App:
         from fastapi.responses import PlainTextResponse
         from pathlib import Path as _Path
 
-        @api.get("/llms.txt", response_class=PlainTextResponse)
+        @api.get("/llms.txt", response_class=PlainTextResponse, include_in_schema=False)
         async def _llms_txt():
             for p in (_Path("llms.txt"), _Path(__file__).parent.parent / "llms.txt"):
                 if p.exists():
@@ -427,11 +427,13 @@ class App:
 
         # REST per-tool endpoints
         def _make(t: Tool):
-            async def handler(request: Request):
-                try:
-                    body = await request.json()
-                except Exception:
-                    body = {}
+            # Use Body(...) so FastAPI's OpenAPI introspector treats this as
+            # a JSON body param (which we override via openapi_extra), instead
+            # of trying to derive a schema from `request: Request` (which
+            # crashes pydantic's TypeAdapter on ForwardRef).
+            from fastapi import Body
+            from typing import Any as _Any
+            async def handler(body: dict = Body(default_factory=dict)):
                 try:
                     out = t.handler(**(body or {}))
                     if asyncio.iscoroutine(out):
@@ -473,8 +475,53 @@ class App:
             return introspect
 
         for t in tools:
-            api.add_api_route(f"/v1/{t.name}", _make(t), methods=["POST"], name=t.name)
-            api.add_api_route(f"/v1/{t.name}", _make_introspect(t), methods=["GET"], name=f"{t.name}_introspect")
+            # Explicit OpenAPI body schema — FastAPI's auto-derive crashes on
+            # our handler signature (Request-typed param). x402scan probes
+            # /openapi.json to discover inputSchema; without this its registration
+            # validator fails with "Missing input schema". This is the single
+            # mechanical gate between Onyx and the indexer ecosystem.
+            paid_openapi_extra = {
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": t.input_schema,
+                        }
+                    },
+                },
+                "responses": {
+                    "200": {
+                        "description": "Tool result",
+                        "content": {"application/json": {"schema": {"type": "object"}}},
+                    },
+                    "402": {
+                        "description": "Payment required (x402)",
+                        "headers": {
+                            "Payment-Required": {
+                                "description": "Base64-encoded x402 challenge",
+                                "schema": {"type": "string"},
+                            }
+                        },
+                    },
+                },
+                "summary": t.name,
+                "description": t.description[:500],
+                "x-x402-tool": t.name,
+                "x-x402-price-usdc": t.price_usdc,
+                "x-x402-tier": t.tier,
+            }
+            api.add_api_route(
+                f"/v1/{t.name}", _make(t), methods=["POST"], name=t.name,
+                openapi_extra=paid_openapi_extra,
+            )
+            api.add_api_route(
+                f"/v1/{t.name}", _make_introspect(t), methods=["GET"],
+                name=f"{t.name}_introspect",
+                openapi_extra={
+                    "summary": f"{t.name} — free introspection card",
+                    "description": "Free GET — returns tool metadata, schemas, comparison anchors. POST same URL with x402 payment to actually call.",
+                },
+            )
 
         # x402 middleware — proper shape per x402 python lib docs:
         # - accepts: {scheme, network, payTo, price, ...} (flat)
