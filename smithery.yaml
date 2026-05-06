@@ -1,10 +1,12 @@
 name: onyx-actions
 description: |-
-  12 paid agent tools over x402 USDC on Base. HTTP 402 -> sign payment -> 200.
-  No API keys, no signup, no subscription. Captcha OCR, SMS OTP via real carrier SIMs,
-  HLR lookup, URL text extraction, DNS, WHOIS, email validation, IP geolocation,
-  user-agent parsing, password strength, FX conversion. The first MCP that
-  price-meters per-call directly through the protocol agents already speak.
+  Paid agent tools over x402 USDC on Base. HTTP 402 -> sign payment -> 200.
+  No API keys, no signup, no subscription. Base on-chain primitives
+  (tx_explainer, tx_simulator, token_risk_scan, ENS resolve, token metadata),
+  captcha OCR, URL text extraction, DNS, WHOIS, email validation, IP
+  geolocation, user-agent parsing, password strength, FX conversion, browser
+  automation suite, workflow chainer. The first MCP that price-meters per-call
+  directly through the protocol agents already speak.
 homepage: https://github.com/dimitrilaouanis-tech/onyx-mcp
 repository: https://github.com/dimitrilaouanis-tech/onyx-mcp
 license: MIT
@@ -12,19 +14,20 @@ keywords:
   - x402
   - usdc
   - base
+  - mcp
+  - paid-mcp
+  - agentic
+  - payments
   - captcha
-  - sms
-  - otp
-  - hlr
   - whois
   - dns
   - email-validate
   - ip-geolocate
-  - payments
-  - agentic
-  - paid-mcp
+  - tx-explainer
+  - token-risk-scan
+  - ens
+  - browser-automation
   - ddddocr
-  - mcp
 
 startCommand:
   type: stdio
@@ -44,7 +47,7 @@ startCommand:
         type: string
         enum: ["0", "1"]
         default: "1"
-        description: 1 returns synthetic OTPs for SMS tool. 0 dispatches to real phone fleet.
+        description: 1 returns synthetic data for tools that touch external paid resources. 0 dispatches to real upstream.
     required: []
   commandFunction: |-
     (config) => ({

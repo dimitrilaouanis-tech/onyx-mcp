@@ -50,13 +50,17 @@ Generate a Base wallet (`gen_wallet.py` in this repo, or any EVM wallet generato
 
 ## Reference implementation
 
-[`onyx-actions`](https://onyx-actions.onrender.com) — the live server using this framework. 12 paid tools across captcha, SMS OTP, HLR phone validation, URL text extraction, DNS, WHOIS, IP geo, email validation, password strength, UA parsing, FX convert. All shipped as one-file modules in `tools_pkg/`.
+[`onyx-actions`](https://onyx-actions.onrender.com) — the live server using this framework. Paid tools across Base on-chain primitives, captcha OCR, URL text extraction, DNS, WHOIS, email validation, IP geo, FX, browser automation, and a workflow chainer. All shipped as one-file modules in `tools_pkg/`.
 
 | Tool | Price |
 |---|---|
+| `onyx_base_tx_explainer` | $0.05 |
+| `onyx_base_tx_simulator` | $0.10 |
+| `onyx_base_token_risk_scan` | $0.25 |
+| `onyx_base_tx_decode` | $0.002 |
+| `onyx_token_metadata` | $0.001 |
+| `onyx_ens_resolve` | $0.0008 |
 | `onyx_solve_captcha` | $0.003 |
-| `onyx_sms_verify` | $0.050 |
-| `onyx_hlr_lookup` | $0.005 |
 | `onyx_url_text` | $0.001 |
 | `onyx_url_unshorten` | $0.0005 |
 | `onyx_whois` | $0.001 |
@@ -66,6 +70,8 @@ Generate a Base wallet (`gen_wallet.py` in this repo, or any EVM wallet generato
 | `onyx_fx_convert` | $0.0008 |
 | `onyx_password_strength` | $0.0003 |
 | `onyx_user_agent_parse` | $0.0003 |
+| `onyx_browser_*` (6 tools) | $0.002–$0.008 |
+| `onyx_agent_workflow` | $0.020 |
 
 Smithery listing: <https://smithery.ai/servers/dimitrilaouanis/onyx-mcp>
 

@@ -98,52 +98,6 @@ META: dict[str, dict] = {
             "elapsed_ms": 32, "bytes": 1840,
         },
     },
-    "onyx_sms_verify": {
-        "when_to_use": (
-            "Use when an agent needs an SMS OTP for signup/2FA flows where the "
-            "target service rejects VoIP numbers (WhatsApp, Telegram, Signal, "
-            "banking, KYC). Real Samsung handset on a real carrier SIM."
-        ),
-        "vs_alternatives": (
-            "SMSPool $0.25 BR + API key signup + account funding. textverified "
-            "$0.30 + signup + monthly minimum. Onyx $0.05 — 5-6x cheaper, "
-            "x402-native, no API key, no minimum. Demo mode returns a synthetic "
-            "code so the payment loop is testable before real spend."
-        ),
-        "example_request": {"phone_number": "+5511987654321", "service": "whatsapp"},
-        "example_response": {
-            "otp": "742815", "phone_number": "+5511987654321",
-            "service": "whatsapp", "REMOVED_FIELD": "BR", "REMOVED_FIELD": "Vivo",
-            "elapsed_ms": 28430, "demo": False,
-        },
-    },
-    "onyx_agent_signup_kit": {
-        "when_to_use": (
-            "Use when a browser agent hits a signup wall and needs the full "
-            "pre-flight stack — validate email, confirm domain DNS, solve "
-            "captcha if any, fetch SMS OTP — in one atomic paid call. Saves "
-            "three round-trips and ~7% vs unit pricing."
-        ),
-        "vs_alternatives": (
-            "Composing four separate paid tools = 4 round-trips + 4 settlements "
-            "+ 4 chances to lose state. This bundles the entire signup pre-flight "
-            "into one paid call. Modeled on OATP's bundled-utility playbook (430 "
-            "paying agents on a single $0.10 endpoint)."
-        ),
-        "example_request": {
-            "email": "agent7421@gmail.com",
-            "captcha_image_url": "https://signup.example.com/captcha.png",
-            "phone_number": "+5511987654321",
-        },
-        "example_response": {
-            "ok": True,
-            "email": {"verdict": "valid", "deliverable": True},
-            "domain": {"resolved": True},
-            "captcha": {"answer": "X7K9P"},
-            "sms": {"otp": "284716"},
-            "elapsed_ms": 25180, "bundle_savings_pct": 7.6,
-        },
-    },
     "onyx_url_text": {
         "when_to_use": (
             "Use when an agent needs to read a web page WITHOUT spinning up a "

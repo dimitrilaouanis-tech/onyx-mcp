@@ -22,18 +22,29 @@ No state is held between calls. No account exists. The wallet IS the identity.
 
 | Tool | What it does | Price |
 | --- | --- | --- |
+| base_tx_explainer | Decode any Base mainnet tx into a human-readable summary | $0.05 |
+| base_tx_simulator | Pre-flight a Base tx — gas estimate + revert detection | $0.10 |
+| base_token_risk_scan | Rug-vector scan for any Base ERC-20 (owner, mint, supply, code) | $0.25 |
+| base_tx_decode | Raw tx ABI decode for Base | $0.002 |
+| token_metadata | ERC-20 name/symbol/decimals/supply on Base | $0.001 |
+| ens_resolve | ENS name ↔ address bidirectional resolve | $0.0008 |
 | solve_captcha | OCR-based bypass for image captchas (~30ms, 70-90% accuracy) | $0.003 |
-| sms_verify | Receive an SMS OTP on a real carrier-backed number, return the code | $0.05 |
-| hlr_lookup | Carrier / line-type / portability lookup for any E.164 number | $0.005 |
-| url_text | Fetch a URL and return clean main-content text (Trafilatura) | $0.002 |
-| url_unshorten | Resolve any redirect chain to its final URL | $0.001 |
-| dns_lookup | A / AAAA / MX / NS / TXT / CNAME records for a host | $0.001 |
-| whois_lookup | WHOIS registration data for a domain or IP | $0.001 |
-| email_validate | Syntax + MX + role-account + disposable-domain check | $0.002 |
-| ip_geolocate | Country, region, city, ASN for an IPv4/IPv6 | $0.001 |
-| user_agent_parse | Browser, OS, device, bot/crawler detection | $0.0005 |
-| password_strength | Entropy + zxcvbn-style score for a candidate password | $0.0005 |
-| fx_convert | Mid-market FX conversion across 150+ currencies | $0.0005 |
+| url_text | Fetch a URL and return clean main-content text | $0.001 |
+| url_unshorten | Resolve any redirect chain to its final URL | $0.0005 |
+| dns_lookup | A / AAAA / PTR records for a host | $0.0005 |
+| whois | WHOIS / RDAP registration data for a domain | $0.001 |
+| email_validate | Syntax + DNS + role-account + disposable-domain check | $0.0008 |
+| ip_geolocate | Country, region, city, ASN, proxy/hosting flags for IPv4/IPv6 | $0.0008 |
+| user_agent_parse | Browser, OS, device, bot/crawler detection | $0.0003 |
+| password_strength | Entropy + pattern score for a candidate password | $0.0003 |
+| fx_convert | Mid-market FX conversion across 160+ currencies | $0.0008 |
+| html_meta | OG / Twitter / JSON-LD extract from any URL | $0.0008 |
+| jwt_decode | JWT inspector (header / payload / sig present) | $0.0003 |
+| hash_compute | md5 / sha1 / sha256 / sha512 / sha3 | $0.0003 |
+| robots_check | robots.txt fetch + path-allowed verdict | $0.0005 |
+| url_parse | URL → structured components | $0.0003 |
+| browser_navigate / screenshot / extract / click / type / eval | CDP browser automation suite | $0.002–$0.008 |
+| agent_workflow | Compose up to 10 tools in one paid call | $0.020 |
 
 ## Why this exists
 
