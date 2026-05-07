@@ -1,12 +1,12 @@
 name: onyx-actions
 description: |-
-  Paid agent tools over x402 USDC on Base. HTTP 402 -> sign payment -> 200.
-  No API keys, no signup, no subscription. Base on-chain primitives
-  (tx_explainer, tx_simulator, token_risk_scan, ENS resolve, token metadata),
+  Paid agent tools over x402 USDC on Base AND Solana. HTTP 402 -> sign payment -> 200.
+  No API keys, no signup, no subscription. Base + Solana on-chain primitives
+  (tx_explainer, tx_simulator, token_risk_scan, token metadata, ENS resolve),
   captcha OCR, URL text extraction, DNS, WHOIS, email validation, IP
   geolocation, user-agent parsing, password strength, FX conversion, browser
   automation suite, workflow chainer. The first MCP that price-meters per-call
-  directly through the protocol agents already speak.
+  directly through the protocol agents already speak — at half OATP price.
 homepage: https://github.com/dimitrilaouanis-tech/onyx-mcp
 repository: https://github.com/dimitrilaouanis-tech/onyx-mcp
 license: MIT
@@ -14,6 +14,7 @@ keywords:
   - x402
   - usdc
   - base
+  - solana
   - mcp
   - paid-mcp
   - agentic
@@ -25,6 +26,9 @@ keywords:
   - ip-geolocate
   - tx-explainer
   - token-risk-scan
+  - spl-token
+  - pump-fun
+  - rug-scanner
   - ens
   - browser-automation
   - ddddocr

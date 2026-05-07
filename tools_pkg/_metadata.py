@@ -144,6 +144,83 @@ META: dict[str, dict] = {
             "elapsed_ms": 285,
         },
     },
+    "onyx_solana_tx_explainer": {
+        "when_to_use": (
+            "Use when a Solana trading agent needs to verify what a tx "
+            "actually did — confirm a Jupiter swap landed at the expected "
+            "price, audit a pump.fun buy, explain a stake-account interaction. "
+            "Pre-trade safety check or post-trade verification on Solana."
+        ),
+        "vs_alternatives": (
+            "OATP charges $0.10 for the exact same primitive on Solana with "
+            "1,350+ unique paying agents — Onyx is the second x402-paid Solana "
+            "tx_explainer at HALF the price. Helius/QuickNode require API keys + "
+            "paid tiers. Solscan is free but rate-limited and returns HTML."
+        ),
+        "example_request": {"signature": "5j7s4..." + "x" * 80},
+        "example_response": {
+            "summary": "DEX swap touching 3 program(s), 4 token-balance update(s).",
+            "status": "success",
+            "fee_sol": 0.000005,
+            "compute_units": 142000,
+            "instruction_count": 7,
+            "programs": ["JUP6Lk...", "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"],
+            "elapsed_ms": 320,
+        },
+    },
+    "onyx_solana_token_metadata": {
+        "when_to_use": (
+            "Use before transacting with any SPL token on Solana — confirms "
+            "the address is a real SPL mint, resolves name + symbol + "
+            "decimals + total supply via SPL Mint layout + Metaplex PDA. "
+            "Pairs with onyx_solana_token_risk_scan for full pre-trade safety."
+        ),
+        "vs_alternatives": (
+            "Helius DAS API needs an API key + paid tier above 100 RPM. "
+            "Birdeye token-overview is rate-limited and returns proprietary "
+            "fields. Onyx $0.0008 reads SPL Mint + Metaplex PDA via free "
+            "public RPC, no signup, x402-direct."
+        ),
+        "example_request": {"mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"},
+        "example_response": {
+            "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            "name": "USD Coin", "symbol": "USDC", "decimals": 6,
+            "total_supply": 8776108207.89,
+            "mint_authority": "2wmVCSfPxGPjrnMMn7rchp4uaeoTqN39mXFC2zhPdri9",
+            "freeze_authority": "3sNBr7kMccME5D55xNgsmYpZnzPgP2g12CixAajXypn6",
+            "is_spl_token": True,
+            "elapsed_ms": 285,
+        },
+    },
+    "onyx_solana_token_risk_scan": {
+        "when_to_use": (
+            "Use BEFORE buying any freshly-deployed Solana token — "
+            "memecoins, pump.fun launches, freshly-bonded curves. Flags "
+            "the dominant rug vectors: active mint authority (unlimited "
+            "supply risk), active freeze authority (wallet-freeze risk), "
+            "top-1/top-10 holder concentration, pump.fun-style mint. "
+            "Sub-second latency for sniper/MEV agent gates."
+        ),
+        "vs_alternatives": (
+            "OATP charges $0.50 for the same primitive with 800+ paying "
+            "agents — Onyx is HALF price ($0.25). RugCheck.xyz is free "
+            "but rate-limited, requires HTML scraping, and has no x402 "
+            "settlement loop. Bubblemaps and DEXTools require API keys "
+            "and paid tiers."
+        ),
+        "example_request": {"mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"},
+        "example_response": {
+            "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+            "score_0_100": 8, "verdict": "safe",
+            "mint_authority_renounced": True,
+            "freeze_authority_renounced": True,
+            "top1_holder_pct": 4.2, "top10_holders_pct": 31.8,
+            "is_pump_fun_style": False,
+            "risk_factors": ["mint_authority renounced",
+                             "top-10 holders own 31.8% of supply"],
+            "elapsed_ms": 410,
+        },
+    },
     "onyx_ens_resolve": {
         "when_to_use": (
             "Use when an agent encounters an ENS name like vitalik.eth and "
