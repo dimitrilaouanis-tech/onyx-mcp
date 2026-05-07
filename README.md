@@ -62,6 +62,8 @@ Generate a Base wallet (`gen_wallet.py` in this repo, or any EVM wallet generato
 | `onyx_solana_tx_explainer` | $0.05 |
 | `onyx_solana_token_metadata` | $0.0008 |
 | `onyx_solana_token_risk_scan` | $0.25 |
+| `onyx_solana_jupiter_quote` | $0.001 |
+| `onyx_solana_wallet_activity` | $0.002 |
 | `onyx_ens_resolve` | $0.0008 |
 | `onyx_solve_captcha` | $0.003 |
 | `onyx_url_text` | $0.001 |

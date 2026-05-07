@@ -221,6 +221,56 @@ META: dict[str, dict] = {
             "elapsed_ms": 410,
         },
     },
+    "onyx_solana_jupiter_quote": {
+        "when_to_use": (
+            "Use BEFORE every Solana swap to lock execution price. "
+            "Aggregates Orca/Raydium/Meteora/Phoenix/Lifinity into one "
+            "best-route quote with price impact + slippage + intermediate "
+            "hops. Pairs with onyx_solana_token_risk_scan as the standard "
+            "pre-trade gate."
+        ),
+        "vs_alternatives": (
+            "Jupiter's lite-api is free but agents need their own retry/"
+            "rate-limit logic and have no per-call billing primitive. "
+            "Birdeye's quote API costs $0.005 + API key signup. Helius "
+            "swap quotes need a paid tier. Onyx $0.001 with x402-direct "
+            "USDC settlement, no signup, no key tracking."
+        ),
+        "example_request": {
+            "input_mint": "So11111111111111111111111111111111111111112",
+            "output_mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            "amount": "1000000000",
+        },
+        "example_response": {
+            "out_amount": "88083339", "min_out_amount": "87637925",
+            "price_impact_pct": 0.0001, "hop_count": 2,
+            "amms_used": ["Whirlpool", "Raydium"],
+            "elapsed_ms": 320,
+        },
+    },
+    "onyx_solana_wallet_activity": {
+        "when_to_use": (
+            "Use for whale-watching, copy-trading, or KYT agents that "
+            "need to know what a wallet just did on Solana. Returns "
+            "recent signatures with program/action tags so the agent "
+            "doesn't need a second call per signature."
+        ),
+        "vs_alternatives": (
+            "Helius webhooks: $25/mo subscription. Birdeye wallet-"
+            "portfolio: $0.002 + API key. Solscan API: rate-limited, "
+            "no real-time. Onyx $0.002 per call, no signup, x402-direct."
+        ),
+        "example_request": {
+            "wallet": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+            "limit": 25,
+        },
+        "example_response": {
+            "wallet": "9WzD...AWWM", "count": 25, "error_count": 0,
+            "activity": [{"signature": "5xj7...", "status": "success",
+                          "actions": ["jupiter_swap", "spl_token"]}],
+            "elapsed_ms": 410,
+        },
+    },
     "onyx_ens_resolve": {
         "when_to_use": (
             "Use when an agent encounters an ENS name like vitalik.eth and "

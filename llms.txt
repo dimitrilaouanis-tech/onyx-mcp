@@ -30,6 +30,8 @@ No state is held between calls. No account exists. The wallet IS the identity.
 | solana_tx_explainer | Decode any Solana mainnet tx into a human-readable summary (HALF OATP) | $0.05 |
 | solana_token_metadata | SPL token name/symbol/decimals/supply via Mint+Metaplex | $0.0008 |
 | solana_token_risk_scan | Rug-vector scan for SPL tokens (mint/freeze authority + concentration) | $0.25 |
+| solana_jupiter_quote | Best-route swap quote across all Solana DEXes via Jupiter | $0.001 |
+| solana_wallet_activity | Recent on-chain activity for any Solana wallet (parsed) | $0.002 |
 | ens_resolve | ENS name ↔ address bidirectional resolve | $0.0008 |
 | solve_captcha | OCR-based bypass for image captchas (~30ms, 70-90% accuracy) | $0.003 |
 | url_text | Fetch a URL and return clean main-content text | $0.001 |
