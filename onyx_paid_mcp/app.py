@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import copy
 import json
 import os
 from dataclasses import dataclass, field
@@ -547,20 +548,19 @@ class App:
                         example_body[req] = False
                     else:
                         example_body[req] = None
+            # x402 lib's bazaar extension mutates the schema dict we pass it
+            # (server.py:192 appends "method" to required[]). Deepcopy each
+            # reference so extra.inputSchema stays clean.
             routes[f"POST /v1/{t.name}"] = {
                 "accepts": {
                     "scheme": "exact",
                     "network": self.network_caip,
                     "price": f"${t.price_usdc}",
                     "payTo": self.receive_address,
-                    # PaymentOption fields are strict; description/mimeType
-                    # live at route level. Use `extra` for x402scan-required
-                    # fields (inputSchema/outputSchema): it's a free dict the
-                    # lib passes through to the 402 challenge verbatim.
                     "extra": {
                         "name": "USDC",
                         "version": "2",
-                        "inputSchema": t.input_schema,
+                        "inputSchema": copy.deepcopy(t.input_schema),
                         "outputSchema": {"type": "object"},
                         "tool": t.name,
                     },
@@ -578,7 +578,7 @@ class App:
                             },
                             "output": {"type": "object", "format": "json"},
                         },
-                        "schema": t.input_schema,
+                        "schema": copy.deepcopy(t.input_schema),
                     },
                 },
             }
