@@ -1,21 +1,29 @@
-"""Onyx MCP server — action primitives for AI agents.
+"""Onyx MCP server — stdio entrypoint.
 
-Exposes Onyx's battle-tested action workers as MCP tools over stdio.
-This is the local-mode server (no payment gate). The paid HTTP version
-lives in server_http.py (step 3: x402 gate).
+Exposes every tool registered in tools_pkg/ as an MCP tool over stdio.
+This is the no-payment-gate variant (Glama / introspection / local dev).
+The paid HTTP server lives in onyx_paid_mcp/app.py with x402 middleware.
+
+Tool count is whatever tools_pkg.discover() returns — currently 33
+across Base + Solana on-chain primitives, captcha OCR, browser
+automation, and standard web utility (DNS, WHOIS, email, IP geo, FX).
 """
 from __future__ import annotations
 
 import asyncio
 import json
-import sys
 
 import mcp.server.stdio
 import mcp.types as types
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 
-from tools import solve_captcha
+from tools_pkg import discover
+
+# Discover once at startup — every module under tools_pkg/ that exports
+# (NAME, PRICE_USDC, DESCRIPTION, INPUT_SCHEMA, TIER, run) registers itself.
+_TOOLS = discover()
+_BY_NAME = {t.NAME: t for t in _TOOLS}
 
 app = Server("onyx-actions")
 
@@ -24,46 +32,46 @@ app = Server("onyx-actions")
 async def list_tools() -> list[types.Tool]:
     return [
         types.Tool(
-            name="onyx_solve_captcha",
-            description=(
-                "Solve an image-based text captcha. Returns the recognized "
-                "text. Backed by Onyx's production OCR stack (ddddocr). "
-                "Typical accuracy 70-90% on standard web captchas."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "image_url": {
-                        "type": "string",
-                        "description": "URL of captcha image to fetch.",
-                    },
-                    "image_b64": {
-                        "type": "string",
-                        "description": "Base64-encoded captcha image bytes "
-                                       "(use when agent already has the image).",
-                    },
-                },
-            },
-        ),
+            name=t.NAME,
+            description=t.DESCRIPTION,
+            inputSchema=t.INPUT_SCHEMA,
+        )
+        for t in _TOOLS
     ]
 
 
 @app.call_tool()
-async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
-    if name == "onyx_solve_captcha":
-        result = solve_captcha(**arguments)
-        return [types.TextContent(type="text", text=json.dumps(result))]
-    raise ValueError(f"Unknown tool: {name}")
+async def call_tool(name: str, arguments: dict | None) -> list[types.TextContent]:
+    tool = _BY_NAME.get(name)
+    if tool is None:
+        return [types.TextContent(
+            type="text",
+            text=json.dumps({"error": f"unknown tool: {name}",
+                             "available": sorted(_BY_NAME.keys())}),
+        )]
+    try:
+        result = tool.run(**(arguments or {}))
+    except ValueError as e:
+        return [types.TextContent(
+            type="text",
+            text=json.dumps({"error": str(e), "tool": name}),
+        )]
+    except Exception as e:
+        return [types.TextContent(
+            type="text",
+            text=json.dumps({"error": f"{type(e).__name__}: {e}", "tool": name}),
+        )]
+    return [types.TextContent(type="text", text=json.dumps(result, default=str))]
 
 
-async def main():
+async def main() -> None:
     async with mcp.server.stdio.stdio_server() as (read, write):
         await app.run(
             read,
             write,
             InitializationOptions(
                 server_name="onyx-actions",
-                server_version="0.0.1",
+                server_version="0.2.0",
                 capabilities=app.get_capabilities(
                     notification_options=NotificationOptions(),
                     experimental_capabilities={},

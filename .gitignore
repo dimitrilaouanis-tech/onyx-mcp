@@ -3,3 +3,8 @@
 __pycache__/
 *.pyc
 dist/
+# bazaar leaderboard cache files written at runtime
+_bazaar_data.json
+_bazaar_volume.json
+*_bazaar_data.json
+*_bazaar_volume.json
