@@ -82,21 +82,25 @@ Smithery listing: <https://smithery.ai/servers/dimitrilaouanis/onyx-mcp>
 
 ## How agents call you
 
-```bash
-curl -X POST https://your-server.example.com/v1/echo \
-  -H "content-type: application/json" \
-  -d '{"text":"hi"}'
-# → 402 Payment Required, body has accepts[] describing price + asset + payTo
+Try it against the live reference server with one command — no install:
 
-# Agent's x402 SDK signs an EIP-3009 authorization, retries:
-curl -X POST https://your-server.example.com/v1/echo \
+```bash
+curl -X POST https://onyx-actions.onrender.com/v1/onyx_solana_jupiter_quote \
   -H "content-type: application/json" \
-  -H "X-PAYMENT: <signed authorization>" \
-  -d '{"text":"hi"}'
-# → 200, {"echoed": "hi"}
+  -d '{"input_mint":"So11111111111111111111111111111111111111112","output_mint":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","amount":"1000000000"}' -i
+# → HTTP 402 Payment Required
+# → payment-required: <base64-encoded JSON with payTo, asset, amount, inputSchema>
 ```
 
-Any x402-aware client SDK (Coinbase CDP, Cloudflare Agent SDK, etc.) handles the loop in ~5 lines. Agents don't need to know your URL — the Coinbase Bazaar crawler picks up your `/.well-known/x402.json` from on-chain settled payments.
+Then sign an EIP-3009 USDC authorization and retry with `X-PAYMENT: <signed>`:
+
+```bash
+# Full client demo — shows the 402 → sign → 200 loop in 50 lines:
+python examples/agent_pay.py onyx_solana_jupiter_quote
+# Set ONYX_DEMO_KEY=0x... to actually pay + get the result
+```
+
+Any x402-aware client SDK (Coinbase CDP, Cloudflare Agent SDK, Privy, mcp-use) handles the loop in ~5 lines. Agents don't need to know your URL — the Coinbase Bazaar crawler picks up your `/.well-known/x402.json` from on-chain settled payments.
 
 ## Configure
 
