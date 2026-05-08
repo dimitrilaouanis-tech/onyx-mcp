@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "onyx-paid-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Build a paid MCP server in 5 lines. USDC settlement on Base via x402."
 readme = "README.md"
 requires-python = ">=3.10"
