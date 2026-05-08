@@ -212,7 +212,18 @@ Repo:   https://github.com/dimitrilaouanis-tech/onyx-mcp
 
 ---
 
-## 6. Reddit r/AI_Agents (60 sec)
+## 6.5. Glama submission — UNBLOCKS PR #5761 (60 sec)
+
+**URL:** https://glama.ai/mcp/servers
+1. Sign in (GitHub OAuth)
+2. Click "Submit MCP server"
+3. Paste repo: `https://github.com/dimitrilaouanis-tech/onyx-mcp`
+4. Glama auto-pulls the `Dockerfile` + runs the stdio entry → expects `python server.py` to start cleanly and respond to introspection. **Already verified locally: 33 tools discovered, no crashes.**
+5. Once Glama check is green, drop a comment on `punkpeye/awesome-mcp-servers#5761` linking the green Glama check.
+
+This is the only auth-walled prereq for that PR — and the maintainer's bot explicitly asked for it on 2026-05-03.
+
+## 7. Reddit r/AI_Agents (60 sec)
 
 **URL:** https://reddit.com/r/AI_Agents/submit?type=LINK
 
