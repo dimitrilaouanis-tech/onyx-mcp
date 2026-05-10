@@ -10,7 +10,7 @@ Output:
     [STEP 2]  Server responds 402 + payment-required header (base64 JSON)
     [STEP 3]  Decodes the challenge: payTo, amount, asset, network, inputSchema
     [STEP 4]  If ONYX_DEMO_KEY set: signs EIP-3009 USDC authorization, retries
-              with X-PAYMENT header. Server settles via facilitator and returns
+              with PAYMENT-SIGNATURE header. Server settles via facilitator and returns
               the tool result.
 
 No dependencies you don't already have for any x402 client:
@@ -168,8 +168,8 @@ def main() -> int:
     }
     payment_header = base64.b64encode(json.dumps(payment_payload).encode()).decode()
 
-    print("[STEP 5] Retrying with X-PAYMENT header...")
-    r2 = httpx.post(url, json=body, timeout=30, headers={"X-PAYMENT": payment_header})
+    print("[STEP 5] Retrying with PAYMENT-SIGNATURE header...")
+    r2 = httpx.post(url, json=body, timeout=30, headers={"PAYMENT-SIGNATURE": payment_header})
     print(f"          -> HTTP {r2.status_code}")
     settle = r2.headers.get("x-payment-response")
     if settle:
