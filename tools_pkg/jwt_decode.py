@@ -6,7 +6,7 @@ import json
 import time
 
 NAME = "onyx_jwt_decode"
-PRICE_USDC = "0.0003"
+PRICE_USDC = "0.001"
 TIER = "metered"
 DESCRIPTION = (
     "Decode a JWT (header + payload) without verifying the signature. "

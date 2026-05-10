@@ -6,7 +6,7 @@ import time
 import httpx
 
 NAME = "onyx_url_unshorten"
-PRICE_USDC = "0.0005"
+PRICE_USDC = "0.001"
 TIER = "metered"
 DESCRIPTION = (
     "Follow HTTP redirects on any URL and return the final destination + the "

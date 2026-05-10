@@ -8,7 +8,7 @@ from html import unescape
 import httpx
 
 NAME = "onyx_html_meta"
-PRICE_USDC = "0.0008"
+PRICE_USDC = "0.002"
 TIER = "metered"
 DESCRIPTION = (
     "Fetch a URL and extract OpenGraph + Twitter Card + standard meta tags: "

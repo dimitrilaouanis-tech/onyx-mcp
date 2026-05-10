@@ -7,7 +7,7 @@ import time
 import httpx
 
 NAME = "onyx_fx_convert"
-PRICE_USDC = "0.0008"
+PRICE_USDC = "0.002"
 TIER = "metered"
 DESCRIPTION = (
     "Convert between any two fiat currencies (USD, EUR, GBP, JPY, BRL, "

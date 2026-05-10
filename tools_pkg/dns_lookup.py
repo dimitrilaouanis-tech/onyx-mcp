@@ -5,7 +5,7 @@ import socket
 import time
 
 NAME = "onyx_dns_lookup"
-PRICE_USDC = "0.0005"
+PRICE_USDC = "0.001"
 TIER = "metered"
 DESCRIPTION = (
     "Resolve a domain to its A/AAAA records, or reverse-resolve an IP to its "

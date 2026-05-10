@@ -8,7 +8,7 @@ from urllib.robotparser import RobotFileParser
 import httpx
 
 NAME = "onyx_robots_check"
-PRICE_USDC = "0.0005"
+PRICE_USDC = "0.001"
 TIER = "metered"
 DESCRIPTION = (
     "Fetch a domain's robots.txt and report whether a given path is allowed "

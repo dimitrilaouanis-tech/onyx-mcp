@@ -5,7 +5,7 @@ import base64
 import hashlib
 
 NAME = "onyx_hash_compute"
-PRICE_USDC = "0.0003"
+PRICE_USDC = "0.001"
 TIER = "metered"
 DESCRIPTION = (
     "Compute md5, sha1, sha256, sha512, and sha3-256 of any text or "

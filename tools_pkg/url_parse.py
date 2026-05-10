@@ -4,7 +4,7 @@ from __future__ import annotations
 from urllib.parse import urlparse, parse_qsl
 
 NAME = "onyx_url_parse"
-PRICE_USDC = "0.0003"
+PRICE_USDC = "0.001"
 TIER = "metered"
 DESCRIPTION = (
     "Parse any URL into structured components: scheme, host, port, path, "

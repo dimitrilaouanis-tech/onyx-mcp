@@ -13,7 +13,7 @@ import hashlib
 import httpx
 
 NAME = "onyx_solana_token_metadata"
-PRICE_USDC = "0.0008"
+PRICE_USDC = "0.002"
 TIER = "metered"
 DESCRIPTION = (
     "Resolve name + symbol + decimals + total supply for any SPL token "

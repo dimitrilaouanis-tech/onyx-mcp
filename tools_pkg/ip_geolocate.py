@@ -7,7 +7,7 @@ import time
 import httpx
 
 NAME = "onyx_ip_geolocate"
-PRICE_USDC = "0.0008"
+PRICE_USDC = "0.002"
 TIER = "metered"
 DESCRIPTION = (
     "Geolocate any public IPv4/IPv6 address — country, region, city, lat/lon, "

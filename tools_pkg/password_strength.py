@@ -5,7 +5,7 @@ import math
 import re
 
 NAME = "onyx_password_strength"
-PRICE_USDC = "0.0003"
+PRICE_USDC = "0.001"
 TIER = "metered"
 DESCRIPTION = (
     "Score password strength on a 0-100 scale. Returns Shannon entropy "

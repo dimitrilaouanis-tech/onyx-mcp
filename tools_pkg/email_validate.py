@@ -6,7 +6,7 @@ import socket
 import time
 
 NAME = "onyx_email_validate"
-PRICE_USDC = "0.0008"
+PRICE_USDC = "0.002"
 TIER = "metered"
 DESCRIPTION = (
     "Validate an email address: RFC-5322 syntax check, domain DNS resolution "

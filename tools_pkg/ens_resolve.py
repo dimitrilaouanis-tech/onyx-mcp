@@ -5,7 +5,7 @@ import time
 import httpx
 
 NAME = "onyx_ens_resolve"
-PRICE_USDC = "0.0008"
+PRICE_USDC = "0.002"
 TIER = "metered"
 DESCRIPTION = (
     "Resolve an ENS name to its current Ethereum mainnet address (or vice "

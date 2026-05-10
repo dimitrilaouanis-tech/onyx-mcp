@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 
 NAME = "onyx_user_agent_parse"
-PRICE_USDC = "0.0003"
+PRICE_USDC = "0.001"
 TIER = "metered"
 DESCRIPTION = (
     "Parse any HTTP User-Agent string into a structured record: browser "
