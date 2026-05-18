@@ -381,6 +381,80 @@ class App:
         async def _services():
             return self.x402_manifest()
 
+        # ------- OAuth 2.1 + Dynamic Client Registration (RFC 7591) ----------
+        # MCP April 2026 spec mandates DCR for ChatGPT custom-connector + Claude
+        # Managed Agents discovery. Without these endpoints, paid MCP servers
+        # are invisible to those clients. Implementation accepts ANY client (we
+        # don't gate at the OAuth layer — payment is enforced per-tool by x402).
+        @api.get("/.well-known/oauth-authorization-server", include_in_schema=False)
+        async def _well_known_oauth():
+            base = (self.public_url or "").rstrip("/")
+            return {
+                "issuer": base or "/",
+                "authorization_endpoint": f"{base}/oauth/authorize",
+                "token_endpoint": f"{base}/oauth/token",
+                "registration_endpoint": f"{base}/oauth/register",
+                "scopes_supported": ["mcp:read", "mcp:call"],
+                "response_types_supported": ["code"],
+                "grant_types_supported": ["authorization_code", "client_credentials"],
+                "token_endpoint_auth_methods_supported": ["none", "client_secret_post"],
+                "code_challenge_methods_supported": ["S256"],
+            }
+
+        @api.get("/.well-known/oauth-protected-resource", include_in_schema=False)
+        async def _well_known_oauth_resource():
+            base = (self.public_url or "").rstrip("/")
+            return {
+                "resource": base or "/",
+                "authorization_servers": [base or "/"],
+                "scopes_supported": ["mcp:read", "mcp:call"],
+                "bearer_methods_supported": ["header"],
+            }
+
+        @api.post("/oauth/register", include_in_schema=False)
+        async def _oauth_register(request: Request):
+            # RFC 7591 stub — auto-issues a public client_id, no secret. We
+            # don't gate access here (payment is enforced per-tool by x402);
+            # this exists so DCR-aware clients can register without 404.
+            try:
+                body = await request.json()
+            except Exception:
+                body = {}
+            import secrets as _secrets
+            cid = "onyx-" + _secrets.token_urlsafe(12)
+            return JSONResponse({
+                "client_id": cid,
+                "client_id_issued_at": int(asyncio.get_event_loop().time()),
+                "token_endpoint_auth_method": "none",
+                "redirect_uris": body.get("redirect_uris") or [],
+                "grant_types": ["authorization_code", "client_credentials"],
+                "response_types": ["code"],
+                "client_name": body.get("client_name") or "anonymous",
+                "scope": "mcp:read mcp:call",
+            })
+
+        @api.post("/oauth/token", include_in_schema=False)
+        async def _oauth_token():
+            # Public auth — no real token needed; payment is per-tool x402.
+            return {
+                "access_token": "public",
+                "token_type": "Bearer",
+                "expires_in": 86400,
+                "scope": "mcp:read mcp:call",
+            }
+
+        @api.get("/oauth/authorize", include_in_schema=False)
+        async def _oauth_authorize(request: Request):
+            # Auto-approve + redirect with synthetic code; payment is per-tool x402.
+            from fastapi.responses import RedirectResponse
+            params = dict(request.query_params)
+            redirect = params.get("redirect_uri", "")
+            state = params.get("state", "")
+            if not redirect:
+                return JSONResponse({"error": "missing redirect_uri"}, status_code=400)
+            sep = "&" if "?" in redirect else "?"
+            return RedirectResponse(f"{redirect}{sep}code=public&state={state}")
+
         # ------- Bazaar leaderboard (public x402 stats) ----------------
         # Cron started in lifespan above; routes below.
 
@@ -588,8 +662,6 @@ class App:
             try:
                 return await payment_middleware(routes, x402_server)(request, call_next)
             except Exception as e:
-                # Silent log to stderr (Render captures these). Do NOT leak
-                # internals to the response — return a generic 500.
                 import sys, traceback
                 from fastapi.responses import JSONResponse
                 sys.stderr.write(
