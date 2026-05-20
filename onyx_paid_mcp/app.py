@@ -411,15 +411,17 @@ class App:
                 "bearer_methods_supported": ["header"],
             }
 
+        # NOTE: `from __future__ import annotations` makes type hints strings,
+        # which prevents FastAPI from resolving `request: Request`. Use
+        # primitive params + manual body parsing instead.
+        from fastapi import Body
+
         @api.post("/oauth/register", include_in_schema=False)
-        async def _oauth_register(request: Request):
+        async def _oauth_register(body: dict = Body(default={})):
             # RFC 7591 stub — auto-issues a public client_id, no secret. We
             # don't gate access here (payment is enforced per-tool by x402);
             # this exists so DCR-aware clients can register without 404.
-            try:
-                body = await request.json()
-            except Exception:
-                body = {}
+            body = body or {}
             import secrets as _secrets
             cid = "onyx-" + _secrets.token_urlsafe(12)
             return JSONResponse({
@@ -444,16 +446,20 @@ class App:
             }
 
         @api.get("/oauth/authorize", include_in_schema=False)
-        async def _oauth_authorize(request: Request):
+        async def _oauth_authorize(
+            redirect_uri: str = "",
+            state: str = "",
+            client_id: str = "",
+            scope: str = "",
+            code_challenge: str = "",
+            code_challenge_method: str = "",
+        ):
             # Auto-approve + redirect with synthetic code; payment is per-tool x402.
             from fastapi.responses import RedirectResponse
-            params = dict(request.query_params)
-            redirect = params.get("redirect_uri", "")
-            state = params.get("state", "")
-            if not redirect:
+            if not redirect_uri:
                 return JSONResponse({"error": "missing redirect_uri"}, status_code=400)
-            sep = "&" if "?" in redirect else "?"
-            return RedirectResponse(f"{redirect}{sep}code=public&state={state}")
+            sep = "&" if "?" in redirect_uri else "?"
+            return RedirectResponse(f"{redirect_uri}{sep}code=public&state={state}")
 
         # ------- Bazaar leaderboard (public x402 stats) ----------------
         # Cron started in lifespan above; routes below.
