@@ -19,7 +19,7 @@ DESCRIPTION = (
     "outputs via {\"$ref\": \"step_N.field\"} or {\"$prev\": \"field\"}. "
     "Saves agents the round-trip + per-call gas of N separate x402 settles "
     "when they know the chain in advance — e.g. validate email → check "
-    "domain DNS → solve captcha → fetch SMS OTP, all atomic. Stops on first "
+    "domain DNS → solve captcha → submit form, all atomic. Stops on first "
     "step error and returns partial results. Cheaper than the unit-call "
     "sum because it bundles."
 )

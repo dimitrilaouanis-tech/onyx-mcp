@@ -18,7 +18,7 @@ PRICE_USDC = "0"
 TIER = "free"
 DESCRIPTION = (
     "Side-by-side comparison of paid agent tools across the x402 ecosystem. "
-    "Filter by keyword (e.g. 'captcha', 'tx_explainer', 'aml', 'sms', 'browser') "
+    "Filter by keyword (e.g. 'captcha', 'tx_explainer', 'aml', 'browser', 'oauth') "
     "and network ('Base' / 'Solana' / etc.), rank by price, 30-day call volume, "
     "or unique payer count, and get cheapest/most-used picks. Reads Coinbase "
     "Bazaar via the public Onyx mirror — refreshed every 15 minutes. Free tier."

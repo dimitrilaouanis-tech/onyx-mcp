@@ -693,8 +693,8 @@ class App:
         # Hero tools — show the highest-value 6 first, then the rest collapsed
         all_tools = sorted(self._tools.values(), key=lambda t: -float(t.price_usdc))
         hero_names = {
-            "onyx_base_tx_explainer", "onyx_sms_verify", "onyx_solve_captcha",
-            "onyx_agent_signup_kit", "onyx_base_token_risk_scan", "onyx_base_tx_simulator",
+            "onyx_base_tx_explainer", "onyx_x402_receipt_verify", "onyx_solve_captcha",
+            "onyx_mcp_oauth_audit", "onyx_base_token_risk_scan", "onyx_mcp_meta_call",
         }
         hero = [t for t in all_tools if t.name in hero_names]
         rest = [t for t in all_tools if t.name not in hero_names]
@@ -727,7 +727,7 @@ class App:
         return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{self.name} — {n_tools} paid agent tools, USDC on Base, no API key</title>
-<meta name="description" content="{n_tools} x402-paid agent tools on Base mainnet. Captcha, SMS OTP, HLR, on-chain primitives. Pay per call in USDC, no signup, no API key. MCP-native at /mcp/.">
+<meta name="description" content="{n_tools} x402-paid agent tools on Base mainnet. Captcha OCR, browser automation, on-chain primitives (tx explain/simulate, token risk), x402 ops (receipt verify, facilitator health, chain picker), agent identity + budget, MCP cross-server compare. Pay per call in USDC, no signup, no API key. MCP-native at /mcp/.">
 <style>
 :root {{ color-scheme: dark; }}
 body {{ font: 15px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;

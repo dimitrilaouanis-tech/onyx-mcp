@@ -8,3 +8,8 @@ _bazaar_data.json
 _bazaar_volume.json
 *_bazaar_data.json
 *_bazaar_volume.json
+
+# Local-only outreach prep (never push)
+onyx-pr-listings.md
+*-pr-listings.md
+_local_only/

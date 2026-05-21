@@ -1,12 +1,12 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.dimitrilaouanis-tech/onyx-mcp",
-  "description": "12 paid agent tools over x402 USDC on Base — captcha, SMS OTP, HLR, URL text, DNS, email, more.",
+  "description": "55+ x402-paid agent tools on Base — captcha OCR, browser automation, on-chain primitives (tx explain/simulate, token risk), agent identity + budget, x402 ops (receipt verify, facilitator health, chain picker), MCP cross-server compare.",
   "repository": {
     "url": "https://github.com/dimitrilaouanis-tech/onyx-mcp",
     "source": "github"
   },
-  "version": "0.2.0",
+  "version": "0.3.0",
   "websiteUrl": "https://onyx-actions.onrender.com",
   "remotes": [
     {

@@ -18,7 +18,7 @@ Last validated: 2026-05-08. **TODAY WE MADE: $0** — that's the line every anno
 
 ---
 
-## 2. PR #295 retitle — drops "SMS OTP" wording (30 sec)
+## 2. PR #295 retitle — refresh title (30 sec)
 
 **URL:** https://github.com/xpaysh/awesome-x402/pull/295
 - Click pencil icon next to current title
