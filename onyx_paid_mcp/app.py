@@ -358,9 +358,10 @@ class App:
 
         api.mount("/mcp", _mcp_asgi)
 
+        from fastapi import Header
+
         @api.get("/", include_in_schema=False)
-        async def _root(request: Request):
-            accept = request.headers.get("accept", "")
+        async def _root(accept: str = Header(default="")):
             if "text/html" in accept and "application/json" not in accept:
                 return HTMLResponse(self._landing_html())
             return JSONResponse(self.manifest())
@@ -465,11 +466,12 @@ class App:
         # Cron started in lifespan above; routes below.
 
         @api.get("/bazaar", include_in_schema=False)
-        async def _bazaar_view(request: Request, view: str = "volume",
-                               format: str = "html", limit: int = 100):
+        async def _bazaar_view(view: str = "volume",
+                               format: str = "html", limit: int = 100,
+                               accept: str = Header(default="")):
             view = view if view in {"volume", "payers", "newest", "cheapest"} else "volume"
             rows = _bazaar.ranked(view=view, limit=min(max(limit, 1), 500))
-            if format == "json" or "application/json" in request.headers.get("accept", ""):
+            if format == "json" or "application/json" in accept:
                 return JSONResponse({
                     "view": view,
                     "rows": rows,
