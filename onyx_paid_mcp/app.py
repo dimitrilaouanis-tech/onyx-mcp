@@ -136,6 +136,12 @@ class App:
     public_url: Optional[str] = None
     description: str = ""
     homepage: Optional[str] = None
+    # Optional second receive address to dual-broadcast in /.well-known/x402.json.
+    # When set + current network != "base", the manifest emits a second accepts[]
+    # entry per service for Base mainnet. CDP discovery (and any mainnet-filtering
+    # indexer) then sees us even while the running server is in Sepolia mode.
+    # Set to empty string to disable.
+    mainnet_receive_address: Optional[str] = None
     _tools: dict[str, Tool] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -143,6 +149,11 @@ class App:
             raise ValueError(f"network must be one of {list(_NETWORK_CAIP)}")
         if not self.receive_address.startswith("0x") or len(self.receive_address) != 42:
             raise ValueError("receive_address must be a 0x-prefixed 20-byte hex address")
+        if self.mainnet_receive_address:
+            ma = self.mainnet_receive_address.strip()
+            if ma and (not ma.startswith("0x") or len(ma) != 42):
+                raise ValueError("mainnet_receive_address must be a 0x-prefixed 20-byte hex address")
+            self.mainnet_receive_address = ma or None
         self.facilitator_url = self.facilitator_url or _DEFAULT_FACILITATORS[self.network]
 
     @property
@@ -204,34 +215,80 @@ class App:
 
     def x402_manifest(self) -> dict:
         base = (self.public_url or "").rstrip("/")
+        # Build accepts[] templates once per known network so we can dual-broadcast.
+        primary = {
+            "network_caip": self.network_caip,
+            "asset": self.usdc_address,
+            "payTo": self.receive_address,
+        }
+        secondary = None
+        if self.mainnet_receive_address and self.network != "base":
+            secondary = {
+                "network_caip": _NETWORK_CAIP["base"],
+                "asset": _USDC_BY_NETWORK["base"],
+                "payTo": self.mainnet_receive_address,
+            }
+
         services = []
         for t in self._tools.values():
             if t.tier not in ("metered", "premium"):
                 continue
             atomic = str(int(round(float(t.price_usdc) * 1_000_000)))
-            services.append({
-                "resource": f"{base}/v1/{t.name}",
-                "type": "http",
-                "x402Version": 1,
-                "accepts": [{
+            resource = f"{base}/v1/{t.name}"
+
+            def _accepts(target: dict) -> dict:
+                return {
                     "scheme": "exact",
-                    "network": self.network_caip,
+                    "network": target["network_caip"],
                     "maxAmountRequired": atomic,
-                    "asset": self.usdc_address,
-                    "payTo": self.receive_address,
-                    "resource": f"{base}/v1/{t.name}",
+                    "asset": target["asset"],
+                    "payTo": target["payTo"],
+                    "resource": resource,
                     "description": t.description,
                     "mimeType": "application/json",
                     "outputSchema": {"type": "object"},
+                    "maxTimeoutSeconds": 60,
                     "extra": {
                         "name": t.name,
                         "tier": t.tier,
                         "price_usdc": t.price_usdc,
                         "input_schema": t.input_schema,
                     },
-                }],
+                }
+
+            accepts_list = [_accepts(primary)]
+            if secondary is not None:
+                accepts_list.append(_accepts(secondary))
+
+            services.append({
+                "resource": resource,
+                "type": "http",
+                "x402Version": 2,
+                "accepts": accepts_list,
+                # OATP-pattern bazaar extension — crawlers use this to surface
+                # input shape + output example without making a paid call.
+                "extensions": {
+                    "bazaar": {
+                        "info": {
+                            "input": {
+                                "type": "http",
+                                "method": "POST",
+                                "bodyType": "json",
+                                "body": t.input_schema,
+                            },
+                            "output": {
+                                "type": "object",
+                                "schema": {"type": "object"},
+                            },
+                        }
+                    }
+                },
             })
-        return {"x402Version": 1, "services": services, "facilitator": self.facilitator_url}
+        return {
+            "x402Version": 2,
+            "services": services,
+            "facilitator": self.facilitator_url,
+        }
 
     # ---------- runtime build ----------
 

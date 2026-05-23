@@ -33,6 +33,10 @@ app_obj = App(
     network=os.environ.get("ONYX_NETWORK", "base-sepolia").lower(),
     facilitator_url=os.environ.get("ONYX_FACILITATOR_URL"),
     public_url=os.environ.get("ONYX_PUBLIC_URL", "https://onyx-actions.onrender.com"),
+    mainnet_receive_address=os.environ.get(
+        "ONYX_MAINNET_RECEIVE_ADDRESS",
+        "0xA60939FFf9c04a61c0c0649943675e16A12D7074",
+    ),
     description="Paid agent tools over x402 USDC. Reference impl of onyx-paid-mcp.",
     homepage="https://github.com/dimitrilaouanis-tech/onyx-mcp",
 )
