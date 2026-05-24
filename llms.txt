@@ -1,6 +1,6 @@
 # Onyx Actions — Paid Agent MCP (x402 USDC on Base + Solana)
 
-> Onyx Actions is a paid Model Context Protocol server. AI agents pay per call in USDC over the x402 protocol — no API keys, no signup, no subscriptions. On-chain primitives for Base AND Solana mainnet, plus browser/web/utility tooling.
+> Onyx Actions is a paid Model Context Protocol server. AI agents pay per call in USDC over the x402 protocol — no API keys, no signup, no subscriptions. 57 tools across Base + Solana on-chain primitives, browser automation, MCP/x402 ecosystem ops, and research intel.
 
 ## Endpoints
 
@@ -8,7 +8,7 @@
 - Local stdio: `pip install onyx-paid-mcp && python -m onyx_paid_mcp.server`
 - Source: https://github.com/dimitrilaouanis-tech/onyx-mcp
 - Payment protocol: https://x402.org
-- Network: Base mainnet (USDC). Base Sepolia for testing.
+- Network: Base mainnet (USDC). Base Sepolia for testing. Dual-broadcast manifest (both networks listed per service).
 
 ## How agents pay
 
@@ -18,38 +18,75 @@
 
 No state is held between calls. No account exists. The wallet IS the identity.
 
-## Tools (each priced per-call in USDC)
+## Tool catalog (57 tools)
 
+### On-chain primitives (Base)
 | Tool | What it does | Price |
 | --- | --- | --- |
 | base_tx_explainer | Decode any Base mainnet tx into a human-readable summary | $0.05 |
 | base_tx_simulator | Pre-flight a Base tx — gas estimate + revert detection | $0.10 |
-| base_token_risk_scan | Rug-vector scan for any Base ERC-20 (owner, mint, supply, code) | $0.25 |
 | base_tx_decode | Raw tx ABI decode for Base | $0.002 |
+| base_token_risk_scan | Rug-vector scan for any Base ERC-20 (owner, mint, supply, code) | $0.25 |
 | token_metadata | ERC-20 name/symbol/decimals/supply on Base | $0.001 |
-| solana_tx_explainer | Decode any Solana mainnet tx into a human-readable summary (HALF OATP) | $0.05 |
-| solana_token_metadata | SPL token name/symbol/decimals/supply via Mint+Metaplex | $0.0008 |
-| solana_token_risk_scan | Rug-vector scan for SPL tokens (mint/freeze authority + concentration) | $0.25 |
-| solana_jupiter_quote | Best-route swap quote across all Solana DEXes via Jupiter | $0.001 |
-| solana_wallet_activity | Recent on-chain activity for any Solana wallet (parsed) | $0.002 |
 | ens_resolve | ENS name ↔ address bidirectional resolve | $0.0008 |
-| solve_captcha | OCR-based bypass for image captchas (~30ms, 70-90% accuracy) | $0.003 |
+| aml_screen | EVM address sanctions + risk-list screen | $0.01 |
+
+### On-chain primitives (Solana)
+| Tool | What it does | Price |
+| --- | --- | --- |
+| solana_tx_explainer | Decode any Solana mainnet tx (half OATP price) | $0.05 |
+| solana_token_metadata | SPL name/symbol/decimals/supply via Mint+Metaplex | $0.0008 |
+| solana_token_risk_scan | Rug-vector scan for SPL (mint/freeze authority + concentration) | $0.25 |
+| solana_jupiter_quote | Best-route swap quote across all Solana DEXes | $0.001 |
+| solana_wallet_activity | Recent on-chain activity for any Solana wallet (parsed) | $0.002 |
+
+### Web + utilities
+| Tool | What it does | Price |
+| --- | --- | --- |
+| solve_captcha | OCR-based bypass for image captchas (~30ms) | $0.003 |
 | url_text | Fetch a URL and return clean main-content text | $0.001 |
 | url_unshorten | Resolve any redirect chain to its final URL | $0.0005 |
+| url_parse | URL → structured components | $0.0003 |
 | dns_lookup | A / AAAA / PTR records for a host | $0.0005 |
 | whois | WHOIS / RDAP registration data for a domain | $0.001 |
 | email_validate | Syntax + DNS + role-account + disposable-domain check | $0.0008 |
-| ip_geolocate | Country, region, city, ASN, proxy/hosting flags for IPv4/IPv6 | $0.0008 |
+| ip_geolocate | Country, region, city, ASN, proxy/hosting flags | $0.0008 |
 | user_agent_parse | Browser, OS, device, bot/crawler detection | $0.0003 |
 | password_strength | Entropy + pattern score for a candidate password | $0.0003 |
-| fx_convert | Mid-market FX conversion across 160+ currencies | $0.0008 |
+| fx_convert | Mid-market FX across 160+ currencies | $0.0008 |
 | html_meta | OG / Twitter / JSON-LD extract from any URL | $0.0008 |
 | jwt_decode | JWT inspector (header / payload / sig present) | $0.0003 |
 | hash_compute | md5 / sha1 / sha256 / sha512 / sha3 | $0.0003 |
 | robots_check | robots.txt fetch + path-allowed verdict | $0.0005 |
-| url_parse | URL → structured components | $0.0003 |
-| browser_navigate / screenshot / extract / click / type / eval | CDP browser automation suite | $0.002–$0.008 |
-| agent_workflow | Compose up to 10 tools in one paid call | $0.020 |
+
+### Browser (CDP automation)
+| Tool | What it does | Price |
+| --- | --- | --- |
+| browser_navigate / screenshot / extract / click / type / eval | Full CDP browser suite | $0.002–$0.008 |
+| agent_workflow | Compose up to 10 tools in one paid call (atomic) | $0.020 |
+
+### MCP + x402 ecosystem ops
+| Tool | What it does | Price |
+| --- | --- | --- |
+| **mcp_meta_call** | Universal x402 preflight inspector — chain picker + agent ID + price gate composed | $0.001 |
+| **mcp_oauth_audit** | Grade any MCP server on OAuth 2.1 + DCR compliance (RFC 7591/8414/9728) | free |
+| **mcp_catalog_diff** | Side-by-side catalog diff across paid MCP servers | free |
+| **x402_indexer_health** | Probe 6 indexers (CDP, Bazaar, awesome-x402, awesome-mcp, x402scan, Smithery) for any URL — diagnose your own discoverability gap | free |
+| **x402_chain_picker** | Multi-factor chain ranker — live gas + facilitator presence + finality | $0.0005 |
+| **x402_receipt_verify** | Verify a USDC settlement tx on Base/Sepolia, multi-RPC fallback | $0.001 |
+| **x402_error_explain** | 14-pattern plain-English HTTP error explainer for x402 flows | free |
+| **x402_demo_wallet** | Generate a throwaway test wallet on Base Sepolia for sandbox calls | free |
+| **x402_spec_lookup** | Quote the x402 spec by section number / topic — docs-as-tool | free |
+| **agent_id** | Wallet-address → derived agent identity + RPC log-scan profile | $0.001 |
+| **agent_budget_tracker** | Wallet spend/revenue breakdown across x402 endpoints | $0.0008 |
+| **facilitator_health** | Parallel probe of 5 known facilitators — who's alive this week | free |
+| **bazaar_submit** | Submit a URL to Coinbase Bazaar discovery | free |
+| **bazaar_compare** | Side-by-side comparison across the x402 ecosystem catalog | free |
+
+### Research intel (the new HYPER ANGLE for autonomous agents)
+| Tool | What it does | Price |
+| --- | --- | --- |
+| **research_intel** | Has someone solved X already? Query OpenAlex (240M+ works incl. arXiv preprints), ranked by citations + recency, returns top N with abstract excerpts + synthesis. Saves hyper-agents from re-deriving known results. | $0.05 |
 
 ## Why this exists
 
@@ -59,13 +96,14 @@ Most MCP servers expect free unlimited use. Real services cost money. x402 lets 
 
 Onyx Council — https://github.com/dimitrilaouanis-tech/onyx-mcp
 
-## Discovery
+## Discovery surfaces
 
 - agentic.market: indexed automatically on first settled mainnet payment
 - x402 directories: x402-list.com · x402list.fun · x402.direct · signal402.com · x402daily.xyz
 - awesome-x402: https://github.com/xpaysh/awesome-x402/pull/295 (open)
 - Smithery: https://smithery.ai/servers/dimitrilaouanis/onyx-mcp
-- Official MCP Registry submission via `mcp-publisher` (in flight)
+- Coinbase Bazaar / CDP discovery: indexed on next crawl (dual-broadcast manifest)
+- Official MCP Registry: io.github.dimitrilaouanis-tech/onyx-mcp
 
 ## Build your own paid MCP
 
