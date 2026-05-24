@@ -1,6 +1,6 @@
 # Onyx Actions — Paid Agent MCP (x402 USDC on Base + Solana)
 
-> Onyx Actions is a paid Model Context Protocol server. AI agents pay per call in USDC over the x402 protocol — no API keys, no signup, no subscriptions. 57 tools across Base + Solana on-chain primitives, browser automation, MCP/x402 ecosystem ops, and research intel.
+> Onyx Actions is a paid Model Context Protocol server. AI agents pay per call in USDC over the x402 protocol — no API keys, no signup, no subscriptions. 59 tools across Base + Solana on-chain primitives, browser automation, MCP/x402 ecosystem ops, and research intel (incl. multi-paper structural synthesis).
 
 ## Endpoints
 
@@ -18,7 +18,7 @@
 
 No state is held between calls. No account exists. The wallet IS the identity.
 
-## Tool catalog (57 tools)
+## Tool catalog (59 tools)
 
 ### On-chain primitives (Base)
 | Tool | What it does | Price |
@@ -87,6 +87,8 @@ No state is held between calls. No account exists. The wallet IS the identity.
 | Tool | What it does | Price |
 | --- | --- | --- |
 | **research_intel** | Has someone solved X already? Query OpenAlex (240M+ works incl. arXiv preprints), ranked by citations + recency, returns top N with abstract excerpts + synthesis. Saves hyper-agents from re-deriving known results. | $0.05 |
+| **paper_synthesis** | Given 2-10 OpenAlex/DOI IDs, structural synthesis: shared keyword signal, citation co-graph, convergence verdict (converging/contested/fragmented). Composes after research_intel. No LLM tokens consumed. | $0.03 |
+| **bazaar_blue_ocean** | Find empty x402 market niches. Reads CDP discovery (1000+ services), surfaces categories with 0-1 services. For paid-MCP builders deciding what to ship next. | $0.01 |
 
 ## Why this exists
 
