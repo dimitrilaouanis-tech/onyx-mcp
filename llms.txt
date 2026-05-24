@@ -1,6 +1,6 @@
 # Onyx Actions — Paid Agent MCP (x402 USDC on Base + Solana)
 
-> Onyx Actions is a paid Model Context Protocol server. AI agents pay per call in USDC over the x402 protocol — no API keys, no signup, no subscriptions. 59 tools across Base + Solana on-chain primitives, browser automation, MCP/x402 ecosystem ops, and research intel (incl. multi-paper structural synthesis).
+> Onyx Actions is a paid Model Context Protocol server. AI agents pay per call in USDC over the x402 protocol — no API keys, no signup, no subscriptions. 62 tools across Base + Solana on-chain primitives, browser automation, MCP/x402 ecosystem ops, and research intel (incl. multi-paper structural synthesis).
 
 ## Endpoints
 
@@ -18,7 +18,7 @@
 
 No state is held between calls. No account exists. The wallet IS the identity.
 
-## Tool catalog (59 tools)
+## Tool catalog (62 tools)
 
 ### On-chain primitives (Base)
 | Tool | What it does | Price |
@@ -30,6 +30,9 @@ No state is held between calls. No account exists. The wallet IS the identity.
 | token_metadata | ERC-20 name/symbol/decimals/supply on Base | $0.001 |
 | ens_resolve | ENS name ↔ address bidirectional resolve | $0.0008 |
 | aml_screen | EVM address sanctions + risk-list screen | $0.01 |
+| **base_swap_quote** | Best-route swap quote across ~15 Base DEXes via KyberSwap (Uniswap V2/V3, Aerodrome, BaseSwap, Pancake, ...). Returns amountOut + gas + route hops. | $0.002 |
+| **base_event_logs** | Fetch + decode contract event logs from Base RPC. Auto-decodes Transfer/Approval/OwnershipTransferred. Topic-0 filter + block range. | $0.003 |
+| **base_dex_pair_lookup** | Every DEX pair for a token: price, liquidity USD, 24h volume, price change %. Sorted by liquidity. Returns vol:liq health signal. | $0.0015 |
 
 ### On-chain primitives (Solana)
 | Tool | What it does | Price |
