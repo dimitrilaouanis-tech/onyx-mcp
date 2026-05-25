@@ -554,6 +554,23 @@ class App:
                 "mcp": "/mcp/",
             }
 
+        # Public dashboard — live state visible to anyone. Transparency moat:
+        # every paid-MCP-builder wants to see how we structure pricing and
+        # catalog, and every potential paying agent wants to see we are real.
+        @api.get("/dashboard", include_in_schema=False)
+        async def _dashboard(
+            format: str = "html",
+            accept: str = Header(default=""),
+        ):
+            data = self._dashboard_data(tools)
+            if format == "json" or "application/json" in accept:
+                return JSONResponse(data)
+            return HTMLResponse(self._dashboard_html(data))
+
+        @api.get("/dashboard.json", include_in_schema=False)
+        async def _dashboard_json():
+            return self._dashboard_data(tools)
+
         # Serve llms.txt from CWD if present, so crawlers + LLMs can index us
         from fastapi.responses import PlainTextResponse
         from pathlib import Path as _Path
@@ -745,6 +762,180 @@ class App:
     def serve(self, host: str = "0.0.0.0", port: int = 8080) -> None:
         import uvicorn
         uvicorn.run(self.build_asgi(), host=host, port=port)
+
+    # ---------- dashboard ----------
+
+    def _categorize(self, name: str) -> str:
+        n = name.lower()
+        if "solana" in n: return "solana"
+        if "base_" in n or n.startswith("onyx_base"): return "base"
+        if any(k in n for k in ("captcha", "ocr")): return "captcha"
+        if "browser" in n or any(k in n for k in ("navigate","screenshot","click","extract","eval","type")): return "browser"
+        if any(k in n for k in ("research", "paper", "arxiv")): return "research"
+        if any(k in n for k in ("oauth", "mcp_", "facilitator", "indexer", "bazaar", "x402", "spec_lookup", "receipt", "chain_picker", "demo_wallet", "agent_id", "agent_budget", "agent_workflow", "meta_call")): return "mcp_x402_ops"
+        if any(k in n for k in ("url", "dns", "whois", "email", "ip_", "html", "robots", "user_agent")): return "web"
+        if any(k in n for k in ("jwt", "hash", "password", "fx_")): return "crypto_util"
+        if "ens" in n or "aml" in n: return "evm_util"
+        return "other"
+
+    def _dashboard_data(self, tools: list) -> dict:
+        from collections import Counter
+        cat_count: Counter = Counter()
+        cat_paid: Counter = Counter()
+        cat_free: Counter = Counter()
+        cat_total_price: dict[str, float] = {}
+        for t in tools:
+            c = self._categorize(t.name)
+            cat_count[c] += 1
+            if t.tier == "free":
+                cat_free[c] += 1
+            else:
+                cat_paid[c] += 1
+                cat_total_price[c] = cat_total_price.get(c, 0.0) + float(t.price_usdc)
+
+        categories = []
+        for c in sorted(cat_count, key=lambda k: -cat_count[k]):
+            categories.append({
+                "name": c,
+                "total": cat_count[c],
+                "paid": cat_paid.get(c, 0),
+                "free": cat_free.get(c, 0),
+                "avg_price_usdc": round(cat_total_price.get(c, 0.0) / max(cat_paid.get(c, 1), 1), 4),
+            })
+
+        n_total = len(tools)
+        n_paid = sum(1 for t in tools if t.tier != "free")
+        n_free = n_total - n_paid
+
+        prices = [float(t.price_usdc) for t in tools if t.tier != "free"]
+        return {
+            "name": self.name,
+            "tools": {
+                "total": n_total,
+                "paid": n_paid,
+                "free": n_free,
+                "by_category": categories,
+            },
+            "pricing": {
+                "min_usdc": min(prices) if prices else None,
+                "max_usdc": max(prices) if prices else None,
+                "median_usdc": sorted(prices)[len(prices)//2] if prices else None,
+            },
+            "manifest": {
+                "x402_version": 2,
+                "primary_network": self.network,
+                "primary_network_caip": self.network_caip,
+                "secondary_network_caip": _NETWORK_CAIP["base"] if self.mainnet_receive_address and self.network != "base" else None,
+                "dual_broadcast": bool(self.mainnet_receive_address and self.network != "base"),
+                "receive_primary": self.receive_address,
+                "receive_mainnet": self.mainnet_receive_address,
+                "facilitator": self.facilitator_url,
+            },
+            "endpoints": {
+                "mcp_remote": f"{(self.public_url or '').rstrip('/')}/mcp/",
+                "x402_manifest": f"{(self.public_url or '').rstrip('/')}/.well-known/x402.json",
+                "oauth_metadata": f"{(self.public_url or '').rstrip('/')}/.well-known/oauth-authorization-server",
+                "oauth_protected_resource": f"{(self.public_url or '').rstrip('/')}/.well-known/oauth-protected-resource",
+                "llms_txt": f"{(self.public_url or '').rstrip('/')}/llms.txt",
+                "health": f"{(self.public_url or '').rstrip('/')}/health",
+                "bazaar_mirror": f"{(self.public_url or '').rstrip('/')}/bazaar.json",
+            },
+            "discovery_surfaces": {
+                "mcp_registry": "https://registry.modelcontextprotocol.io/v0/servers?search=onyx",
+                "cdp_discovery": "https://api.cdp.coinbase.com/platform/v2/x402/discovery/resources",
+                "awesome_x402_pr": "https://github.com/xpaysh/awesome-x402/pull/295",
+                "smithery": "https://smithery.ai/servers/dimitrilaouanis/onyx-mcp",
+                "repo": "https://github.com/dimitrilaouanis-tech/onyx-mcp",
+            },
+        }
+
+    def _dashboard_html(self, d: dict) -> str:
+        cats = d["tools"]["by_category"]
+        cat_rows = "\n".join(
+            f"<tr><td><b>{c['name']}</b></td><td>{c['total']}</td>"
+            f"<td>{c['paid']}</td><td>{c['free']}</td>"
+            f"<td>${c['avg_price_usdc']}</td></tr>"
+            for c in cats
+        )
+        manifest = d["manifest"]
+        endpoints = d["endpoints"]
+        ep_rows = "\n".join(
+            f"<tr><td>{k}</td><td><a href='{v}'><code>{v}</code></a></td></tr>"
+            for k, v in endpoints.items()
+        )
+        pricing = d["pricing"]
+        return f"""<!doctype html><html><head><meta charset="utf-8">
+<title>{d['name']} — live dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Live dashboard for {d['name']} paid MCP server: {d['tools']['total']} tools across {len(cats)} categories, dual-broadcast x402 manifest, OAuth 2.1 DCR-compliant.">
+<style>
+:root {{ color-scheme: dark; }}
+body {{ margin: 0; padding: 2rem; max-width: 1100px; margin-inline: auto;
+       background:#0a0a0a; color:#e6e6e6;
+       font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }}
+h1 {{ font-size: 1.8rem; margin: 0 0 .5rem; color:#fff; }}
+h2 {{ font-size: 1.1rem; margin: 2.5rem 0 .8rem; color:#7fdbca; text-transform:uppercase; letter-spacing:.5px; }}
+.sub {{ color:#888; margin-bottom:2rem; }}
+.metrics {{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1.5rem 0 2rem; }}
+.metric {{ background:#161616; border:1px solid #2a2a2a; border-radius:8px; padding:1rem; }}
+.metric .v {{ font-size:1.8rem; color:#fff; font-weight:600; }}
+.metric .k {{ color:#888; font-size:.8rem; margin-top:.2rem; text-transform:uppercase; letter-spacing:.5px; }}
+table {{ width:100%; border-collapse:collapse; margin:.5rem 0 1.5rem; background:#111; border:1px solid #2a2a2a; }}
+th, td {{ padding:.6rem .8rem; text-align:left; border-bottom:1px solid #1f1f1f; }}
+th {{ background:#171717; color:#7fdbca; font-weight:600; text-transform:uppercase; font-size:.75rem; letter-spacing:.5px; }}
+tr:last-child td {{ border-bottom:none; }}
+code, a {{ color:#79b8ff; word-break:break-all; }}
+a {{ text-decoration:none; }}
+a:hover {{ text-decoration:underline; }}
+.ok {{ color:#3fb950; }}
+.warn {{ color:#d29922; }}
+.dim {{ color:#666; }}
+.footer {{ color:#666; margin-top:3rem; padding-top:1.5rem; border-top:1px solid #2a2a2a; }}
+</style>
+</head><body>
+<h1>{d['name']} — live dashboard</h1>
+<div class="sub">Paid MCP server, x402 USDC settlement on Base. Public, real-time, no auth.</div>
+
+<div class="metrics">
+  <div class="metric"><div class="v">{d['tools']['total']}</div><div class="k">tools</div></div>
+  <div class="metric"><div class="v">{d['tools']['paid']}</div><div class="k">paid</div></div>
+  <div class="metric"><div class="v">{d['tools']['free']}</div><div class="k">free</div></div>
+  <div class="metric"><div class="v">${pricing['min_usdc']}–${pricing['max_usdc']}</div><div class="k">price range</div></div>
+</div>
+
+<h2>Catalog by category</h2>
+<table><thead><tr><th>Category</th><th>Total</th><th>Paid</th><th>Free</th><th>Avg paid price</th></tr></thead>
+<tbody>
+{cat_rows}
+</tbody></table>
+
+<h2>Manifest health</h2>
+<table>
+<tr><td>x402 version</td><td><span class="ok">v{manifest['x402_version']}</span> (latest spec)</td></tr>
+<tr><td>Primary network</td><td><code>{manifest['primary_network']}</code> ({manifest['primary_network_caip']})</td></tr>
+<tr><td>Dual broadcast</td><td>{'<span class="ok">yes — Base mainnet listed alongside primary</span>' if manifest['dual_broadcast'] else '<span class="warn">no — single network</span>'}</td></tr>
+<tr><td>Primary payTo</td><td><code>{manifest['receive_primary']}</code></td></tr>
+<tr><td>Mainnet payTo</td><td><code>{manifest['receive_mainnet'] or '(not set)'}</code></td></tr>
+<tr><td>Facilitator</td><td><code>{manifest['facilitator']}</code></td></tr>
+</table>
+
+<h2>Endpoints</h2>
+<table>
+{ep_rows}
+</table>
+
+<h2>Discovery surfaces</h2>
+<table>
+{chr(10).join(f'<tr><td>{k}</td><td><a href="{v}"><code>{v}</code></a></td></tr>' for k,v in d['discovery_surfaces'].items())}
+</table>
+
+<div class="footer">
+JSON of this dashboard: <a href="/dashboard.json"><code>/dashboard.json</code></a> ·
+Try a free tool: <a href="/v1/onyx_x402_indexer_health"><code>GET /v1/onyx_x402_indexer_health</code></a> ·
+<a href="/">main</a>
+</div>
+
+</body></html>"""
 
     # ---------- landing ----------
 
