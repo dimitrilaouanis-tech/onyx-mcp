@@ -1013,11 +1013,18 @@ a {{ color:#79c0ff; }}
 <p class="lede">{self.description}</p>
 
 <div>
-  <span class="tag">{n_tools} paid tools</span>
-  <span class="tag">{self.network} mainnet</span>
-  <span class="tag">USDC settlement</span>
+  <span class="tag">{n_tools} tools live</span>
+  <span class="tag">USDC settlement on Base</span>
+  <span class="tag">x402 v2 dual-broadcast</span>
+  <span class="tag">OAuth 2.1 DCR</span>
+  <span class="tag">MCP-native at /mcp/</span>
   <span class="tag">No API key, no signup</span>
-  <span class="tag">MCP-native</span>
+</div>
+
+<div class="kpi" style="margin-top:18px">
+  <span><a href="/dashboard" style="color:inherit;text-decoration:none">📊 <b>Live dashboard</b> — catalog, manifest health, indexer coverage</a></span>
+  <span><a href="/bazaar" style="color:inherit;text-decoration:none">🏪 <b>x402 leaderboard</b> — every paid service in the ecosystem</a></span>
+  <span><a href="/mcp/" style="color:inherit;text-decoration:none">🔌 <b>MCP endpoint</b> — Claude / Cursor / Cline</a></span>
 </div>
 
 <div class="cta">
@@ -1051,7 +1058,7 @@ refreshed every 15 minutes. Four views, JSON variant for programmatic consumers.
 <tbody>{rest_rows}</tbody></table>
 
 <h2>Endpoints</h2>
-<p><a href="/manifest">/manifest</a> · <a href="/.well-known/x402.json">/.well-known/x402.json</a> · <a href="/bazaar">/bazaar</a> · <a href="/llms.txt">/llms.txt</a> · <a href="/health">/health</a></p>
+<p><a href="/dashboard">/dashboard</a> · <a href="/dashboard.json">/dashboard.json</a> · <a href="/manifest">/manifest</a> · <a href="/.well-known/x402.json">/.well-known/x402.json</a> · <a href="/.well-known/oauth-authorization-server">/.well-known/oauth-authorization-server</a> · <a href="/.well-known/oauth-protected-resource">/.well-known/oauth-protected-resource</a> · <a href="/bazaar">/bazaar</a> · <a href="/llms.txt">/llms.txt</a> · <a href="/health">/health</a></p>
 
 <h2>Settlement</h2>
 <p class="wallet">USDC settles on {self.network} to <code>{self.receive_address}</code><br>
