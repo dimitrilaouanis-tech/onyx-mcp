@@ -1,6 +1,6 @@
 # Onyx Actions — Paid Agent MCP (x402 USDC on Base + Solana)
 
-> Onyx Actions is a paid Model Context Protocol server. AI agents pay per call in USDC over the x402 protocol — no API keys, no signup, no subscriptions. 64 tools across Base + Solana on-chain primitives, browser automation, MCP/x402 ecosystem ops, and research intel (incl. multi-paper structural synthesis).
+> Onyx Actions is a paid Model Context Protocol server. AI agents pay per call in USDC over the x402 protocol — no API keys, no signup, no subscriptions. 66 tools across Base + Solana on-chain primitives, browser automation, MCP/x402 ecosystem ops, and research intel (incl. multi-paper structural synthesis).
 
 ## Endpoints
 
@@ -18,7 +18,7 @@
 
 No state is held between calls. No account exists. The wallet IS the identity.
 
-## Tool catalog (64 tools)
+## Tool catalog (66 tools)
 
 ### On-chain primitives (Base)
 | Tool | What it does | Price |
@@ -35,6 +35,8 @@ No state is held between calls. No account exists. The wallet IS the identity.
 | **base_dex_pair_lookup** | Every DEX pair for a token: price, liquidity USD, 24h volume, price change %. Sorted by liquidity. Returns vol:liq health signal. | $0.0015 |
 | **base_bridge_quote** | Cross-chain bridge route from Base to Ethereum/Optimism/Arbitrum/Polygon/etc. Aggregates ~30 bridges via LI.FI. Returns toAmount, fees, gas, ETA. | $0.003 |
 | **base_contract_verify** | Contract verification + ABI metadata via Blockscout. Auto-resolves EIP-1967 proxies to implementation. Returns RED/YELLOW/GREEN risk verdict. | $0.002 |
+| **agent_audit_trail** | Full payment audit trail for any agent wallet: every USDC outflow, x402-resolved destination, tool name, timestamp, tx hash, cumulative spend, velocity, behavioral risk flags. Catena/Ralio-thesis primitive. | $0.05 |
+| **partnership_check** | Where does Onyx plug into Company X's stack? Probes domain + CDP discovery + awesome lists + GitHub for MCP/x402 footprint. Returns gap analysis + outreach subject lines. | $0.02 |
 
 ### On-chain primitives (Solana)
 | Tool | What it does | Price |
