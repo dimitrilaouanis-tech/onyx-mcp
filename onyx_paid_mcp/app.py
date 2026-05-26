@@ -1172,8 +1172,8 @@ Try a free tool: <a href="/v1/onyx_x402_indexer_health"><code>GET /v1/onyx_x402_
         public = (self.public_url or "").rstrip("/")
         return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{self.name} — the first MCP meta-router · {n_tools} paid agent tools · USDC on Base</title>
-<meta name="description" content="The first MCP meta-router. Aggregates the entire 1000-route x402 paid-MCP ecosystem — describe a capability, get the best-route endpoint at the cheapest price. PLUS {n_tools} native tools across Base + Solana, browser automation, captcha, x402 ops, agent identity, research intel. Pay per call in USDC; no API key, no signup.">
+<title>{self.name} — paid MCP · meta-router · {n_tools} tools · USDC on Base</title>
+<meta name="description" content="The most integrated paid MCP server in the x402 ecosystem: meta-router + {n_tools}-tool native catalog + bazaar leaderboard + agent-native discovery surfaces. Aggregates 1000-route CDP corpus, returns best-price best-fit endpoint. Native tools across Base + Solana, captcha, browser, x402 ops, agent identity, research intel. Pay per call in USDC; no API key, no signup.">
 <style>
 :root {{ color-scheme: dark; }}
 body {{ font: 15px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
@@ -1205,7 +1205,8 @@ a {{ color:#79c0ff; }}
 .kpi b {{ color:#7ee787; }}
 </style></head><body>
 
-<h1>{self.name} — the first MCP meta-router</h1>
+<h1>{self.name}</h1>
+<p style="color:#7ee787;margin:6px 0 0;font-size:14px">paid MCP · meta-router · live bazaar mirror · agent-native discovery — in one server</p>
 <p class="lede">{self.description}</p>
 
 <div>
