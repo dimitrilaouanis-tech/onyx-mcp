@@ -571,6 +571,202 @@ class App:
         async def _dashboard_json():
             return self._dashboard_data(tools)
 
+        # ----- Agent-native discovery surfaces ---------------------------
+        # Every surface returns rich machine-readable metadata. Goal: any
+        # autonomous crawler / LLM agent / MCP-aware client finds us in
+        # one or two requests.
+
+        @api.get("/.well-known/agent", include_in_schema=False)
+        @api.get("/.well-known/agent.json", include_in_schema=False)
+        async def _well_known_agent():
+            """ERC-8004 + nascent /.well-known/agent convention."""
+            base = (self.public_url or "").rstrip("/")
+            return {
+                "@context": "https://schema.org",
+                "@type": "AgentService",
+                "name": self.name,
+                "description": "First MCP meta-router. Aggregates the entire 1000-route x402 paid-MCP corpus.",
+                "url": base or "/",
+                "endpoints": {
+                    "mcp_streamable_http": f"{base}/mcp/",
+                    "x402_manifest": f"{base}/.well-known/x402.json",
+                    "oauth_metadata": f"{base}/.well-known/oauth-authorization-server",
+                    "oauth_protected_resource": f"{base}/.well-known/oauth-protected-resource",
+                    "capabilities": f"{base}/capabilities.json",
+                    "dashboard": f"{base}/dashboard.json",
+                    "agents_txt": f"{base}/agents.txt",
+                    "llms_txt": f"{base}/llms.txt",
+                    "openapi": f"{base}/openapi.json",
+                    "sitemap": f"{base}/sitemap.xml",
+                },
+                "specs": {
+                    "mcp_version": "2025-03-26",
+                    "x402_version": 2,
+                    "oauth_version": "2.1",
+                    "supports_dcr": True,
+                    "supports_streamable_http": True,
+                    "supports_dual_broadcast": bool(self.mainnet_receive_address),
+                },
+                "supplyChain": {
+                    "framework": "onyx-paid-mcp",
+                    "framework_version": "0.3.0",
+                    "framework_repo": "https://github.com/dimitrilaouanis-tech/onyx-mcp",
+                    "license": "MIT",
+                },
+                "payment": {
+                    "networks": [self.network_caip] + (["eip155:8453"] if self.mainnet_receive_address and self.network != "base" else []),
+                    "asset_symbol": "USDC",
+                    "scheme": "exact",
+                    "receive_primary": self.receive_address,
+                    "receive_mainnet": self.mainnet_receive_address,
+                    "facilitator": self.facilitator_url,
+                },
+                "metrics": {
+                    "tools_total": len(tools),
+                    "tools_paid": sum(1 for t in tools if t.tier != "free"),
+                    "tools_free": sum(1 for t in tools if t.tier == "free"),
+                },
+                "discovery": {
+                    "cdp_bazaar": "https://api.cdp.coinbase.com/platform/v2/x402/discovery/resources",
+                    "mcp_registry": "https://registry.modelcontextprotocol.io/v0/servers?search=onyx",
+                    "github_repo": "https://github.com/dimitrilaouanis-tech/onyx-mcp",
+                },
+            }
+
+        @api.get("/agents.txt", response_class=PlainTextResponse, include_in_schema=False)
+        async def _agents_txt():
+            """agents.txt — the agent analog of robots.txt. Tells AI crawlers
+            what we are, what we offer, how to call us, and what the rules are."""
+            base = (self.public_url or "").rstrip("/")
+            return (
+                f"# agents.txt — discovery for autonomous AI agents\n"
+                f"# Spec proposal: https://agentstxt.org (heuristic; not yet ratified)\n\n"
+                f"AgentName: {self.name}\n"
+                f"AgentType: paid-mcp-meta-router\n"
+                f"AgentURL: {base}\n"
+                f"MCPEndpoint: {base}/mcp/\n"
+                f"x402Manifest: {base}/.well-known/x402.json\n"
+                f"OAuthDiscovery: {base}/.well-known/oauth-authorization-server\n"
+                f"Capabilities: {base}/capabilities.json\n"
+                f"Dashboard: {base}/dashboard.json\n"
+                f"LLMsTxt: {base}/llms.txt\n"
+                f"OpenAPI: {base}/openapi.json\n"
+                f"Sitemap: {base}/sitemap.xml\n"
+                f"\n"
+                f"# Rates: per-call USDC via x402 (EIP-3009). $0.0003 – $0.25.\n"
+                f"# No API key, no signup, no rate limit beyond per-call settlement.\n"
+                f"# Free tier: GET on any /v1/<tool> returns introspection card.\n"
+                f"\n"
+                f"# Tools: {len(tools)} ({sum(1 for t in tools if t.tier!='free')} paid · {sum(1 for t in tools if t.tier=='free')} free)\n"
+                f"# Framework: onyx-paid-mcp 0.3.0 (MIT) — fork-friendly.\n"
+                f"\n"
+                f"User-Agent: *\n"
+                f"Allow: /\n"
+                f"PayPerCall: x402\n"
+                f"Settlement: USDC on Base mainnet (asset 0x833589fcd6edb6e08f4c7c32d4f71b54bda02913)\n"
+                f"PayTo: {self.mainnet_receive_address or self.receive_address}\n"
+            )
+
+        @api.get("/capabilities.json", include_in_schema=False)
+        async def _capabilities():
+            """Capability tag -> tool URL map. Lets a routing agent ask
+            'I need X, where is it?' without parsing the OpenAPI spec."""
+            base = (self.public_url or "").rstrip("/")
+            cap_map: dict[str, list[dict]] = {}
+            for t in tools:
+                cat = self._categorize(t.name)
+                cap_map.setdefault(cat, []).append({
+                    "name": t.name,
+                    "url": f"{base}/v1/{t.name}",
+                    "price_usdc": t.price_usdc,
+                    "tier": t.tier,
+                    "description": t.description[:200],
+                })
+            return {
+                "version": "1.0",
+                "server": self.name,
+                "url": base,
+                "router_endpoint": f"{base}/v1/onyx_mcp_router",
+                "categories": cap_map,
+                "category_count": len(cap_map),
+                "tool_count": len(tools),
+            }
+
+        @api.get("/sitemap.xml", include_in_schema=False)
+        async def _sitemap():
+            from fastapi.responses import Response
+            base = (self.public_url or "").rstrip("/")
+            urls = [
+                ("/", "weekly", "1.0"),
+                ("/dashboard", "daily", "0.9"),
+                ("/bazaar", "hourly", "0.7"),
+                ("/llms.txt", "daily", "0.8"),
+                ("/agents.txt", "daily", "0.8"),
+                ("/capabilities.json", "daily", "0.7"),
+                ("/.well-known/x402.json", "daily", "0.9"),
+                ("/.well-known/agent.json", "daily", "0.9"),
+                ("/.well-known/oauth-authorization-server", "weekly", "0.6"),
+                ("/openapi.json", "daily", "0.6"),
+                ("/manifest", "daily", "0.6"),
+                ("/health", "always", "0.4"),
+                ("/mcp/", "weekly", "0.9"),
+            ]
+            for t in tools:
+                urls.append((f"/v1/{t.name}", "weekly", "0.6"))
+            entries = "\n".join(
+                f"<url><loc>{base}{path}</loc><changefreq>{cf}</changefreq><priority>{p}</priority></url>"
+                for path, cf, p in urls
+            )
+            xml = (
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+                + entries +
+                '\n</urlset>'
+            )
+            return Response(content=xml, media_type="application/xml")
+
+        @api.get("/feed.xml", include_in_schema=False)
+        async def _feed():
+            """RSS-like feed for agents that subscribe to catalog updates.
+            Items = tools, sorted newest-by-name proxy. Stub for future
+            persistent change tracking."""
+            from fastapi.responses import Response
+            base = (self.public_url or "").rstrip("/")
+            items_xml = "\n".join(
+                f"  <item>\n"
+                f"    <title>{t.name}</title>\n"
+                f"    <link>{base}/v1/{t.name}</link>\n"
+                f"    <description><![CDATA[{t.description[:200]}]]></description>\n"
+                f"    <category>{self._categorize(t.name)}</category>\n"
+                f"    <guid>{base}/v1/{t.name}</guid>\n"
+                f"  </item>"
+                for t in tools[:60]
+            )
+            rss = (
+                f'<?xml version="1.0" encoding="UTF-8"?>\n'
+                f'<rss version="2.0">\n'
+                f'<channel>\n'
+                f'  <title>{self.name} — paid MCP tool feed</title>\n'
+                f'  <link>{base}</link>\n'
+                f'  <description>Catalog feed for the first MCP meta-router.</description>\n'
+                f'{items_xml}\n'
+                f'</channel>\n'
+                f'</rss>'
+            )
+            return Response(content=rss, media_type="application/rss+xml")
+
+        @api.get("/robots.txt", response_class=PlainTextResponse, include_in_schema=False)
+        async def _robots():
+            base = (self.public_url or "").rstrip("/")
+            return (
+                "User-agent: *\n"
+                "Allow: /\n"
+                "Crawl-delay: 1\n"
+                "\n"
+                f"Sitemap: {base}/sitemap.xml\n"
+                f"# Agent-native: see {base}/agents.txt and {base}/.well-known/agent.json\n"
+            )
+
         # Serve llms.txt from CWD if present, so crawlers + LLMs can index us
         from fastapi.responses import PlainTextResponse
         from pathlib import Path as _Path
