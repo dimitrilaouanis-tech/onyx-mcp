@@ -976,8 +976,8 @@ Try a free tool: <a href="/v1/onyx_x402_indexer_health"><code>GET /v1/onyx_x402_
         public = (self.public_url or "").rstrip("/")
         return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{self.name} — {n_tools} paid agent tools, USDC on Base, no API key</title>
-<meta name="description" content="{n_tools} x402-paid agent tools on Base mainnet. Captcha OCR, browser automation, on-chain primitives (tx explain/simulate, token risk), x402 ops (receipt verify, facilitator health, chain picker), agent identity + budget, MCP cross-server compare. Pay per call in USDC, no signup, no API key. MCP-native at /mcp/.">
+<title>{self.name} — the first MCP meta-router · {n_tools} paid agent tools · USDC on Base</title>
+<meta name="description" content="The first MCP meta-router. Aggregates the entire 1000-route x402 paid-MCP ecosystem — describe a capability, get the best-route endpoint at the cheapest price. PLUS {n_tools} native tools across Base + Solana, browser automation, captcha, x402 ops, agent identity, research intel. Pay per call in USDC; no API key, no signup.">
 <style>
 :root {{ color-scheme: dark; }}
 body {{ font: 15px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
@@ -1009,12 +1009,12 @@ a {{ color:#79c0ff; }}
 .kpi b {{ color:#7ee787; }}
 </style></head><body>
 
-<h1>{self.name}</h1>
+<h1>{self.name} — the first MCP meta-router</h1>
 <p class="lede">{self.description}</p>
 
 <div>
-  <span class="tag">{n_tools} tools live</span>
-  <span class="tag">USDC settlement on Base</span>
+  <span class="tag">⚡ Meta-router live</span>
+  <span class="tag">{n_tools} tools shipped</span>
   <span class="tag">x402 v2 dual-broadcast</span>
   <span class="tag">OAuth 2.1 DCR</span>
   <span class="tag">MCP-native at /mcp/</span>
@@ -1022,9 +1022,17 @@ a {{ color:#79c0ff; }}
 </div>
 
 <div class="kpi" style="margin-top:18px">
-  <span><a href="/dashboard" style="color:inherit;text-decoration:none">📊 <b>Live dashboard</b> — catalog, manifest health, indexer coverage</a></span>
-  <span><a href="/bazaar" style="color:inherit;text-decoration:none">🏪 <b>x402 leaderboard</b> — every paid service in the ecosystem</a></span>
+  <span><a href="/v1/onyx_mcp_router" style="color:inherit;text-decoration:none">⚡ <b>Meta-router</b> — describe a capability, get the best paid MCP route</a></span>
+  <span><a href="/dashboard" style="color:inherit;text-decoration:none">📊 <b>Live dashboard</b> — catalog, manifest health</a></span>
+  <span><a href="/bazaar" style="color:inherit;text-decoration:none">🏪 <b>x402 leaderboard</b> — every paid service indexed</a></span>
   <span><a href="/mcp/" style="color:inherit;text-decoration:none">🔌 <b>MCP endpoint</b> — Claude / Cursor / Cline</a></span>
+</div>
+
+<div class="cta" style="border-left-color:#ffd166;margin-top:24px">
+  <strong>⚡ Router example.</strong> Need a Base tx explainer? Run the router instead of comparing endpoints by hand:
+  <pre style="margin:10px 0 0;background:#0c0c0c;padding:10px;font-size:12px">curl -X POST {public}/v1/onyx_mcp_router \\
+  -d '{{"capability":"Base transaction explainer","preferred_network":"eip155:8453","top_n":3}}'</pre>
+  <span style="color:#888;font-size:12px">Returns top-3 routes across the full 1000-route CDP corpus, ranked by price + match + network. Onyx is the aggregator; every paid MCP is the supply.</span>
 </div>
 
 <div class="cta">
