@@ -1,6 +1,6 @@
 # Onyx Actions — Paid Agent MCP (x402 USDC on Base + Solana)
 
-> Onyx Actions is a paid Model Context Protocol server. AI agents pay per call in USDC over the x402 protocol — no API keys, no signup, no subscriptions. 66 tools across Base + Solana on-chain primitives, browser automation, MCP/x402 ecosystem ops, and research intel (incl. multi-paper structural synthesis).
+> Onyx Actions is the first **MCP meta-router** — a paid Model Context Protocol server that also aggregates the entire x402 ecosystem. AI agents pay per call in USDC; no API keys, no signup. 67 tools across Base + Solana on-chain primitives, browser automation, MCP/x402 ecosystem ops, research intel — PLUS `onyx_mcp_router` which routes capability queries across the full 1000-route paid-MCP corpus and returns the best-price best-fit endpoint.
 
 ## Endpoints
 
@@ -18,7 +18,7 @@
 
 No state is held between calls. No account exists. The wallet IS the identity.
 
-## Tool catalog (66 tools)
+## Tool catalog (67 tools)
 
 ### On-chain primitives (Base)
 | Tool | What it does | Price |
@@ -37,6 +37,7 @@ No state is held between calls. No account exists. The wallet IS the identity.
 | **base_contract_verify** | Contract verification + ABI metadata via Blockscout. Auto-resolves EIP-1967 proxies to implementation. Returns RED/YELLOW/GREEN risk verdict. | $0.002 |
 | **agent_audit_trail** | Full payment audit trail for any agent wallet: every USDC outflow, x402-resolved destination, tool name, timestamp, tx hash, cumulative spend, velocity, behavioral risk flags. Catena/Ralio-thesis primitive. | $0.05 |
 | **partnership_check** | Where does Onyx plug into Company X's stack? Probes domain + CDP discovery + awesome lists + GitHub for MCP/x402 footprint. Returns gap analysis + outreach subject lines. | $0.02 |
+| ⚡ **mcp_router** | **THE meta-router.** Describe a capability ('Base tx explainer'); the router queries the full 1000-route CDP discovery corpus, scores every match by price + network + freshness + schema, returns ranked routes with full call templates. First MCP aggregator. | $0.01 |
 
 ### On-chain primitives (Solana)
 | Tool | What it does | Price |
