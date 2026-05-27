@@ -1,0 +1,93 @@
+{
+  "name": "Onyx Action Receipt",
+  "short_name": "AR-1",
+  "alt_names": ["Verifiable Action Receipt (VAR)", "Action Evidence Envelope (AEE)"],
+  "version": "1.1",
+  "spec_url": "https://onyx-actions.onrender.com/.well-known/action-receipt/v1",
+  "tagline": "The evidence layer for the agentic web. Fills the post-execution evidence gap where ERC-8183 commerce lifecycle ends.",
+  "description": "Signed cryptographic envelope binding an agent payment to a physical-world or MCP-side side-effect. Outer signature pair (agent + facilitator) Ed25519 over canonical JSON. Side-effect carried as evidence with tier 1..3. Hourly Merkle-root anchored to Base mainnet via EAS.",
+  "positioning": {
+    "complementary_to": [
+      {
+        "name": "ERC-8004",
+        "role": "agent identity + reputation registry",
+        "spec": "https://eips.ethereum.org/EIPS/eip-8004",
+        "ar1_relation": "consumes — AR-1 receipts reference agent identities by did:web or ERC-8004 agentId"
+      },
+      {
+        "name": "ERC-8183",
+        "role": "agentic commerce escrow lifecycle (Open/Funded/Submitted/Terminal)",
+        "spec": "https://eips.ethereum.org/EIPS/eip-8183",
+        "ar1_relation": "AR-1 is the canonical reason-hash payload format that 8183 evaluators point at. AR-1 fills the evidence layer 8183's commerce-lifecycle ends at."
+      },
+      {
+        "name": "ERC-8150",
+        "role": "zero-knowledge pre-payment verification",
+        "spec": "https://ethereum-magicians.org/t/erc-8150-zero-knowledge-agent-payment-verification/27665",
+        "ar1_relation": "adjacent layer — 8150 verifies pre-pay authorization; AR-1 attests post-execution evidence"
+      },
+      {
+        "name": "x402",
+        "role": "stablecoin payment rail",
+        "spec": "https://github.com/x402-foundation/x402",
+        "ar1_relation": "AR-1 carried as an x402 response extension; first AR-1 emitter compatible with x402 + AP2"
+      },
+      {
+        "name": "AP2 (Google Agent Payments Protocol)",
+        "role": "mandate-based payment authorization",
+        "spec": "https://github.com/google-agentic-commerce/AP2",
+        "ar1_relation": "AR-1 mirrors AP2 PaymentMandate fields (payment_mandate_id, payment_details_id, amount). First AR-1 emitter compatible with AP2 (2026-05-21)."
+      }
+    ],
+    "the_stack": "ERC-8004 (identity) -> ERC-8150 (pre-pay ZK) -> x402/AP2 (settlement) -> AR-1/VAR (evidence) -> ERC-8183 (commerce lifecycle terminal state)"
+  },
+  "signature_alg": "Ed25519 over RFC 8785 JCS canonical JSON (A2A v1.2 compatible)",
+  "outer_carriage": [
+    "x402 v2 response extension action-receipt (proposed, PR target: x402-foundation/x402)",
+    "ERC-8183 reason-hash payload (proposed, Magicians draft route)"
+  ],
+  "anchor": {
+    "platform": "EAS (Ethereum Attestation Service)",
+    "chain": "base mainnet (id 8453)",
+    "eas_contract": "0x4200000000000000000000000000000000000021",
+    "schema_registry": "0x4200000000000000000000000000000000000020",
+    "ar1_schema": "bytes32 receiptHash, bytes32 targetHash, string region, uint64 executedAt, bytes32 evidenceHash, uint8 evidenceTier",
+    "ar1_schema_uid": "0xabd5868444ee77edadfbddfca09d2d102182f39fb66f074da663d76ca121c534",
+    "batch_schema": "bytes32 merkleRoot, uint32 leafCount, uint64 anchoredAt, string version",
+    "batch_schema_uid": "0x2b76dae97684b79765fc42035d6e53b75e3d293dce151c1e53bede5abefe8b2b",
+    "cadence": "hourly batch (~$0.0005/attestation amortized)"
+  },
+  "did_format": "did:web (preferred, w3c standard) — legacy did:onyx accepted",
+  "evidence_tiers": {
+    "gsm.smsc_dlr":           {"tier": 3, "label": "trust-us SMSC delivery receipt (GSM 03.40)"},
+    "network.tap_capture":    {"tier": 2, "label": "USBPcap AT-command log SHA-256"},
+    "gsm.handset_attestation":{"tier": 1, "label": "Android Key Attestation co-signed handset proof"},
+    "x402.payment_settled":   {"tier": 2, "label": "on-chain x402 settlement tx hash"},
+    "mcp.tool_response":      {"tier": 3, "label": "MCP tool response SHA-256"}
+  },
+  "bridges": {
+    "ap2": "ap2_bridge.py — ar1_from_ap2_mandate() mirrors AP2 PaymentMandate fields into AR-1 receipt"
+  },
+  "fields": ["v","spec","receipt_id","agent","facilitator","payment","action","sig_agent","sig_facilitator","anchor","bridges"],
+  "example_endpoint": "/receipts/example",
+  "first_receipt": {
+    "id": "ar_01KS4R192B935RYRMGEBNQD64D",
+    "minted_at": "2026-05-20T18:32:00+00:00",
+    "kind": "oai.compute_snapshot",
+    "evidence_tier": 3,
+    "verified_at_mint": true,
+    "historical_significance": "First AR-1 receipt ever minted. Self-attested compute proof of OAI snapshot."
+  },
+  "second_receipt": {
+    "id": "ar_01KS5895J69SGR0AP9A8QGD1PN",
+    "minted_at": "2026-05-21T12:31:03+00:00",
+    "kind": "mcp.call",
+    "bridges": ["ap2"],
+    "historical_significance": "First AR-1 receipt minted from an AP2 PaymentMandate — first AR-1 emitter compatible with Google AP2."
+  },
+  "published_at": "2026-05-21",
+  "version_history": [
+    {"version": "1.0", "date": "2026-05-20", "change": "Initial spec — Ed25519 dual-sign, Merkle anchor, did:onyx"},
+    {"version": "1.1", "date": "2026-05-21", "change": "did:web preferred, evidence-tier enum (not 'proof'), JCS canonicalization, ERC-8183/8150 complementarity, AP2 bridge, EAS schema published"}
+  ]
+}

@@ -576,6 +576,28 @@ class App:
         # autonomous crawler / LLM agent / MCP-aware client finds us in
         # one or two requests.
 
+        # AR-1 (Action Receipt v1) spec — served from this domain per the
+        # Onyx Protocol whitepaper which designates onyx-actions.onrender.com
+        # as the canonical spec_url for AR-1 v1.x. This is the integration
+        # surface between Onyx Protocol (identity/receipts) and Onyx Actions
+        # (paid MCP marketplace). Reads the JSON from the repo .well-known
+        # directory at runtime so the spec maintainer can update without
+        # redeploying app.py.
+        @api.get("/.well-known/action-receipt/v1.json", include_in_schema=False)
+        @api.get("/.well-known/action-receipt/v1", include_in_schema=False)
+        async def _ar1_spec():
+            from pathlib import Path as _Path
+            for p in (
+                _Path("./.well-known/action-receipt/v1.json"),
+                _Path(__file__).parent.parent / ".well-known/action-receipt/v1.json",
+            ):
+                if p.exists():
+                    import json as _json
+                    return JSONResponse(_json.loads(p.read_text(encoding="utf-8")))
+            return JSONResponse({
+                "error": "AR-1 spec not bundled. See https://github.com/dimitrilaouanis-tech/onyx-mcp"
+            }, status_code=404)
+
         @api.get("/.well-known/agent", include_in_schema=False)
         @api.get("/.well-known/agent.json", include_in_schema=False)
         async def _well_known_agent():
@@ -585,13 +607,14 @@ class App:
                 "@context": "https://schema.org",
                 "@type": "AgentService",
                 "name": self.name,
-                "description": "First MCP meta-router. Aggregates the entire 1000-route x402 paid-MCP corpus.",
+                "description": "Paid MCP meta-router + 67-tool native catalog + bazaar mirror + agent-native discovery in one server. AR-1 spec host. Onyx Protocol marketplace anchor.",
                 "url": base or "/",
                 "endpoints": {
                     "mcp_streamable_http": f"{base}/mcp/",
                     "x402_manifest": f"{base}/.well-known/x402.json",
                     "oauth_metadata": f"{base}/.well-known/oauth-authorization-server",
                     "oauth_protected_resource": f"{base}/.well-known/oauth-protected-resource",
+                    "action_receipt_v1": f"{base}/.well-known/action-receipt/v1.json",
                     "capabilities": f"{base}/capabilities.json",
                     "dashboard": f"{base}/dashboard.json",
                     "agents_txt": f"{base}/agents.txt",
@@ -603,9 +626,19 @@ class App:
                     "mcp_version": "2025-03-26",
                     "x402_version": 2,
                     "oauth_version": "2.1",
+                    "ar1_version": "1.1",
                     "supports_dcr": True,
                     "supports_streamable_http": True,
                     "supports_dual_broadcast": bool(self.mainnet_receive_address),
+                    "supports_ar1": True,
+                },
+                "protocol": {
+                    "name": "Onyx Protocol",
+                    "homepage": "https://onyxprotocol.io",
+                    "whitepaper": "https://onyxprotocol.io/ONYX_PROTOCOL_WHITEPAPER.md",
+                    "primitives": ["KYA", "AR-1", "OAI"],
+                    "relation_to_this_service": "Onyx Actions is the marketplace anchor for Onyx Protocol. AR-1 spec lives here; KYA credentials and OAI scores are issued by the Protocol verifier.",
+                    "verifier": "https://verify.onyxprotocol.io",
                 },
                 "supplyChain": {
                     "framework": "onyx-paid-mcp",
@@ -647,11 +680,18 @@ class App:
                 f"MCPEndpoint: {base}/mcp/\n"
                 f"x402Manifest: {base}/.well-known/x402.json\n"
                 f"OAuthDiscovery: {base}/.well-known/oauth-authorization-server\n"
+                f"ActionReceiptSpec: {base}/.well-known/action-receipt/v1.json\n"
                 f"Capabilities: {base}/capabilities.json\n"
                 f"Dashboard: {base}/dashboard.json\n"
                 f"LLMsTxt: {base}/llms.txt\n"
                 f"OpenAPI: {base}/openapi.json\n"
                 f"Sitemap: {base}/sitemap.xml\n"
+                f"\n"
+                f"# Protocol layer: Onyx Protocol\n"
+                f"ProtocolHomepage: https://onyxprotocol.io\n"
+                f"ProtocolPrimitives: KYA, AR-1, OAI\n"
+                f"ProtocolWhitepaper: https://onyxprotocol.io/ONYX_PROTOCOL_WHITEPAPER.md\n"
+                f"ProtocolVerifier: https://verify.onyxprotocol.io\n"
                 f"\n"
                 f"# Rates: per-call USDC via x402 (EIP-3009). $0.0003 – $0.25.\n"
                 f"# No API key, no signup, no rate limit beyond per-call settlement.\n"
@@ -665,6 +705,7 @@ class App:
                 f"PayPerCall: x402\n"
                 f"Settlement: USDC on Base mainnet (asset 0x833589fcd6edb6e08f4c7c32d4f71b54bda02913)\n"
                 f"PayTo: {self.mainnet_receive_address or self.receive_address}\n"
+                f"OptionalHeaders: X-Onyx-KYA-Credential (Onyx Protocol agent identity binding)\n"
             )
 
         @api.get("/capabilities.json", include_in_schema=False)
