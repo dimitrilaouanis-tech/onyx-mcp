@@ -18,7 +18,7 @@
 
 No state is held between calls. No account exists. The wallet IS the identity.
 
-## Tool catalog (71 tools)
+## Tool catalog (72 tools)
 
 ### On-chain primitives (Base)
 | Tool | What it does | Price |
@@ -42,6 +42,7 @@ No state is held between calls. No account exists. The wallet IS the identity.
 | 📊 **oai_lookup** | Fetch Onyx Agentic Index score (0-1000) for an agent DID or wallet. Composite trust signal from cross-protocol data (KYA, AR-1, ERC-8004, x402 history). | $0.001 |
 | 💰 **arb_finder** | Price arbitrage finder. For any capability, query CDP corpus, compute price delta vs Onyx, return ready pitch line ('Onyx is X% cheaper than Y'). For competitive intel + marketing copy + pricing decisions. | $0.003 |
 | 🎁 **capability_bundle** | Compose 3-5 Onyx tools in one paid call: safety_check_base, tx_full_inspect, swap_prep, cross_chain, agent_kyc. Single AR-1 receipt, atomic delivery, 10-20% discount vs unbundled. | $0.02 |
+| 📈 **market_pulse** | Bloomberg-terminal for the agentic economy. One call returns: corpus size + per-network split + price quartiles + Onyx pricing audit (over/under market) + blue-ocean caps + saturated niches + recent additions. | $0.02 |
 
 ### On-chain primitives (Solana)
 | Tool | What it does | Price |
