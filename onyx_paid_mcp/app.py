@@ -306,8 +306,22 @@ class App:
         from x402.http.middleware.fastapi import payment_middleware
         from x402.mechanisms.evm.exact import register_exact_evm_server
 
+        from .ar1 import AR1Signer
+
         tools = self.tools()
         tools_by_name = {t.name: t for t in tools}
+
+        # AR-1 facilitator-side signer (Onyx Protocol integration).
+        # Phase 2: every paid call returns an AR-1 receipt id in headers.
+        # Signing key from ONYX_AR1_PRIVATE_KEY env (base64 Ed25519) or
+        # ephemeral pair generated at startup.
+        ar1_signer = AR1Signer()
+        ar1_receipts: dict[str, dict] = {}  # in-memory receipt cache (best-effort)
+        ar1_max_cached = 5000
+        print(
+            f"[onyx-paid-mcp] AR-1 signer kid={ar1_signer.kid} "
+            f"ephemeral={ar1_signer.is_ephemeral}"
+        )
 
         # x402 facilitator. When ONYX_NETWORK=base, the public x402.org
         # facilitator does NOT support mainnet — Coinbase CDP is the only
@@ -598,6 +612,38 @@ class App:
                 "error": "AR-1 spec not bundled. See https://github.com/dimitrilaouanis-tech/onyx-mcp"
             }, status_code=404)
 
+        @api.get("/.well-known/ar1-public-key", include_in_schema=False)
+        async def _ar1_pubkey():
+            """Facilitator-side AR-1 public key. Verifiers fetch this to
+            check sig_facilitator on receipts emitted by this server."""
+            return {
+                "kid": ar1_signer.kid,
+                "alg": "Ed25519",
+                "encoding": "base64url",
+                "public_key": ar1_signer.public_key_b64,
+                "ephemeral": ar1_signer.is_ephemeral,
+                "note": "If ephemeral=true, receipts across server restarts will use a different kid. Set ONYX_AR1_PRIVATE_KEY env (base64 32-byte Ed25519 priv) to persist.",
+            }
+
+        @api.get("/receipts/{receipt_id}", include_in_schema=False)
+        async def _receipt_lookup(receipt_id: str):
+            """In-memory receipt lookup. Best-effort — receipts may be evicted
+            past ar1_max_cached. Persistent storage is Phase 3."""
+            r = ar1_receipts.get(receipt_id)
+            if r is None:
+                return JSONResponse({"error": "not_found", "receipt_id": receipt_id}, status_code=404)
+            return r
+
+        @api.get("/receipts", include_in_schema=False)
+        async def _receipts_recent(limit: int = 20):
+            limit = max(1, min(100, int(limit)))
+            ids = list(ar1_receipts.keys())[-limit:]
+            return {
+                "count_cached": len(ar1_receipts),
+                "limit": limit,
+                "receipts": [ar1_receipts[i] for i in ids],
+            }
+
         @api.get("/.well-known/agent", include_in_schema=False)
         @api.get("/.well-known/agent.json", include_in_schema=False)
         async def _well_known_agent():
@@ -826,15 +872,62 @@ class App:
             # of trying to derive a schema from `request: Request` (which
             # crashes pydantic's TypeAdapter on ForwardRef).
             from fastapi import Body
+            from fastapi.responses import JSONResponse as _JSON
             from typing import Any as _Any
-            async def handler(body: dict = Body(default_factory=dict)):
+            from hashlib import sha256 as _sha256
+            import json as _json
+
+            async def handler(
+                body: dict = Body(default_factory=dict),
+                x_onyx_kya_credential: str = Header(default=""),
+                x_payment_response: str = Header(default=""),
+            ):
                 try:
                     out = t.handler(**(body or {}))
                     if asyncio.iscoroutine(out):
                         out = await out
-                    return out
                 except (ValueError, NotImplementedError) as e:
                     raise HTTPException(400, str(e))
+
+                # AR-1 emission — fire-and-forget. If anything in this block
+                # fails, the tool response still returns normally. Receipts
+                # are a SIDE CHANNEL, never a hard gate.
+                resp = _JSON(out)
+                try:
+                    if t.tier != "free":
+                        # Best-effort agent attribution: x402 payment header
+                        # carries the agent's signed authorization; we don't
+                        # parse it here (Phase 3) so we use placeholder.
+                        agent_wallet = "0x" + "0" * 40
+                        result_hash = "0x" + _sha256(
+                            _json.dumps(out, sort_keys=True, separators=(",", ":")).encode("utf-8")
+                        ).hexdigest()
+                        receipt = ar1_signer.mint(
+                            agent_wallet=agent_wallet,
+                            tool_name=t.name,
+                            amount_usdc=t.price_usdc,
+                            network=self.network_caip,
+                            receive_address=self.receive_address,
+                            result_hash=result_hash,
+                            kya_credential_id=(x_onyx_kya_credential.strip() or None),
+                            x402_tx_hash=(x_payment_response.strip() or None) or None,
+                            public_url=self.public_url,
+                        )
+                        # Cache receipt (FIFO eviction past 5000)
+                        ar1_receipts[receipt["receipt_id"]] = receipt
+                        if len(ar1_receipts) > ar1_max_cached:
+                            for k in list(ar1_receipts.keys())[:len(ar1_receipts) - ar1_max_cached]:
+                                ar1_receipts.pop(k, None)
+                        resp.headers["X-Onyx-AR1"] = receipt["receipt_id"]
+                        resp.headers["X-Onyx-AR1-Kid"] = ar1_signer.kid
+                        resp.headers["X-Onyx-AR1-Spec"] = "v1.1"
+                        resp.headers["X-Onyx-AR1-Receipt"] = ar1_signer.receipt_envelope_header(receipt)
+                except Exception as e:
+                    import sys
+                    sys.stderr.write(f"[ar1] mint failed for {t.name}: {type(e).__name__}: {str(e)[:200]}\n")
+                    sys.stderr.flush()
+                return resp
+
             handler.__name__ = f"rest_{t.name}"
             return handler
 

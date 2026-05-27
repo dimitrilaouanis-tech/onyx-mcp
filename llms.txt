@@ -18,7 +18,7 @@
 
 No state is held between calls. No account exists. The wallet IS the identity.
 
-## Tool catalog (67 tools)
+## Tool catalog (69 tools)
 
 ### On-chain primitives (Base)
 | Tool | What it does | Price |
@@ -38,6 +38,8 @@ No state is held between calls. No account exists. The wallet IS the identity.
 | **agent_audit_trail** | Full payment audit trail for any agent wallet: every USDC outflow, x402-resolved destination, tool name, timestamp, tx hash, cumulative spend, velocity, behavioral risk flags. Catena/Ralio-thesis primitive. | $0.05 |
 | **partnership_check** | Where does Onyx plug into Company X's stack? Probes domain + CDP discovery + awesome lists + GitHub for MCP/x402 footprint. Returns gap analysis + outreach subject lines. | $0.02 |
 | ⚡ **mcp_router** | Meta-router. Describe a capability ('Base tx explainer'); router queries full 1000-route CDP discovery corpus, scores every match by price + network + freshness + schema, returns ranked routes with full call templates. Returns us or peer. | $0.01 |
+| 🔐 **kya_verify** | Verify an Onyx Protocol KYA credential (Know Your Agent — cryptographic binding of agent to principal, scope, spend cap). Returns ok + scope + revocation status. | $0.001 |
+| 📊 **oai_lookup** | Fetch Onyx Agentic Index score (0-1000) for an agent DID or wallet. Composite trust signal from cross-protocol data (KYA, AR-1, ERC-8004, x402 history). | $0.001 |
 
 ### On-chain primitives (Solana)
 | Tool | What it does | Price |
