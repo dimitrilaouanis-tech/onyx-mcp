@@ -295,7 +295,7 @@ class App:
     def build_asgi(self):
         """Construct the FastAPI ASGI app. Heavy imports happen here."""
         from fastapi import FastAPI, HTTPException, Request
-        from fastapi.responses import HTMLResponse, JSONResponse
+        from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
         import mcp.types as mcp_types
         from mcp.server import Server as MCPServer
@@ -855,7 +855,6 @@ class App:
             )
 
         # Serve llms.txt from CWD if present, so crawlers + LLMs can index us
-        from fastapi.responses import PlainTextResponse
         from pathlib import Path as _Path
 
         @api.get("/llms.txt", response_class=PlainTextResponse, include_in_schema=False)
