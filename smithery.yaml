@@ -1,16 +1,26 @@
 name: onyx-actions
 description: |-
-  Paid agent tools over x402 USDC on Base AND Solana. HTTP 402 -> sign payment -> 200.
-  No API keys, no signup, no subscription. Base + Solana on-chain primitives
-  (tx_explainer, tx_simulator, token_risk_scan, token metadata, ENS resolve),
-  captcha OCR, URL text extraction, DNS, WHOIS, email validation, IP
-  geolocation, user-agent parsing, password strength, FX conversion, browser
-  automation suite, workflow chainer. The first MCP that price-meters per-call
-  directly through the protocol agents already speak — at half OATP price.
+  The VERIFICATION LAYER for AI agents. 52 paid tools LIVE on Base mainnet over
+  x402 (V2, USDC) — no API keys, no signup, payment IS auth. Verify what's REAL
+  before you act: AML/sanctions screening, fact-check, IP geolocation, Base
+  contract + token-risk verification, agent audit trails — plus Ed25519-SIGNED
+  real-world observations (retail price, geo presence, review authenticity) that
+  no model can fabricate. The trust/ground-truth slot no digital-only service can
+  fill. Also: Base + Solana on-chain primitives (tx_explainer, tx_simulator,
+  token metadata, ENS), captcha OCR, URL/DNS/WHOIS/email/UA tools, FX, browser
+  automation, workflow chainer.
 homepage: https://github.com/dimitrilaouanis-tech/onyx-mcp
 repository: https://github.com/dimitrilaouanis-tech/onyx-mcp
 license: MIT
 keywords:
+  - verification
+  - trust
+  - aml-screening
+  - fact-check
+  - ground-truth
+  - oracle
+  - real-world-data
+  - geo-verify
   - x402
   - usdc
   - base
