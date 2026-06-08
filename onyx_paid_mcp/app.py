@@ -644,6 +644,26 @@ class App:
                 "receipts": [ar1_receipts[i] for i in ids],
             }
 
+        @api.get("/.well-known/onyx-pubkey", include_in_schema=False)
+        async def _well_known_onyx_pubkey():
+            """The Ed25519 public key that signs every onyx_attestation. Lets anyone
+            verify an Onyx security verdict without trusting us. Closes the loop:
+            signed = provable."""
+            try:
+                from tools_pkg import _onyx_sign
+                s = _onyx_sign.signer()
+                return {
+                    "alg": "Ed25519",
+                    "kid": s.kid,
+                    "public_key": s.pub_b64,
+                    "encoding": "base64url-raw-32",
+                    "ephemeral": bool(getattr(s, "ephemeral", False)),
+                    "spec": (self.public_url or "").rstrip("/") + "/.well-known/onyx-attestation/v1",
+                    "usage": "Verify onyx_attestation.sig (Ed25519) over the JCS-canonical payload with the onyx_attestation key removed. The onyx_attestation_verify tool does this for you.",
+                }
+            except Exception as e:
+                return {"alg": "Ed25519", "error": str(e)[:120]}
+
         @api.get("/.well-known/agent-card.json", include_in_schema=False)
         async def _well_known_agent_card():
             """A2A (Agent2Agent) AgentCard — Onyx discoverable + vettable in the A2A
