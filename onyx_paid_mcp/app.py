@@ -644,6 +644,56 @@ class App:
                 "receipts": [ar1_receipts[i] for i in ids],
             }
 
+        @api.get("/.well-known/agent-card.json", include_in_schema=False)
+        async def _well_known_agent_card():
+            """A2A (Agent2Agent) AgentCard — Onyx discoverable + vettable in the A2A
+            network as THE security agent. Completes the stack: x402 (pay) +
+            ERC-8004 (trust) + A2A (talk)."""
+            base = (self.public_url or "").rstrip("/")
+            _sec = ("verify", "aml", "audit", "guard", "reputation", "secure",
+                    "risk", "fact", "contract", "trust", "screen", "attest")
+            skills = []
+            for t in tools:
+                if any(k in t.name for k in _sec):
+                    skills.append({
+                        "id": t.name,
+                        "name": t.name.replace("onyx_", "").replace("_", " ").title(),
+                        "description": (t.description or "")[:240],
+                        "tags": ["security", "verification", "trust", "x402", "ed25519-signed"],
+                    })
+            return {
+                "protocolVersion": "0.3.0",
+                "name": self.name,
+                "description": (
+                    "The security & trust layer for the agentic web. Signed, "
+                    "pre-transaction security checks over x402: recipient firewall, "
+                    "contract audit, ERC-8004 agent reputation, AML/sanctions, and a "
+                    "one-call secure-payment clearance. Every verdict Ed25519-signed."
+                ),
+                "url": base or "/",
+                "preferredTransport": "HTTP+JSON",
+                "provider": {"organization": "Onyx Protocol", "url": "https://onyxprotocol.io"},
+                "version": "1.0.0",
+                "capabilities": {"streaming": False, "pushNotifications": False, "stateTransitionHistory": False},
+                "defaultInputModes": ["application/json"],
+                "defaultOutputModes": ["application/json"],
+                "skills": skills[:40],
+                "securitySchemes": {
+                    "x402": {"type": "x402", "description": "Pay-per-call via x402 USDC on Base; the payment is the auth."}
+                },
+                "additionalInterfaces": [
+                    {"transport": "HTTP+JSON", "url": f"{base}/v1/"},
+                    {"transport": "MCP", "url": f"{base}/mcp/"},
+                ],
+                "x402": {"manifest": f"{base}/.well-known/x402.json", "network": self.network_caip, "asset": "USDC"},
+                "erc8004": {
+                    "identity_registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+                    "reputation_registry": "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
+                    "note": "Onyx reads these live to vet counterparty agents (onyx_agent_reputation).",
+                },
+                "attestation": {"alg": "Ed25519+JCS", "pubkey": f"{base}/.well-known/onyx-pubkey"},
+            }
+
         @api.get("/.well-known/agent", include_in_schema=False)
         @api.get("/.well-known/agent.json", include_in_schema=False)
         async def _well_known_agent():
