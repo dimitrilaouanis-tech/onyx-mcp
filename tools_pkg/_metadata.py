@@ -78,26 +78,6 @@ META: dict[str, dict] = {
             "risk_factors": ["active owner: 0x3abd6f64..."],
         },
     },
-    "onyx_solve_captcha": {
-        "when_to_use": (
-            "Use when an agent's browser automation hits an image-based captcha "
-            "wall mid-task (signup, login, scraping checkpoint). Returns the "
-            "answer in ~30ms. Not for reCAPTCHA v2/v3 or hCaptcha — those are "
-            "interaction-based."
-        ),
-        "vs_alternatives": (
-            "2captcha at $0.001/solve takes 8-20s and requires API key signup + "
-            "account top-up + support tickets. Anti-Captcha similar. Onyx's "
-            "$0.003 is x402-native (no signup, agent's wallet pays directly), "
-            "200-600x faster, no account state to manage. Net cheaper at any "
-            "volume where agent-time matters more than per-solve cost."
-        ),
-        "example_request": {"image_url": "https://example.com/captcha.png"},
-        "example_response": {
-            "answer": "AB7K9", "source": "onyx.ddddocr",
-            "elapsed_ms": 32, "bytes": 1840,
-        },
-    },
     "onyx_url_text": {
         "when_to_use": (
             "Use when an agent needs to read a web page WITHOUT spinning up a "

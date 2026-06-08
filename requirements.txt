@@ -1,7 +1,5 @@
 mcp>=1.0.0
-ddddocr>=1.4.0
 httpx>=0.27.0
-pillow>=10.0.0
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 x402[evm,fastapi]>=2.8.0

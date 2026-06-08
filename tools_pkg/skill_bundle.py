@@ -195,7 +195,7 @@ run.__vs_alternatives__ = (
 )
 run.__example_request__ = {
     "tools": [
-        {"endpoint_url": "https://onyx-actions.onrender.com/v1/onyx_solve_captcha"},
+        {"endpoint_url": "https://onyx-actions.onrender.com/v1/onyx_base_token_risk_scan"},
         {"endpoint_url": "https://onyx-actions.onrender.com/v1/onyx_aml_screen", "depends_on": [0]},
     ],
     "max_spend_usdc": 0.50,

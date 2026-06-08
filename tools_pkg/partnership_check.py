@@ -75,7 +75,7 @@ _CAPABILITY_MAP = {
         "fit_for": "any x402 builder needing ops + observability",
     },
     "agent_security": {
-        "tools": ["onyx_mcp_oauth_audit", "onyx_solve_captcha",
+        "tools": ["onyx_mcp_oauth_audit", "onyx_base_token_risk_scan",
                   "onyx_base_contract_verify", "onyx_aml_screen"],
         "fit_for": "agent security / observability (General Analysis, octonomy)",
     },
