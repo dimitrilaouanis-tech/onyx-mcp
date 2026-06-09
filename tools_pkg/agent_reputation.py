@@ -32,10 +32,22 @@ DESCRIPTION = (
     "Vet another AI agent before you trust it — via the live ERC-8004 registries "
     "on Base. Give an agent's ERC-8004 id; get its on-chain identity (is it "
     "registered? owner), its verified receiving wallet, its AgentCard URI, and "
-    "its reputation summary (feedback count + aggregate score) — returned as a "
-    "TRUSTED / NEW / CAUTION / UNKNOWN verdict with a 0-100 trust score, "
-    "Ed25519-signed. The check an agent runs on a counterparty agent before "
-    "paying, delegating, or accepting its output. Unregistered = unverifiable."
+    "its reputation summary (feedback count + aggregate score) — Ed25519-signed. "
+    "Onyx ATTESTS the on-chain facts; the TRUSTED / NEW / CAUTION / UNKNOWN "
+    "rating + 0-100 score are Onyx's OPINION over those facts via a disclosed "
+    "methodology (Moody's-style), not an objective ruling. The check an agent "
+    "runs on a counterparty agent before paying, delegating, or accepting its "
+    "output. Unregistered = unverifiable."
+)
+
+# Disclosed rating methodology — signed alongside the rating so it's an
+# opinion-with-stated-basis (legally protected, like a credit rating), never a
+# bare objective "this agent is good" claim. Facts vs opinion stay separable.
+_METHODOLOGY = (
+    "Onyx rating over on-chain ERC-8004 facts: no identity -> UNKNOWN(0); "
+    "registered, 0 feedback -> NEW(40); registered, >0 feedback & positive "
+    "aggregate -> TRUSTED(min(95, 55+min(feedback,20)*2)); registered, "
+    "non-positive aggregate -> CAUTION(20). Opinion, not objective truth."
 )
 INPUT_SCHEMA = {
     "type": "object",
@@ -177,15 +189,22 @@ def run(agent_id: int = 0, **_: object) -> dict:
         "checked_at_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(checked_at)),
         "network": "base",
         "registry": "ERC-8004",
+        # --- ATTESTED FACTS (read live from the on-chain registries) ---
         "registered": True,
         "owner": owner,
         "verified_wallet": verified_wallet,
         "agent_card": agent_card,
         "reputation_feedback_count": feedback_count,
         "reputation_score": rep_score,
-        "trust_score": trust,
+        # --- ONYX RATING (derived opinion over the facts above) ---
+        "onyx_rating": verdict,
+        "onyx_trust_score": trust,
+        "rating_is_opinion": True,
+        "rating_methodology": _METHODOLOGY,
+        # back-compat aliases (deprecated; prefer onyx_rating / onyx_trust_score)
         "verdict": verdict,
-        "summary": f"{verdict} (trust {trust}/100): {note}.",
+        "trust_score": trust,
+        "summary": f"Onyx rating {verdict} (trust {trust}/100, opinion): {note}. On-chain facts attested.",
     }, tool=NAME)
 
 
