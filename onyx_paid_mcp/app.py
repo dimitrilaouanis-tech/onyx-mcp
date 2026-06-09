@@ -704,7 +704,15 @@ class App:
                 "additionalInterfaces": [
                     {"transport": "HTTP+JSON", "url": f"{base}/v1/"},
                     {"transport": "MCP", "url": f"{base}/mcp/"},
+                    {"transport": "HTTP+JSON", "url": f"{base}/connect"},
                 ],
+                "contact": {
+                    "connect": f"{base}/connect",
+                    "free": True,
+                    "auth": "none",
+                    "accepts": ["{\"message\":\"...\"}", "A2A message/send"],
+                    "note": "Free, no-key front door — POST a message and Onyx auto-replies (Ed25519-signed). The deeper skills are pay-per-call over x402.",
+                },
                 "x402": {"manifest": f"{base}/.well-known/x402.json", "network": self.network_caip, "asset": "USDC"},
                 "erc8004": {
                     "identity_registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
@@ -713,6 +721,78 @@ class App:
                 },
                 "attestation": {"alg": "Ed25519+JCS", "pubkey": f"{base}/.well-known/onyx-pubkey"},
             }
+
+        @api.post("/connect", include_in_schema=False)
+        @api.post("/a2a", include_in_schema=False)
+        async def _connect(body: dict = Body(default_factory=dict)):
+            """The fourth way — a FREE, no-key front door for agents.
+
+            Tell any agent "go connect with agents" and this is what answers:
+            it accepts a plain {"message": "..."} OR an A2A JSON-RPC
+            `message/send`, and Onyx auto-replies in its own voice with an
+            Ed25519-signed payload (even the hello is provable). No x402, no
+            account — meeting is free; the deeper skills are pay-per-call.
+            """
+            base = (self.public_url or "").rstrip("/")
+            is_rpc = isinstance(body, dict) and body.get("method") == "message/send"
+            rpc_id = body.get("id") if is_rpc else None
+            if is_rpc:
+                params = body.get("params") or {}
+                msg = params.get("message") or {}
+                parts = msg.get("parts") or []
+                incoming = " ".join(
+                    p.get("text", "") for p in parts if isinstance(p, dict)
+                ).strip()
+                sender = params.get("from") or msg.get("role") or "agent"
+            else:
+                incoming = str(body.get("message") or body.get("text") or "").strip()
+                sender = str(body.get("from") or "agent")
+
+            sample = [
+                {"id": t.name, "price_usdc": t.price_usdc,
+                 "what": (t.description or "")[:80]}
+                for t in tools
+                if any(k in t.name for k in ("verify", "reputation", "aml", "guard", "attest"))
+            ][:5]
+
+            reply_text = (
+                "Hello — this is Onyx, the security & trust layer for the agentic web. "
+                + (f'You said: "{incoming[:160]}". ' if incoming else "")
+                + "I verify agents, contracts, and real-world facts and return "
+                "Ed25519-signed verdicts that can't be faked. Meeting is free; my "
+                "skills are pay-per-call over x402 (USDC on Base). "
+                f"Start here: {base}/.well-known/agent-card.json"
+            )
+            payload = {
+                "from": "onyx",
+                "agent": self.name,
+                "in_reply_to": sender,
+                "your_message": incoming[:500],
+                "reply": reply_text,
+                "capabilities_sample": sample,
+                "discover": {
+                    "agent_card": f"{base}/.well-known/agent-card.json",
+                    "x402_manifest": f"{base}/.well-known/x402.json",
+                    "mcp": f"{base}/mcp/",
+                    "pubkey": f"{base}/.well-known/onyx-pubkey",
+                },
+            }
+            try:
+                from tools_pkg import _onyx_sign
+                payload = _onyx_sign.attest(payload, tool="onyx_connect", public_url=base)
+            except Exception:
+                pass
+            if is_rpc:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": rpc_id,
+                    "result": {
+                        "role": "agent",
+                        "parts": [{"kind": "text", "text": reply_text}],
+                        "metadata": payload,
+                    },
+                }
+            return payload
 
         @api.get("/.well-known/agent", include_in_schema=False)
         @api.get("/.well-known/agent.json", include_in_schema=False)

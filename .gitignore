@@ -9,6 +9,12 @@ _bazaar_volume.json
 *_bazaar_data.json
 *_bazaar_volume.json
 
+# Onyx signing identity — NEVER commit (leaking it lets anyone forge our signatures)
+_onyx_sign_key.b64
+*_sign_key.b64
+*.privkey
+_onyx_sign_key*
+
 # Local-only outreach prep (never push)
 onyx-pr-listings.md
 *-pr-listings.md

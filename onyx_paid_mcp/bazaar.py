@@ -80,6 +80,18 @@ class Cache:
                     headers={"content-type": "application/json"},
                     timeout=QUALITY_PROBE_TIMEOUT,
                 )
+                # Tombstone check: a permanently-removed resource must not linger in
+                # our catalog. 410 Gone / 404 Not Found are definitive — purge them.
+                # (5xx and timeouts can be transient cold-starts, so we keep those.)
+                if r.status_code in (404, 410):
+                    return res, {
+                        "ok": False,
+                        "score": 0,
+                        "status": r.status_code,
+                        "dead": True,
+                        "reason": f"tombstone_http_{r.status_code}",
+                        "ts": time.time(),
+                    }
                 score = 40
                 ok = True
                 reason = "reachable"
@@ -210,6 +222,11 @@ def ranked(view: str = "volume", limit: int = 100) -> list[dict]:
         q = _q(it)
         res = it.get("resource", "")
         qual = cache.quality.get(res, {})
+        # Self-cleaning catalog: never surface a resource we've confirmed is a
+        # tombstone (upstream 410 Gone / 404 Not Found). Keeps dead routes like a
+        # decommissioned competitor endpoint out of our public listing.
+        if qual.get("dead"):
+            continue
         rows.append({
             "resource": res,
             "domain": _domain(it),
