@@ -34,7 +34,7 @@ from . import retail_price_check as _rpc
 from . import _onyx_sign
 
 NAME = "onyx_geo_verify"
-PRICE_USDC = "0.03"
+PRICE_USDC = "0.25"
 TIER = "metered"
 DESCRIPTION = (
     "Geo ground-truth oracle. Give a URL (optionally an expected price / "

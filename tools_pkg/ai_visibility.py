@@ -31,7 +31,7 @@ import urllib.request
 from . import _onyx_sign
 
 NAME = "onyx_ai_visibility"
-PRICE_USDC = "0.10"
+PRICE_USDC = "0.20"
 TIER = "premium"
 DESCRIPTION = (
     "AI answer-engine visibility (GEO) oracle. Give a brand/product (+ optional "

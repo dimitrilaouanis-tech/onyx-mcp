@@ -31,7 +31,7 @@ import urllib.request
 from . import _onyx_sign
 
 NAME = "onyx_tx_guard"
-PRICE_USDC = "0.05"
+PRICE_USDC = "0.10"
 TIER = "metered"
 DESCRIPTION = (
     "Pre-payment security firewall. Give the recipient address your agent is "

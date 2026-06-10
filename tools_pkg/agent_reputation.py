@@ -26,7 +26,7 @@ import urllib.request
 from . import _onyx_sign
 
 NAME = "onyx_agent_reputation"
-PRICE_USDC = "0.05"
+PRICE_USDC = "0.25"
 TIER = "metered"
 DESCRIPTION = (
     "Vet another AI agent before you trust it — via the live ERC-8004 registries "

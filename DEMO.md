@@ -63,9 +63,9 @@ A2A AgentCard: `https://onyx-actions.onrender.com/.well-known/agent-card.json`
 | Tool | Does | Price |
 |---|---|---|
 | `onyx_secure_payment` | one signed clearance before any payment | $0.25 |
-| `onyx_tx_guard` | pre-payment recipient firewall | $0.05 |
+| `onyx_tx_guard` | pre-payment recipient firewall | $0.10 |
 | `onyx_contract_audit` | audits the contract **as deployed** (proxy/self-destruct + static + AI) | $0.50 |
-| `onyx_agent_reputation` | live ERC-8004 trust oracle — vet another agent | $0.05 |
+| `onyx_agent_reputation` | live ERC-8004 trust oracle — vet another agent | $0.25 |
 | `onyx_aml_screen` | sanctions / AML | $0.25 |
 | `onyx_attestation_verify` | prove any Onyx verdict is genuine + untampered | **free** |
 

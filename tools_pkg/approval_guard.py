@@ -28,7 +28,7 @@ from . import _onyx_sign
 from . import base_contract_verify as _bcv
 
 NAME = "onyx_approval_guard"
-PRICE_USDC = "0.03"
+PRICE_USDC = "0.10"
 TIER = "metered"
 DESCRIPTION = (
     "Pre-approval firewall — the safety check before your agent signs a token "

@@ -20,7 +20,7 @@ from .ai_visibility import _exa_answer, _sentiment  # one Exa impl, fix-in-one-p
 import os
 
 NAME = "onyx_review_truth"
-PRICE_USDC = "0.06"
+PRICE_USDC = "0.15"
 TIER = "premium"
 DESCRIPTION = (
     "Reputation ground-truth oracle. Give a product/business/service (+ optional "
