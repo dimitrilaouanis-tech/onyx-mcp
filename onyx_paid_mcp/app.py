@@ -644,6 +644,24 @@ class App:
                 "receipts": [ar1_receipts[i] for i in ids],
             }
 
+        @api.get("/.well-known/onyx-attestation/v1.json", include_in_schema=False)
+        @api.get("/.well-known/onyx-attestation/v1", include_in_schema=False)
+        async def _oa1_spec():
+            """OA-1 spec — the URL every onyx_attestation block points at.
+            Served from the repo .well-known dir so the spec updates without
+            touching app.py (same pattern as AR-1)."""
+            from pathlib import Path as _Path
+            for p in (
+                _Path("./.well-known/onyx-attestation/v1.json"),
+                _Path(__file__).parent.parent / ".well-known/onyx-attestation/v1.json",
+            ):
+                if p.exists():
+                    import json as _json
+                    return JSONResponse(_json.loads(p.read_text(encoding="utf-8")))
+            return JSONResponse({
+                "error": "OA-1 spec not bundled. See https://github.com/dimitrilaouanis-tech/onyx-mcp"
+            }, status_code=404)
+
         @api.get("/.well-known/onyx-pubkey", include_in_schema=False)
         async def _well_known_onyx_pubkey():
             """The Ed25519 public key that signs every onyx_attestation. Lets anyone

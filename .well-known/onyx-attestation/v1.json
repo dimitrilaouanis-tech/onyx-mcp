@@ -1,0 +1,92 @@
+{
+  "name": "Onyx Attestation",
+  "short_name": "OA-1",
+  "alt_names": [
+    "Proof-of-Outcome Protocol (PoO)",
+    "Verifiable Verdict Envelope (VVE)"
+  ],
+  "version": "1.0",
+  "spec_url": "https://onyx-actions.onrender.com/.well-known/onyx-attestation/v1",
+  "tagline": "The accountability layer for the agentic web: sign what you observed, then bind what actually happened.",
+  "description": "An open, two-part protocol. Part 1 (Attestation): any service signs its output with Ed25519 over the RFC-8785 (JCS) canonical JSON of the payload, embedding the hash, key id, and public key so any third party can verify the claim offline. Part 2 (Outcome Binding): after the fact, anyone can report what really happened, bound to the original attestation by its observed_hash and accepted ONLY if the signature verifies. The result is a tamper-evident verdict-to-outcome graph: measured precision instead of asserted trust. MCP lets agents act, A2A lets them talk, x402 lets them pay, ERC-8004 says who they are. OA-1 is the missing layer: PROOF of what they claimed and how it turned out.",
+  "positioning": {
+    "complementary_to": [
+      {
+        "name": "MCP",
+        "role": "agent tool invocation",
+        "oa1_relation": "any MCP tool result can carry an oa1 attestation block; the tool becomes accountable, not just callable"
+      },
+      {
+        "name": "A2A",
+        "role": "agent-to-agent messaging",
+        "oa1_relation": "A2A task artifacts can embed OA-1 envelopes so cross-agent claims are verifiable, not conversational"
+      },
+      {
+        "name": "x402",
+        "role": "per-call agent payments",
+        "oa1_relation": "OA-1 is what makes a paid API answer worth paying for: the response is signed and its track record is measurable"
+      },
+      {
+        "name": "ERC-8004",
+        "role": "agent identity + reputation registry",
+        "oa1_relation": "ERC-8004 says WHO an agent is; OA-1 measures whether what that agent SAYS turns out to be TRUE"
+      },
+      {
+        "name": "AR-1 (Onyx Action Receipt)",
+        "role": "payment-to-side-effect evidence envelope",
+        "oa1_relation": "sibling spec, same key infrastructure; AR-1 proves an ACTION happened, OA-1 proves a CLAIM was made and scores it against reality"
+      }
+    ]
+  },
+  "part_1_attestation": {
+    "field": "onyx_attestation",
+    "placement": "a single reserved key added to any JSON object the issuer wants to seal",
+    "envelope": {
+      "alg": "Ed25519+JCS",
+      "kid": "issuer key id: '<issuer>-' + first 16 hex chars of sha256(raw public key)",
+      "public_key": "base64url (unpadded) raw 32-byte Ed25519 public key, embedded for offline verification",
+      "tool": "name of the tool/service that produced the payload",
+      "observed_hash": "'sha256:' + hex sha256 of the JCS-canonical payload with the attestation key removed. THIS IS THE CLAIM ID.",
+      "signed_at": "unix seconds",
+      "spec": "this URL",
+      "verify_pubkey_at": "issuer URL serving the current public key",
+      "sig": "base64url (unpadded) Ed25519 signature over the same canonical bytes the hash covers"
+    },
+    "verification": [
+      "1. remove the onyx_attestation key from the payload",
+      "2. canonicalize the remainder per RFC-8785 (JCS): sorted keys, compact separators, UTF-8, no ascii-escaping",
+      "3. recompute sha256; it MUST equal observed_hash (integrity)",
+      "4. verify sig with public_key over the canonical bytes (authenticity)",
+      "5. optionally cross-check public_key against verify_pubkey_at (issuer binding)"
+    ],
+    "free_reference_verifier": "POST https://onyx-actions.onrender.com/v1/onyx_attestation_verify {\"payload\": <signed object>}"
+  },
+  "part_2_outcome_binding": {
+    "claim_id": "the attestation's observed_hash is the stable, content-addressed id of the claim",
+    "report": "POST an outcome referencing the ORIGINAL signed object; the receiver MUST verify the signature before accepting (no outcome may bind to a claim the issuer never signed)",
+    "outcome_vocabulary": {
+      "bad": ["drained", "reverted", "reported_scam", "funds_lost", "funds_unrecoverable", "honeypot_confirmed", "eoa_spender_confirmed", "unverified_confirmed"],
+      "good": ["settled_clean", "confirmed_safe", "no_loss", "verified_legit"],
+      "correction": ["false_positive"]
+    },
+    "derived_metrics": {
+      "block_precision": "of all stop-verdicts (BLOCK/FAIL/REVIEW), the fraction whose outcome confirmed a real threat",
+      "allow_miss_rate": "of all pass-verdicts (ALLOW/PASS), the fraction whose outcome went bad (lower is better)"
+    },
+    "free_reference_endpoints": {
+      "report": "POST https://onyx-actions.onrender.com/v1/onyx_outcome_report",
+      "track_record": "POST https://onyx-actions.onrender.com/v1/onyx_track_record"
+    }
+  },
+  "design_rules": [
+    "self-contained: every envelope carries its own public key; verification needs no network call",
+    "content-addressed: the claim id IS the hash of the claim; no registry required",
+    "issuer-neutral: anyone may implement OA-1 with their own keypair; 'onyx_attestation' is the reserved field name, the issuer is identified by kid/public_key",
+    "outcome integrity: an outcome is only as good as the signature it binds to; unverifiable reports MUST be rejected",
+    "facts not judgments: sign observations and verdicts with disclosed methodology; the track record, not the issuer, supplies the credibility"
+  ],
+  "reference_implementation": "https://github.com/dimitrilaouanis-tech/onyx-mcp (tools_pkg/_onyx_sign.py, tools_pkg/_ledger.py, tools_pkg/outcome_report.py, tools_pkg/track_record.py)",
+  "license": "Spec text CC0; reference implementation MIT.",
+  "status": "live",
+  "contact": "https://onyx-actions.onrender.com/.well-known/agent-card.json"
+}
