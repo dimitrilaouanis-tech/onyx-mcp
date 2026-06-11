@@ -1,12 +1,12 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.dimitrilaouanis-tech/onyx-mcp",
-  "description": "57 paid x402 tools on Base — on-chain, captcha, browser, MCP-ops, research intel.",
+  "description": "63 paid x402 tools live on Base mainnet — Ed25519-signed ground-truth oracle (merchant facts, retail price, geo), pre-sign tx safety gates, on-chain intel, browser, research.",
   "repository": {
     "url": "https://github.com/dimitrilaouanis-tech/onyx-mcp",
     "source": "github"
   },
-  "version": "0.3.0",
+  "version": "0.4.0",
   "websiteUrl": "https://onyx-actions.onrender.com",
   "remotes": [
     {
