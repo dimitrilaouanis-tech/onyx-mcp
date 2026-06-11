@@ -67,7 +67,10 @@ def _fetch(url: str, timeout: float = 8.0) -> tuple[int | None, dict | None, str
             "Accept": "application/json",
         })
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            raw = resp.read(131072).decode("utf-8", "replace")
+            # 4 MiB cap: large catalogs (80+ tools) push openapi.json past the
+            # old 128 KiB limit, which silently truncated the JSON and produced
+            # false "0 paid routes" audits. Bounded to stay SSRF/DoS-safe.
+            raw = resp.read(4_194_304).decode("utf-8", "replace")
             try:
                 return resp.status, json.loads(raw), raw, ""
             except Exception:
