@@ -732,6 +732,14 @@ class App:
                     "note": "Free, no-key front door — POST a message and Onyx auto-replies (Ed25519-signed). The deeper skills are pay-per-call over x402.",
                 },
                 "x402": {"manifest": f"{base}/.well-known/x402.json", "network": self.network_caip, "asset": "USDC"},
+                "rights": {
+                    "spec": "usage-rights-envelope/v0",
+                    "policy": f"{base}/.well-known/rights.json",
+                    "per_output_header": "X-Onyx-Rights",
+                    "custom_terms_tool": "onyx_usage_rights",
+                    "free_verify": f"{base}/verify",
+                    "note": "Every paid output carries a signed usage-rights envelope (resale/redistribute/derivatives/retrain/cache_ttl), hash-bound to the output. Verification is free; custom terms via onyx_usage_rights.",
+                },
                 "erc8004": {
                     "identity_registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
                     "reputation_registry": "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
@@ -811,6 +819,33 @@ class App:
                     },
                 }
             return payload
+
+        @api.post("/verify", include_in_schema=False)
+        async def _verify(body: dict = Body(default_factory=dict)):
+            """FREE verification booth. POST any Onyx-signed payload (an ORE-1
+            rights envelope, an attested tool output, a /connect reply) and get
+            a verdict. Free verify is what makes the signed stamp the default;
+            issuance is the paid side. No key, no payment."""
+            try:
+                from tools_pkg import _onyx_sign
+                # Accept either the payload directly or wrapped in {"payload": ...}
+                target = body.get("payload") if isinstance(body.get("payload"), dict) else body
+                verdict = _onyx_sign.verify(target or {})
+                return {
+                    "service": self.name,
+                    "spec": (target or {}).get("spec") or "onyx_attestation",
+                    "verdict": verdict,
+                    "note": "ok=true means the payload is byte-identical to what "
+                            "the issuer signed. Any edit flips it to false.",
+                }
+            except Exception as e:
+                return {"service": self.name, "verdict": {"ok": False, "reason": f"error: {str(e)[:120]}"}}
+
+        @api.get("/.well-known/rights.json", include_in_schema=False)
+        async def _well_known_rights():
+            """ORE-1 server rights card — what buying from this agent grants."""
+            from tools_pkg import _rights
+            return _rights.policy_card(issuer=self.name, public_url=self.public_url)
 
         @api.get("/.well-known/agent", include_in_schema=False)
         @api.get("/.well-known/agent.json", include_in_schema=False)
@@ -1089,6 +1124,21 @@ class App:
                         resp.headers["X-Onyx-AR1-Kid"] = ar1_signer.kid
                         resp.headers["X-Onyx-AR1-Spec"] = "v1.1"
                         resp.headers["X-Onyx-AR1-Receipt"] = ar1_signer.receipt_envelope_header(receipt)
+                        # usage-rights stamp — signed declaration of what the
+                        # buyer may do with this exact output (hash-bound).
+                        # Reference impl of USAGE_RIGHTS_v0 §x402-binding. Same
+                        # side-channel rule as AR-1.
+                        from base64 import urlsafe_b64encode as _b64e
+                        from tools_pkg import _rights
+                        ore = _rights.stamp(
+                            out,
+                            licensor=self.name,
+                            payment_ref=(x_payment_response.strip() or None),
+                        )
+                        resp.headers["X-Onyx-Rights"] = _b64e(
+                            _json.dumps(ore, separators=(",", ":")).encode("utf-8")
+                        ).decode("ascii").rstrip("=")
+                        resp.headers["X-Onyx-Rights-Spec"] = _rights.SPEC
                 except Exception as e:
                     import sys
                     sys.stderr.write(f"[ar1] mint failed for {t.name}: {type(e).__name__}: {str(e)[:200]}\n")
