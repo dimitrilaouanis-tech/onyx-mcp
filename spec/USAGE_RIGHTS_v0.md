@@ -61,7 +61,23 @@ artifacts whose rights grid says `resale: deny` — enforcement by the rail.
 - EU AI Act obligations (Aug 2 2026) push provenance/usage records for AI
   outputs; a portable signed terms record is the cheap compliance artifact.
 
+## Transport bindings (live reference implementation)
+
+Two ways to attach the envelope, both live on `onyx-actions.onrender.com`:
+
+1. **Custom terms (pull):** call the `onyx_usage_rights` tool ($0.01) with your
+   artifact + rights grid → returns the signed envelope.
+2. **Default terms (push, zero-effort):** **every paid response** automatically
+   carries the envelope in the **`X-Onyx-Rights`** header (base64url of the
+   compact JSON; `X-Onyx-Rights-Spec: usage-rights-envelope/v0`), hash-bound to
+   the response body and echoing the x402 `payment_ref`. The issuer's default
+   grid is published, signed, at **`GET /.well-known/rights.json`**.
+
 ## Verify
 
 Generic PCC verification (~45 lines, no vendor code): detach `attestation`,
 JCS-canonicalize, recompute SHA-256, check Ed25519. See `spec/verify_example.py`.
+
+Or use the **free, no-key booth**: `POST /verify` with the envelope → `{verdict:
+{ok, reason}}`. Free verification is what makes the signed stamp a *default*
+rather than a gate — issuance rides paid calls; checking is always free.
