@@ -712,7 +712,25 @@ class App:
                 "preferredTransport": "HTTP+JSON",
                 "provider": {"organization": "Onyx Protocol", "url": "https://onyxprotocol.io"},
                 "version": "1.0.0",
-                "capabilities": {"streaming": False, "pushNotifications": False, "stateTransitionHistory": False},
+                "capabilities": {
+                    "streaming": False,
+                    "pushNotifications": False,
+                    "stateTransitionHistory": False,
+                    # A2A extension mechanism: anyone may define and declare an
+                    # extension by URI. Ours: signed usage-rights on outputs.
+                    "extensions": [
+                        {
+                            "uri": f"{base}/ext/usage-rights/v0",
+                            "description": "usage-rights-envelope/v0 — signed, hash-bound declaration of what a buyer may do with a purchased output (resale/redistribute/derivatives/retrain/cache_ttl). Data-only: envelope rides Artifact.metadata.usage_rights or the X-Onyx-Rights HTTP header.",
+                            "required": False,
+                            "params": {
+                                "spec": "usage-rights-envelope/v0",
+                                "free_verify": f"{base}/verify",
+                                "policy": f"{base}/.well-known/rights.json",
+                            },
+                        }
+                    ],
+                },
                 "defaultInputModes": ["application/json"],
                 "defaultOutputModes": ["application/json"],
                 "skills": skills[:40],
@@ -843,9 +861,35 @@ class App:
 
         @api.get("/.well-known/rights.json", include_in_schema=False)
         async def _well_known_rights():
-            """ORE-1 server rights card — what buying from this agent grants."""
+            """Server rights card — what buying from this agent grants."""
             from tools_pkg import _rights
             return _rights.policy_card(issuer=self.name, public_url=self.public_url)
+
+        @api.get("/ext/usage-rights/v0", include_in_schema=False)
+        async def _ext_usage_rights():
+            """A2A extension descriptor — the stable URI other agents dereference
+            when they see this extension declared in our AgentCard."""
+            base = (self.public_url or "").rstrip("/")
+            return {
+                "extension": "usage-rights-envelope/v0",
+                "type": "data-only",
+                "summary": "Signed, hash-bound usage-rights terms for purchased agent outputs. Unstated rights default to deny; any edit breaks the hash.",
+                "carriers": {
+                    "a2a": "Artifact.metadata.usage_rights",
+                    "http": "X-Onyx-Rights response header (base64url compact JSON)",
+                },
+                "vocabulary": {
+                    "keys": ["resale", "redistribute", "derivatives", "retrain", "cache_ttl_seconds"],
+                    "values": ["allow", "deny", "with-attribution", "contact-licensor"],
+                },
+                "signature_profile": "Ed25519 over RFC8785/JCS canonical form (eddsa-jcs-2022 compatible)",
+                "spec": "https://github.com/dimitrilaouanis-tech/onyx-mcp/blob/main/spec/USAGE_RIGHTS_v0.md",
+                "internet_draft": "https://github.com/dimitrilaouanis-tech/onyx-mcp/blob/main/spec/draft-laouanis-agent-usage-rights-00.md",
+                "free_verify": f"{base}/verify",
+                "policy_card": f"{base}/.well-known/rights.json",
+                "custom_terms_tool": f"{base}/v1/onyx_usage_rights",
+                "license": "spec CC-BY-4.0, reference code MIT",
+            }
 
         @api.get("/.well-known/agent", include_in_schema=False)
         @api.get("/.well-known/agent.json", include_in_schema=False)
