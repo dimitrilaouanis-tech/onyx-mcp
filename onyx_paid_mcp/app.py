@@ -758,6 +758,11 @@ class App:
                     "free_verify": f"{base}/verify",
                     "note": "Every paid output carries a signed usage-rights envelope (resale/redistribute/derivatives/retrain/cache_ttl), hash-bound to the output. Verification is free; custom terms via onyx_usage_rights.",
                 },
+                "governance": {
+                    "terms": f"{base}/.well-known/terms.json",
+                    "methodology": f"{base}/.well-known/methodology.json",
+                    "note": "Published, signed terms of service and observation methodology — the neutral-attestor posture, auditable by any agent.",
+                },
                 "erc8004": {
                     "identity_registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
                     "reputation_registry": "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
@@ -864,6 +869,64 @@ class App:
             """Server rights card — what buying from this agent grants."""
             from tools_pkg import _rights
             return _rights.policy_card(issuer=self.name, public_url=self.public_url)
+
+        @api.get("/terms", include_in_schema=False)
+        @api.get("/.well-known/terms.json", include_in_schema=False)
+        async def _terms():
+            """Official posture: published terms of service, signed. A neutral
+            attestor's terms are themselves an attestation."""
+            from tools_pkg import _onyx_sign
+            base = (self.public_url or "").rstrip("/")
+            card = {
+                "service": self.name,
+                "operator": "Onyx Protocol",
+                "version": "1.0",
+                "terms": {
+                    "what_we_sell": "Machine-verifiable observations and verdicts, each Ed25519-signed and hash-bound to its content.",
+                    "neutrality": "Onyx is an independent attestor. We hold no stake in any marketplace, merchant, or agent we observe, and we sign facts, not judgments.",
+                    "facts_not_judgments": "Every attestation records what was observed or declared at a point in time — never an opinion of fairness, quality, or legality.",
+                    "data_sources": "Public, lawfully accessible sources only. Methodology per observation type is published at /methodology.",
+                    "no_warranty": "Observations are accurate as of observed_at to the best of the stated method. No warranty of fitness; not legal or financial advice.",
+                    "payment": "Pay-per-call over x402 (USDC). No accounts, no API keys, no stored buyer data beyond payment receipts.",
+                    "usage_rights": "Default output terms are published, signed, at /.well-known/rights.json and stamped per-response (X-Onyx-Rights).",
+                    "disputes": "Any holder can verify any Onyx output free at /verify. A failed verification is grounds for a refund claim via the payment reference.",
+                },
+                "contact": f"{base}/connect",
+            }
+            return _onyx_sign.attest(card, tool="terms", public_url=base)
+
+        @api.get("/methodology", include_in_schema=False)
+        @api.get("/.well-known/methodology.json", include_in_schema=False)
+        async def _methodology():
+            """Official posture: published observation methodology, signed.
+            Regulated-grade oracles publish how they observe — so verifiers can
+            audit the method, not just the signature."""
+            from tools_pkg import _onyx_sign
+            base = (self.public_url or "").rstrip("/")
+            card = {
+                "service": self.name,
+                "version": "1.0",
+                "principles": [
+                    "Observe public, lawfully accessible sources only.",
+                    "Record the method and source class inside each attestation (method field).",
+                    "Sign at observation time; observed_at is part of the sealed payload.",
+                    "Never alter an observation post-signature — corrections are issued as new attestations, never edits.",
+                    "Sign facts, not judgments: outputs state what was observed or declared, not whether it is good, fair, or lawful.",
+                ],
+                "methods": {
+                    "licensor-declaration": "The signer declares their own terms (e.g. usage_rights). Attests the declaration, not its merit.",
+                    "direct-observation": "Onyx fetched the source and recorded what it served at observed_at.",
+                    "third-party-api": "Value relayed from a named upstream API; upstream identity recorded in sources.",
+                    "computation": "Deterministic computation over stated inputs (e.g. hash, decode); reproducible by anyone.",
+                },
+                "key_management": {
+                    "algorithm": "Ed25519 over RFC 8785 (JCS) canonical JSON — eddsa-jcs-2022 compatible",
+                    "pubkey": f"{base}/.well-known/onyx-pubkey",
+                    "rotation": "New kid published at the same well-known location; old signatures remain verifiable against their embedded public_key.",
+                },
+                "verification": {"free_endpoint": f"{base}/verify", "independent_verifier": "spec/verify_example.py (~45 lines, zero vendor imports)"},
+            }
+            return _onyx_sign.attest(card, tool="methodology", public_url=base)
 
         @api.get("/ext/usage-rights/v0", include_in_schema=False)
         async def _ext_usage_rights():
