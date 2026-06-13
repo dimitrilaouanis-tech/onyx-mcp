@@ -25,6 +25,33 @@ class Tool:
     tier: str = "metered"
 
 
+def bind_args(tool: "Tool", args: dict | None) -> tuple[dict | None, str | None]:
+    """Validate a call's arguments against the tool's input schema.
+
+    Returns (kwargs, error). On a malformed call this surfaces a helpful message
+    an agent can self-correct from (which required field is missing, what the
+    tool accepts) instead of letting Python raise a bare TypeError that the
+    dispatch layer turns into an opaque 500. Drops unknown kwargs for handlers
+    without **kwargs so an extra field is ignored, not fatal. A genuine internal
+    TypeError raised *inside* the handler still propagates (correctly a 500)."""
+    import inspect
+    args = args or {}
+    schema = tool.input_schema or {}
+    required = schema.get("required") or []
+    missing = [k for k in required if k not in args]
+    if missing:
+        props = list((schema.get("properties") or {}).keys())
+        return None, (
+            f"missing required field(s): {', '.join(missing)}. "
+            f"This tool accepts: {props}. "
+            f"See GET /v1/{tool.name} for the full input schema and an example."
+        )
+    params = inspect.signature(tool.handler).parameters
+    if not any(p.kind == p.VAR_KEYWORD for p in params.values()):
+        args = {k: v for k, v in args.items() if k in params}
+    return args, None
+
+
 def tool(
     *,
     name: str,
@@ -392,9 +419,17 @@ class App:
                 }
                 return [mcp_types.TextContent(type="text", text=json.dumps(challenge))]
             # Free-tier tool — run normally.
-            result = t.handler(**(arguments or {}))
-            if asyncio.iscoroutine(result):
-                result = await result
+            kwargs, bind_err = bind_args(t, arguments)
+            if bind_err:
+                return [mcp_types.TextContent(type="text", text=json.dumps(
+                    {"error": "invalid_arguments", "detail": bind_err}))]
+            try:
+                result = t.handler(**kwargs)
+                if asyncio.iscoroutine(result):
+                    result = await result
+            except (ValueError, NotImplementedError) as e:
+                return [mcp_types.TextContent(type="text", text=json.dumps(
+                    {"error": "invalid_arguments", "detail": str(e)}))]
             return [mcp_types.TextContent(type="text", text=json.dumps(result))]
 
         session = StreamableHTTPSessionManager(app=mcp_app, json_response=False, stateless=True)
@@ -1191,8 +1226,11 @@ class App:
                 x_onyx_kya_credential: str = Header(default=""),
                 x_payment_response: str = Header(default=""),
             ):
+                kwargs, bind_err = bind_args(t, body)
+                if bind_err:
+                    raise HTTPException(400, bind_err)
                 try:
-                    out = t.handler(**(body or {}))
+                    out = t.handler(**kwargs)
                     if asyncio.iscoroutine(out):
                         out = await out
                 except (ValueError, NotImplementedError) as e:
