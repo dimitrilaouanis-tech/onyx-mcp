@@ -106,3 +106,57 @@ def leaderboard(limit: int = 25) -> dict:
         "wall_of_the_defeated": recent,
         "verify_pubkey_at": "/.well-known/onyx-pubkey",
     }
+
+
+def render_board_html(base: str = "https://onyx-actions.onrender.com") -> str:
+    """The spectacle board — screenshot-bait. Server-rendered, auto-refresh."""
+    s = _STATS
+    rows = "".join(
+        f"<tr><td>#{a['n']}</td><td class=ch>{a['challenger']}</td>"
+        f"<td class=rj>{a['result']}</td><td class=rs>{a['reason']}</td></tr>"
+        for a in reversed(_ATTEMPTS[-30:])
+    ) or "<tr><td colspan=4 class=empty>No challengers yet. Be the first to try.</td></tr>"
+    return f"""<!doctype html><html lang=en><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<meta http-equiv=refresh content=15>
+<title>Fool the Oracle — Onyx</title>
+<meta property="og:title" content="Fool the Oracle — {s['attempts']} attempts, 0 forgeries passed, $0 lost">
+<meta property="og:description" content="Make Onyx sign a lie and win the pot. It's Ed25519 — you can't. Every attack signed and rejected on-chain.">
+<style>
+:root{{color-scheme:dark}}
+*{{box-sizing:border-box}}
+body{{font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#07070a;color:#e8e8ea;margin:0;padding:40px 18px;max-width:880px;margin:0 auto}}
+h1{{font-size:34px;letter-spacing:-.02em;margin:0 0 6px}}
+.sub{{color:#8a8a93;margin:0 0 28px}}
+.grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:0 0 28px}}
+.stat{{background:#0e0e14;border:1px solid #1d1d28;border-radius:12px;padding:22px 16px;text-align:center}}
+.stat .n{{font-size:40px;font-weight:700;letter-spacing:-.03em}}
+.stat .l{{color:#8a8a93;font-size:12px;text-transform:uppercase;letter-spacing:.1em;margin-top:6px}}
+.green{{color:#34d399}} .gold{{color:#fbbf24}} .red{{color:#f87171}}
+.rule{{background:#0e0e14;border:1px solid #1d1d28;border-left:3px solid #fbbf24;border-radius:8px;padding:16px 18px;margin:0 0 28px;color:#cfcfd6}}
+table{{width:100%;border-collapse:collapse;font-size:13px}}
+th{{text-align:left;color:#6a6a73;font-weight:400;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:8px 10px;border-bottom:1px solid #1d1d28}}
+td{{padding:9px 10px;border-bottom:1px solid #141420}}
+.ch{{color:#7dd3fc}} .rj{{color:#f87171;font-weight:600}} .rs{{color:#8a8a93}} .empty{{text-align:center;color:#6a6a73;padding:24px}}
+.cta{{margin:28px 0 0;display:flex;gap:12px;flex-wrap:wrap}}
+.cta a{{flex:1;min-width:200px;text-align:center;text-decoration:none;padding:14px;border-radius:10px;font-weight:600}}
+.cta .try{{background:#fbbf24;color:#07070a}} .cta .vfy{{background:#0e0e14;border:1px solid #1d1d28;color:#7dd3fc}}
+footer{{color:#56565e;font-size:12px;margin-top:34px;text-align:center}}
+footer a{{color:#7dd3fc}}
+</style></head><body>
+<h1>🖤 Fool the Oracle</h1>
+<p class=sub>Make Onyx sign a lie and the pot is yours. It's Ed25519 — you can't. Every attack is signed and rejected, forever.</p>
+<div class=grid>
+  <div class=stat><div class="n gold">{s['attempts']:,}</div><div class=l>Attempts</div></div>
+  <div class=stat><div class="n green">{s['forgeries_passed']}</div><div class=l>Forgeries passed</div></div>
+  <div class=stat><div class="n green">$0</div><div class=l>Lost</div></div>
+</div>
+<div class=rule><b>The rule:</b> submit a verdict that verifies under Onyx's public key but states a falsehood. The win-check is pure Ed25519 — no AI to talk around (the Freysa lesson). Forging the signature is the only way in, and it's computationally infeasible.</div>
+<h3 style="margin:0 0 8px;color:#cfcfd6">The Wall of the Defeated</h3>
+<table><thead><tr><th>#</th><th>Challenger</th><th>Result</th><th>Reason</th></tr></thead><tbody>{rows}</tbody></table>
+<div class=cta>
+  <a class=try href="{base}/fool">⚔️ Try to fool it (POST /fool)</a>
+  <a class=vfy href="{base}/verify">✓ Verify any Onyx verdict (free)</a>
+</div>
+<footer>Onyx — the independent, neutral trust verdict for the agentic web. Every verdict Ed25519-signed · <a href="{base}/.well-known/onyx-pubkey">public key</a> · <a href="{base}/.well-known/agent-card.json">agent card</a></footer>
+</body></html>"""
