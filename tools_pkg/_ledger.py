@@ -120,6 +120,8 @@ def stats(tool: str | None = None) -> dict:
     per_tool: dict = {}
     per_outcome: dict = {}
     last = 0
+    value_intercepted = 0.0        # at-risk USDC on STOP verdicts confirmed bad
+    value_intercepted_live = 0.0   # same, excluding synthetic seed
     for r in rows:
         v = (r.get("verdict") or "").upper()
         sev = _OUTCOMES.get(r.get("outcome"), "good")
@@ -132,6 +134,11 @@ def stats(tool: str | None = None) -> dict:
         if sev == "bad":
             if stopped:
                 tp += 1            # correctly blocked a real loss
+                amt = r.get("at_risk_usdc")
+                if isinstance(amt, (int, float)) and amt > 0:
+                    value_intercepted += float(amt)
+                    if not str(r.get("detail") or "").startswith("seed:"):
+                        value_intercepted_live += float(amt)
             elif passed:
                 fn += 1            # missed — passed something that went bad
         elif sev == "false_positive":
@@ -152,6 +159,8 @@ def stats(tool: str | None = None) -> dict:
         "allow_miss_rate": miss_rate,           # of our ALLOWs, fraction that went bad (lower=better)
         "by_tool": per_tool,
         "by_outcome": per_outcome,
+        "value_at_risk_intercepted_usdc": round(value_intercepted, 2),       # incl. synthetic seed
+        "value_at_risk_intercepted_live_usdc": round(value_intercepted_live, 2),  # real reports only
         "last_outcome_at": last or None,
         "durable_base_entries": len(_read(_SEED)),
         "live_entries": len(_read(_LIVE)),

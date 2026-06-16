@@ -683,6 +683,14 @@ class App:
                                "not yet a statistical track record (needs real reported "
                                "outcomes; n>=100 for significance)"),
                 },
+                "value_protected": {
+                    "at_risk_intercepted_usdc_live": track.get("value_at_risk_intercepted_live_usdc", 0),
+                    "at_risk_intercepted_usdc_incl_synthetic": track.get("value_at_risk_intercepted_usdc", 0),
+                    "definition": ("sum of the USDC an agent was about to move on transactions Onyx "
+                                   "ruled STOP that were later reported as a confirmed loss. _live "
+                                   "excludes the synthetic seed. Not a counterfactual guarantee — the "
+                                   "amount that was at risk, bound to a signed verdict + reported outcome."),
+                },
                 "live_verdict_record": f"{(self.public_url or '').rstrip('/')}/v1/onyx_track_record",
                 "note": "usage.persistence states whether a durable sink is wired; "
                         "without one, live counts reset on redeploy (Render free tier).",

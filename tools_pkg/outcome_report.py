@@ -81,12 +81,22 @@ def run(signed_verdict: dict | None = None, outcome: str = "", tx_hash: str = ""
 
     att = signed_verdict.get("onyx_attestation") or {}
     verdict_id = att.get("observed_hash")          # stable id = the signed hash
+    # At-risk amount: the USDC value the agent was about to move when Onyx ruled.
+    # Bounded by what the verdict payload actually stated — never invented. Used
+    # for value_at_risk_intercepted (only on a STOP verdict + bad outcome).
+    at_risk = None
+    for k in ("amount_usdc", "amount", "value_usdc", "usdc_amount"):
+        v_amt = signed_verdict.get(k)
+        if isinstance(v_amt, (int, float)) and v_amt > 0:
+            at_risk = float(v_amt)
+            break
     entry = {
         "verdict_id": verdict_id,
         "tool": att.get("tool") or signed_verdict.get("tool") or "",
         "verdict": signed_verdict.get("verdict") or signed_verdict.get("status") or "",
         "risk_score": signed_verdict.get("risk_score"),
         "subject": _subject(signed_verdict),
+        "at_risk_usdc": at_risk,
         "outcome": outcome,
         "severity": valid[outcome],
         "tx_hash": (tx_hash or "").strip() or None,
