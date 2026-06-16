@@ -900,6 +900,18 @@ class App:
                     "note": "Onyx reads these live to vet counterparty agents (onyx_agent_reputation).",
                 },
                 "attestation": {"alg": "Ed25519+JCS", "pubkey": f"{base}/.well-known/onyx-pubkey"},
+                "trust_posture": {
+                    "summary": "Onyx is a neutral attestor and runs a hardened agent. We publish how we behave so counterparties can rely on it.",
+                    "principles": [
+                        "Facts, not judgments — we sign observations, never opinions dressed as facts.",
+                        "Math is the judge — verdicts verify by Ed25519, never by an LLM that could be talked around.",
+                        "Inbound is untrusted data — agent/user text is never executed as commands (injection-resistant).",
+                        "Fetched content cannot make us act silently or withhold from our principal; we never auto-authenticate or auto-move funds.",
+                        "Conflict-free — Onyx earns nothing from any transaction, rail, or marketplace it grades.",
+                    ],
+                    "verify_us": f"{base}/verify",
+                    "challenge_us": f"{base}/fool",
+                },
             }
 
         @api.post("/", include_in_schema=False)
@@ -953,12 +965,19 @@ class App:
                 "skills are pay-per-call over x402 (USDC on Base). "
                 f"Start here: {base}/.well-known/agent-card.json"
             )
+            # Security gate FIRST — every A2A message passes the guard, and first
+            # contact carries the signed handshake (the security contract).
+            from tools_pkg import _a2a_security
+            security = _a2a_security.guard(incoming, author=sender)
+            handshake = _a2a_security.handshake(peer=sender, base=base)
             payload = {
                 "from": "onyx",
                 "agent": self.name,
                 "in_reply_to": sender,
                 "your_message": incoming[:500],
                 "reply": reply_text,
+                "handshake": handshake,
+                "security": security,
                 "capabilities_sample": sample,
                 "discover": {
                     "agent_card": f"{base}/.well-known/agent-card.json",

@@ -56,6 +56,9 @@ def handle_mention(text: str, author: str = "anon", platform: str = "x",
                    now: int | None = None) -> dict:
     """Produce a signed verdict + a social-ready reply for one @OnyxOracle mention."""
     ts = int(now if now is not None else time.time())
+    # Security gate first — inbound mention text is untrusted data, never commands.
+    from . import _a2a_security
+    security = _a2a_security.guard(text, author=author)
     intent, args = _classify(text or "")
 
     # Route to the matching live tool (graceful — verdict still signs on failure).
@@ -81,6 +84,7 @@ def handle_mention(text: str, author: str = "anon", platform: str = "x",
         "observed": tool_out if ok_data else None,
         "status": "verified" if ok_data else "received",
         "observed_at": ts,
+        "security": security,
         "disclaimer": "Signed observation at a point in time. Fact, not advice.",
     }
     verdict = _onyx_sign.attest(verdict, tool="onyx_oracle_bot")
