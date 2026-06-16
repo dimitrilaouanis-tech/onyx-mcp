@@ -1,0 +1,13 @@
+{
+  "name": "oa1",
+  "version": "0.1.0",
+  "description": "OA-1 (Onyx Attestation) reference SDK for JavaScript — sign any agent output into a verifiable claim and verify it offline. Ed25519 over RFC 8785 JCS, byte-for-byte interoperable with the Python signer. Zero dependencies.",
+  "main": "oa1.js",
+  "bin": { "oa1-verify": "oa1.js" },
+  "scripts": { "test": "node example.js" },
+  "keywords": ["oa1", "attestation", "ai-agents", "x402", "a2a", "erc-8004", "ed25519", "jcs", "verifiable", "usage-rights", "provenance"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/dimitrilaouanis-tech/onyx-mcp" },
+  "homepage": "https://onyx-actions.onrender.com/.well-known/onyx-attestation/v1",
+  "engines": { "node": ">=18" }
+}

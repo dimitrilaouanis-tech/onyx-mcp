@@ -57,15 +57,33 @@ Verify = strip `onyx_attestation`, JCS-canonicalize the rest (RFC-8785: sorted k
 UTF-8, no ascii-escaping), recompute sha256 (must equal `observed_hash`), check `sig` with
 `public_key`. Four steps, done in `verify()`.
 
+## JavaScript / TypeScript (`oa1.js`)
+
+Most agents run on JS, so OA-1 ships a Node sibling with the **same API and
+zero dependencies** (Node's built-in `crypto` — no npm install):
+
+```js
+const { sign, verify, claimId, bindOutcome, generateKey } = require('./oa1');
+
+const result = sign({ verdict: 'BLOCK', risk_score: 100 }, { tool: 'my_tool' });
+verify(result);   // { ok: true, kid: 'onyx-...' }
+claimId(result);  // 'sha256:...'
+```
+
+CLI: `node oa1.js envelope.json` verifies a file.
+
+**Cross-language interop is proven both ways:** a claim signed by `oa1.js`
+verifies in `oa1.py` (and the Onyx production signer), and vice-versa —
+byte-identical JCS canonicalization. Run `node example.js` to see it live.
+
 ## Install
 
-No package needed yet — copy `oa1.py` into your project (`pip install cryptography`).
-Run the interop proof:
+No package manager needed — copy one file into your project:
+- **Python:** `oa1.py` (`pip install cryptography`) → `python example.py`
+- **JavaScript:** `oa1.js` (no deps, Node ≥18) → `node example.js`
 
-```bash
-python example.py
-```
+Both are also publishable as-is (Python module / npm `oa1`).
 
 ## License
 
-`oa1.py` and `example.py`: MIT. Spec text: CC0. Implement freely.
+`oa1.py`, `oa1.js`, and the examples: MIT. Spec text: CC0. Implement freely.
