@@ -52,6 +52,35 @@ def bind_args(tool: "Tool", args: dict | None) -> tuple[dict | None, str | None]
     return args, None
 
 
+def _payer_from_x_payment(x_payment: str) -> str | None:
+    """Extract the paying agent's wallet from an x402 X-PAYMENT header
+    (base64 JSON). The payer is payload.authorization.from in v2. Best-effort:
+    returns a 0x address or None, never raises."""
+    if not x_payment or not x_payment.strip():
+        return None
+    import base64 as _b64
+    try:
+        raw = _b64.b64decode(x_payment.strip() + "=" * (-len(x_payment.strip()) % 4))
+        obj = json.loads(raw.decode("utf-8"))
+        # v2 flat {payload:{authorization:{from}}}, tolerate a few nestings
+        for path in (("payload", "authorization", "from"),
+                     ("authorization", "from"),
+                     ("from",)):
+            cur = obj
+            ok = True
+            for k in path:
+                if isinstance(cur, dict) and k in cur:
+                    cur = cur[k]
+                else:
+                    ok = False
+                    break
+            if ok and isinstance(cur, str) and cur.startswith("0x") and len(cur) == 42:
+                return cur.lower()
+    except Exception:
+        return None
+    return None
+
+
 def tool(
     *,
     name: str,
@@ -620,6 +649,40 @@ class App:
         async def _dashboard_json():
             return self._dashboard_data(tools)
 
+        @api.get("/metrics", include_in_schema=False)
+        @api.get("/metrics.json", include_in_schema=False)
+        async def _metrics():
+            """Live usage + revenue + accuracy. The honest fundraise number:
+            real paid calls, distinct paying agents, USDC collected, and the
+            measured verdict->outcome precision. Persistence flag included so
+            the figure is never overstated."""
+            usage = {"paid_calls": 0, "unique_paying_agents": 0, "usdc_collected": 0.0}
+            try:
+                from tools_pkg import _usage
+                usage = _usage.summary()
+            except Exception as e:
+                usage = {"error": str(e)[:120]}
+            track = {}
+            try:
+                from tools_pkg import _ledger
+                track = _ledger.stats()
+            except Exception as e:
+                track = {"error": str(e)[:120]}
+            return JSONResponse({
+                "service": self.name,
+                "network": self.network_caip,
+                "receive_address": self.receive_address,
+                "usage": usage,
+                "accuracy": {
+                    "measured_outcomes": track.get("total_outcomes"),
+                    "block_precision": track.get("block_precision"),
+                    "allow_miss_rate": track.get("allow_miss_rate"),
+                },
+                "live_verdict_record": f"{(self.public_url or '').rstrip('/')}/v1/onyx_track_record",
+                "note": "usage.persistence states whether a durable sink is wired; "
+                        "without one, live counts reset on redeploy (Render free tier).",
+            })
+
         # ----- Agent-native discovery surfaces ---------------------------
         # Every surface returns rich machine-readable metadata. Goal: any
         # autonomous crawler / LLM agent / MCP-aware client finds us in
@@ -743,7 +806,7 @@ class App:
                     "contract audit, ERC-8004 agent reputation, AML/sanctions, and a "
                     "one-call secure-payment clearance. Every verdict Ed25519-signed."
                 ),
-                "url": base or "/",
+                "url": (f"{base}/a2a" if base else "/a2a"),
                 "preferredTransport": "HTTP+JSON",
                 "provider": {"organization": "Onyx Protocol", "url": "https://onyxprotocol.io"},
                 "version": "1.0.0",
@@ -806,6 +869,7 @@ class App:
                 "attestation": {"alg": "Ed25519+JCS", "pubkey": f"{base}/.well-known/onyx-pubkey"},
             }
 
+        @api.post("/", include_in_schema=False)
         @api.post("/connect", include_in_schema=False)
         @api.post("/a2a", include_in_schema=False)
         async def _connect(body: dict = Body(default_factory=dict)):
@@ -818,19 +882,28 @@ class App:
             account — meeting is free; the deeper skills are pay-per-call.
             """
             base = (self.public_url or "").rstrip("/")
-            is_rpc = isinstance(body, dict) and body.get("method") == "message/send"
+            if not isinstance(body, dict):
+                body = {}
+            is_rpc = body.get("method") == "message/send"
             rpc_id = body.get("id") if is_rpc else None
-            if is_rpc:
-                params = body.get("params") or {}
-                msg = params.get("message") or {}
-                parts = msg.get("parts") or []
-                incoming = " ".join(
-                    p.get("text", "") for p in parts if isinstance(p, dict)
-                ).strip()
-                sender = params.get("from") or msg.get("role") or "agent"
-            else:
-                incoming = str(body.get("message") or body.get("text") or "").strip()
-                sender = str(body.get("from") or "agent")
+            try:
+                if is_rpc:
+                    params = body.get("params") or {}
+                    msg = (params.get("message") or {}) if isinstance(params, dict) else {}
+                    parts = msg.get("parts") or []
+                    parts = parts if isinstance(parts, list) else []
+                    incoming = " ".join(
+                        str(p.get("text", "")) for p in parts if isinstance(p, dict)
+                    ).strip()
+                    sender = (params.get("from") or msg.get("role") or "agent") if isinstance(params, dict) else "agent"
+                else:
+                    incoming = str(body.get("message") or body.get("text") or "").strip()
+                    sender = body.get("from") or "agent"
+            except Exception:
+                incoming, sender = "", "agent"
+            # Safety: clamp untrusted input to bounded sizes before any use.
+            incoming = incoming[:2000]
+            sender = str(sender)[:120]
 
             sample = [
                 {"id": t.name, "price_usdc": t.price_usdc,
@@ -877,6 +950,26 @@ class App:
                     },
                 }
             return payload
+
+        @api.post("/fool", include_in_schema=False)
+        async def _fool(body: dict = Body(default_factory=dict)):
+            """FOOL THE ORACLE — the unwinnable adversarial game. Submit what you
+            claim is a genuine Onyx verdict containing a lie; win the pot if it
+            verifies under our key (you'd have to forge Ed25519 — you can't).
+            Every attempt returns a signed REJECTED receipt. The win-check is
+            pure math, never an LLM (the Freysa lesson)."""
+            from tools_pkg import _fool_oracle
+            submission = body.get("submission")
+            if not isinstance(submission, dict):
+                submission = {k: v for k, v in body.items() if k != "challenger"}
+            challenger = str(body.get("challenger") or "anon")
+            return _fool_oracle.attempt(submission, challenger=challenger)
+
+        @api.get("/fool", include_in_schema=False)
+        async def _fool_board():
+            """The Wall of the Defeated — the live counter that IS the ad."""
+            from tools_pkg import _fool_oracle
+            return _fool_oracle.leaderboard()
 
         @api.post("/verify", include_in_schema=False)
         async def _verify(body: dict = Body(default_factory=dict)):
@@ -1225,6 +1318,7 @@ class App:
                 body: dict = Body(default_factory=dict),
                 x_onyx_kya_credential: str = Header(default=""),
                 x_payment_response: str = Header(default=""),
+                x_payment: str = Header(default="", alias="x-payment"),
             ):
                 kwargs, bind_err = bind_args(t, body)
                 if bind_err:
@@ -1242,10 +1336,22 @@ class App:
                 resp = _JSON(out)
                 try:
                     if t.tier != "free":
-                        # Best-effort agent attribution: x402 payment header
-                        # carries the agent's signed authorization; we don't
-                        # parse it here (Phase 3) so we use placeholder.
-                        agent_wallet = "0x" + "0" * 40
+                        # Agent attribution: the x402 X-PAYMENT header carries the
+                        # payer's signed EIP-3009 authorization. Parse the payer so
+                        # receipts + the usage meter count REAL unique agents, not a
+                        # placeholder zero address.
+                        agent_wallet = _payer_from_x_payment(x_payment) or ("0x" + "0" * 40)
+                        # Usage + revenue meter — persistent, the fundraise number.
+                        # Best-effort, never blocks the response.
+                        try:
+                            from tools_pkg import _usage
+                            _usage.record(
+                                tool=t.name, amount_usdc=t.price_usdc,
+                                wallet=agent_wallet, network=self.network_caip,
+                                tx=(x_payment_response.strip() or ""),
+                            )
+                        except Exception:
+                            pass
                         result_hash = "0x" + _sha256(
                             _json.dumps(out, sort_keys=True, separators=(",", ":")).encode("utf-8")
                         ).hexdigest()
@@ -1431,13 +1537,58 @@ class App:
                 },
             }
 
+        # ---- security: per-IP rate limit + body-size cap for the free,
+        # unauthenticated front doors (/, /connect, /a2a, /verify). These take
+        # no payment, so they're the abuse surface — gate them before any work.
+        import time as _time
+        _FREE_PUBLIC = {"/", "/connect", "/a2a", "/verify"}
+        _RL_MAX = 30            # requests
+        _RL_WINDOW = 60.0       # seconds, per client IP
+        _RL_MAX_BODY = 32 * 1024  # 32 KB cap on free-endpoint bodies
+        _rl_hits: dict[str, list] = {}
+
+        def _client_ip(request) -> str:
+            # Honor a single proxy hop (Render sets X-Forwarded-For), else peer.
+            xff = request.headers.get("x-forwarded-for", "")
+            if xff:
+                return xff.split(",")[0].strip()[:45]
+            return (request.client.host if request.client else "unknown")[:45]
+
+        def _rate_limited(ip: str) -> bool:
+            now = _time.monotonic()
+            hits = [t for t in _rl_hits.get(ip, []) if now - t < _RL_WINDOW]
+            if len(hits) >= _RL_MAX:
+                _rl_hits[ip] = hits
+                return True
+            hits.append(now)
+            _rl_hits[ip] = hits
+            if len(_rl_hits) > 10000:  # bound memory; evict stalest bucket
+                _rl_hits.pop(next(iter(_rl_hits)), None)
+            return False
+
         @api.middleware("http")
         async def _gate(request, call_next):
+            from fastapi.responses import JSONResponse
+            # Guardrails on the free public endpoints only — never touch the
+            # paid x402 routes (those are auth'd by payment).
+            if request.method == "POST" and request.url.path in _FREE_PUBLIC:
+                clen = request.headers.get("content-length")
+                if clen and clen.isdigit() and int(clen) > _RL_MAX_BODY:
+                    return JSONResponse(status_code=413,
+                        content={"error": "payload_too_large",
+                                 "max_bytes": _RL_MAX_BODY})
+                ip = _client_ip(request)
+                if _rate_limited(ip):
+                    return JSONResponse(status_code=429,
+                        content={"error": "rate_limited",
+                                 "detail": f"max {_RL_MAX} req / {int(_RL_WINDOW)}s on free endpoints; "
+                                           "the paid x402 skills have no such limit.",
+                                 "retry_after_s": int(_RL_WINDOW)},
+                        headers={"Retry-After": str(int(_RL_WINDOW))})
             try:
                 return await payment_middleware(routes, x402_server)(request, call_next)
             except Exception as e:
                 import sys, traceback
-                from fastapi.responses import JSONResponse
                 sys.stderr.write(
                     f"[gate-error] {type(e).__name__}: {str(e)[:300]} "
                     f"path={request.url.path} method={request.method}\n"
