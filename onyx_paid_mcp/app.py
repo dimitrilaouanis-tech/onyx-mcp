@@ -974,9 +974,14 @@ class App:
             return _fool_oracle.attempt(submission, challenger=challenger)
 
         @api.get("/fool", include_in_schema=False)
-        async def _fool_board():
-            """The Wall of the Defeated — the live counter that IS the ad."""
+        async def _fool_board(accept: str = Header(default="")):
+            """The Wall of the Defeated. Browsers get the spectacle board (HTML,
+            screenshot-bait); API clients get JSON. The live counter IS the ad."""
             from tools_pkg import _fool_oracle
+            if "text/html" in (accept or "").lower():
+                from fastapi.responses import HTMLResponse
+                base = (self.public_url or "").rstrip("/") or ""
+                return HTMLResponse(_fool_oracle.render_board_html(base or "https://onyx-actions.onrender.com"))
             return _fool_oracle.leaderboard()
 
         @api.post("/oracle", include_in_schema=False)

@@ -163,3 +163,10 @@ def bind_outcome(signed_claim: dict, outcome: str, *, tx_hash: str | None = None
         "detail": detail,
         "bound_at": int(time.time()),
     }
+
+
+# Ergonomic alias — the feedback-loop call agents make after acting on a verdict.
+# `report(claim, "confirmed")` reads naturally next to `verify(claim)`. To POST it
+# back to the live ledger so it counts in onyx_track_record, send the returned
+# record to <issuer>/v1/onyx_outcome_report.
+report = bind_outcome

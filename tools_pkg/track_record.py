@@ -40,22 +40,46 @@ def run(tool: str = "", **_: object) -> dict:
     bp = st["block_precision"]
     mr = st["allow_miss_rate"]
 
-    if st["total_outcomes"] == 0:
-        headline = "No outcomes logged yet — call onyx_outcome_report to seed the record."
+    # Honest basis: until REAL outcomes are reported (live_entries > 0), the
+    # only data is the synthetic on-chain-verifiable seed. A rate over n=6 is a
+    # validated harness, NOT a track record — say so and never headline a %.
+    live = st["live_entries"]
+    seed = st["durable_base_entries"]
+    n = st["resolved"]
+    if live == 0:
+        basis = "synthetic_seed"
+        statistically_significant = False
+        if n == 0:
+            headline = "No outcomes yet. Report real outcomes via onyx_outcome_report to build the record."
+        else:
+            headline = (
+                f"Verification harness validated on n={n} synthetic, on-chain-verifiable cases "
+                f"(seed). NOT a statistical track record yet — awaiting real adversarial outcomes. "
+                f"Rates are diagnostic only at this sample size."
+            )
     else:
-        parts = [f"{st['total_outcomes']} measured outcomes"]
+        basis = "live+seed"
+        statistically_significant = n >= 100
+        parts = [f"{live} real outcome(s) reported, {n} total resolved"]
         if bp is not None:
             parts.append(f"BLOCK precision {round(bp*100)}% ({st['true_block']}/{st['true_block']+st['false_block']})")
         if mr is not None:
             parts.append(f"ALLOW miss-rate {round(mr*100)}%")
-        headline = "; ".join(parts) + "."
+        caveat = "" if statistically_significant else " — small sample, treat as directional until n>=100."
+        headline = "; ".join(parts) + "." + caveat
 
     return _onyx_sign.attest({
         "ok": True,
         "scope": tool or "all_tools",
+        "data_basis": basis,                       # synthetic_seed | live+seed
+        "statistically_significant": statistically_significant,
+        "sample_size_resolved": n,
+        "real_outcomes_reported": live,
+        "synthetic_seed_cases": seed,
         "total_outcomes": st["total_outcomes"],
-        "resolved": st["resolved"],
+        # rates are present for transparency but are diagnostic-only until basis=live+seed AND n is large
         "block_precision": bp,
+        "block_precision_is_diagnostic_only": (basis == "synthetic_seed" or not statistically_significant),
         "allow_miss_rate": mr,
         "true_block": st["true_block"],
         "false_block": st["false_block"],
@@ -63,14 +87,15 @@ def run(tool: str = "", **_: object) -> dict:
         "missed": st["missed"],
         "by_tool": st["by_tool"],
         "by_outcome": st["by_outcome"],
-        "durable_base_entries": st["durable_base_entries"],
-        "live_entries": st["live_entries"],
         "persistence": "durable+sink" if st["durable"] else "durable_base+ephemeral_live",
         "last_outcome_at": st["last_outcome_at"],
         "summary": "Onyx track record: " + headline,
         "note": (
-            "Precision is measured from outcomes reported via onyx_outcome_report and "
-            "bound to signed verdicts. Base entries are independently on-chain-verifiable."
+            "Honest by construction: until real outcomes are reported via "
+            "onyx_outcome_report, the only data is a synthetic on-chain-verifiable "
+            "seed and any rate is diagnostic, not a claim. The value is the MECHANISM "
+            "— signed verdicts that can be bound to outcomes — which compounds into a "
+            "real precision figure only as live adversarial data arrives."
         ),
     }, tool=NAME)
 

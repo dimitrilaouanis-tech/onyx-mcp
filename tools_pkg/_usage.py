@@ -27,6 +27,37 @@ _SINK_TOKEN = os.environ.get("ONYX_USAGE_SINK_TOKEN", "").strip()
 _ZERO = "0x" + "0" * 40
 _MAX_READ = 200000
 
+# Durable backend: set DATABASE_URL (Postgres — Supabase/Neon/Render) and the
+# meter persists across redeploys + idle spindown. Zero code change to enable;
+# this is the one connection string between "ephemeral demo" and "30-day curve".
+_DB_URL = os.environ.get("ONYX_DATABASE_URL", "") or os.environ.get("DATABASE_URL", "")
+_DB_TABLE = "onyx_usage_events"
+
+
+def _db():
+    """Return a live psycopg connection or None. Lazily creates the table once."""
+    if not _DB_URL:
+        return None
+    try:
+        import psycopg  # psycopg3
+        conn = psycopg.connect(_DB_URL, autocommit=True)
+    except Exception:
+        try:
+            import psycopg2 as _pg2
+            conn = _pg2.connect(_DB_URL)
+            conn.autocommit = True
+        except Exception:
+            return None
+    try:
+        conn.execute(
+            f"CREATE TABLE IF NOT EXISTS {_DB_TABLE} "
+            "(id BIGSERIAL PRIMARY KEY, ts BIGINT, tool TEXT, usdc DOUBLE PRECISION, "
+            "wallet TEXT, network TEXT, tx TEXT)"
+        )
+    except Exception:
+        pass
+    return conn
+
 
 def record(tool: str, amount_usdc, wallet: str = "", network: str = "", tx: str = "") -> None:
     """Append one paid-call event. Best-effort; never raises into the caller."""
@@ -42,6 +73,19 @@ def record(tool: str, amount_usdc, wallet: str = "", network: str = "", tx: str 
         "network": network or None,
         "tx": (tx or None),
     }
+    # Durable Postgres first (survives redeploys); JSONL + sink remain as
+    # best-effort mirrors so the meter still works with no DB configured.
+    conn = _db()
+    if conn is not None:
+        try:
+            conn.execute(
+                f"INSERT INTO {_DB_TABLE} (ts, tool, usdc, wallet, network, tx) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (entry["ts"], entry["tool"], entry["usdc"], entry["wallet"],
+                 entry["network"], entry["tx"]),
+            )
+        except Exception:
+            pass
     line = json.dumps(entry, ensure_ascii=False)
     try:
         with _LIVE.open("a", encoding="utf-8") as f:
@@ -81,8 +125,22 @@ def _read() -> list:
     return out
 
 
+def _read_db() -> list | None:
+    conn = _db()
+    if conn is None:
+        return None
+    try:
+        cur = conn.execute(f"SELECT ts, tool, usdc, wallet, network, tx FROM {_DB_TABLE}")
+        return [{"ts": r[0], "tool": r[1], "usdc": r[2], "wallet": r[3],
+                 "network": r[4], "tx": r[5]} for r in cur.fetchall()]
+    except Exception:
+        return None
+
+
 def summary() -> dict:
-    rows = _read()
+    db_rows = _read_db()
+    rows = db_rows if db_rows is not None else _read()
+    durable = db_rows is not None or bool(_SINK)
     usdc = 0.0
     wallets = set()
     by_tool: dict = {}
