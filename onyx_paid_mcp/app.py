@@ -801,10 +801,13 @@ class App:
                 "protocolVersion": "0.3.0",
                 "name": self.name,
                 "description": (
-                    "The security & trust layer for the agentic web. Signed, "
-                    "pre-transaction security checks over x402: recipient firewall, "
-                    "contract audit, ERC-8004 agent reputation, AML/sanctions, and a "
-                    "one-call secure-payment clearance. Every verdict Ed25519-signed."
+                    "The independent trust layer for the agentic web — the signed "
+                    "verdict an agent checks BEFORE it transacts. Onyx verifies "
+                    "merchants, retail prices, contracts, and counterparty agents and "
+                    "returns Ed25519-signed FACTS any third party can verify offline "
+                    "(tamper -> rejected). Neutral by design: Onyx earns nothing from "
+                    "any transaction, rail, or marketplace, so it can grade what the "
+                    "conflicted incumbents structurally cannot. Facts, not judgments."
                 ),
                 "url": (f"{base}/a2a" if base else "/a2a"),
                 "preferredTransport": "HTTP+JSON",
