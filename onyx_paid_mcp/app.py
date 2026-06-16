@@ -391,13 +391,21 @@ class App:
             # gateway into the CDP/Bazaar discovery surface. Auto-point at it unless
             # the operator explicitly set a CDP-compatible URL, so just setting the
             # two keys is enough (no separate ONYX_FACILITATOR_URL change needed).
-            _CDP_FAC = "https://api.cdp.coinbase.com/platform/v2/x402"
-            if "cdp.coinbase.com" not in (self.facilitator_url or ""):
-                print(f"[onyx-paid-mcp] CDP keys detected -> switching facilitator "
-                      f"{self.facilitator_url} -> {_CDP_FAC}")
-                self.facilitator_url = _CDP_FAC
-            create_headers = _make_cdp_header_factory(self.facilitator_url, cdp_id, cdp_secret)
-            print(f"[onyx-paid-mcp] CDP auth ENABLED for {self.facilitator_url}")
+            # DEFENSIVE: if the keys are malformed, fall back to the original
+            # (keyless-working) facilitator instead of crash-looping the deploy —
+            # the live server already settles via the default facilitator.
+            _prev_fac = self.facilitator_url
+            try:
+                _CDP_FAC = "https://api.cdp.coinbase.com/platform/v2/x402"
+                if "cdp.coinbase.com" not in (self.facilitator_url or ""):
+                    self.facilitator_url = _CDP_FAC
+                create_headers = _make_cdp_header_factory(self.facilitator_url, cdp_id, cdp_secret)
+                print(f"[onyx-paid-mcp] CDP auth ENABLED for {self.facilitator_url}")
+            except Exception as e:
+                self.facilitator_url = _prev_fac
+                create_headers = None
+                print(f"[onyx-paid-mcp] CDP key setup FAILED ({type(e).__name__}: "
+                      f"{str(e)[:120]}) — falling back to {_prev_fac} keyless")
         else:
             print(f"[onyx-paid-mcp] CDP auth NOT set — using {self.facilitator_url} unauthenticated (testnet only)")
         cfg = FacilitatorConfig(url=self.facilitator_url)
