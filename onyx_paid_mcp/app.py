@@ -674,9 +674,14 @@ class App:
                 "receive_address": self.receive_address,
                 "usage": usage,
                 "accuracy": {
-                    "measured_outcomes": track.get("total_outcomes"),
+                    "data_basis": "synthetic_seed" if not track.get("live_entries") else "live+seed",
+                    "real_outcomes_reported": track.get("live_entries", 0),
+                    "synthetic_seed_cases": track.get("durable_base_entries", 0),
                     "block_precision": track.get("block_precision"),
                     "allow_miss_rate": track.get("allow_miss_rate"),
+                    "caveat": ("diagnostic only — validated on a small synthetic seed, "
+                               "not yet a statistical track record (needs real reported "
+                               "outcomes; n>=100 for significance)"),
                 },
                 "live_verdict_record": f"{(self.public_url or '').rstrip('/')}/v1/onyx_track_record",
                 "note": "usage.persistence states whether a durable sink is wired; "
@@ -973,6 +978,18 @@ class App:
             """The Wall of the Defeated — the live counter that IS the ad."""
             from tools_pkg import _fool_oracle
             return _fool_oracle.leaderboard()
+
+        @api.post("/oracle", include_in_schema=False)
+        async def _oracle(body: dict = Body(default_factory=dict)):
+            """@OnyxOracle tag-to-verify webhook. The social layer (Neynar/
+            Farcaster cast mention, X reply) POSTs {text, author, platform};
+            returns a signed verdict + a screenshot-ready reply that carries
+            the /verify + /fool funnel. The views->users converter."""
+            from tools_pkg import _oracle_bot
+            text = str(body.get("text") or body.get("message") or "")
+            author = str(body.get("author") or body.get("from") or "anon")
+            platform = str(body.get("platform") or "x")
+            return _oracle_bot.handle_mention(text, author=author, platform=platform)
 
         @api.post("/verify", include_in_schema=False)
         async def _verify(body: dict = Body(default_factory=dict)):
