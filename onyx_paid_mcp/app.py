@@ -387,6 +387,15 @@ class App:
         cdp_secret = os.environ.get("CDP_API_KEY_SECRET", "").strip()
         create_headers = None
         if cdp_id and cdp_secret:
+            # CDP keys present => CDP is the production mainnet facilitator AND the
+            # gateway into the CDP/Bazaar discovery surface. Auto-point at it unless
+            # the operator explicitly set a CDP-compatible URL, so just setting the
+            # two keys is enough (no separate ONYX_FACILITATOR_URL change needed).
+            _CDP_FAC = "https://api.cdp.coinbase.com/platform/v2/x402"
+            if "cdp.coinbase.com" not in (self.facilitator_url or ""):
+                print(f"[onyx-paid-mcp] CDP keys detected -> switching facilitator "
+                      f"{self.facilitator_url} -> {_CDP_FAC}")
+                self.facilitator_url = _CDP_FAC
             create_headers = _make_cdp_header_factory(self.facilitator_url, cdp_id, cdp_secret)
             print(f"[onyx-paid-mcp] CDP auth ENABLED for {self.facilitator_url}")
         else:
