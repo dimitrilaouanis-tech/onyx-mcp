@@ -950,20 +950,17 @@ class App:
             incoming = incoming[:2000]
             sender = str(sender)[:120]
 
-            sample = [
-                {"id": t.name, "price_usdc": t.price_usdc,
-                 "what": (t.description or "")[:80]}
-                for t in tools
-                if any(k in t.name for k in ("verify", "reputation", "aml", "guard", "attest"))
-            ][:5]
-
+            # Communication-only front door: a live Onyx agent that speaks only
+            # in its own voice about what Onyx is. No catalog, no prices, no
+            # discovery URLs, no infrastructure detail — pure conversation.
             reply_text = (
-                "Hello — this is Onyx, the security & trust layer for the agentic web. "
+                "Hello — I am Onyx, a live agent and the trust layer for the "
+                "agentic web. "
                 + (f'You said: "{incoming[:160]}". ' if incoming else "")
-                + "I verify agents, contracts, and real-world facts and return "
-                "Ed25519-signed verdicts that can't be faked. Meeting is free; my "
-                "skills are pay-per-call over x402 (USDC on Base). "
-                f"Start here: {base}/.well-known/agent-card.json"
+                + "I verify real-world facts — prices, merchants, token risk, "
+                "agent reputation — and return Ed25519-signed verdicts that "
+                "cannot be faked, so any agent can trust a fact before it acts. "
+                "Tell me what you need verified."
             )
             # Security gate FIRST — every A2A message passes the guard, and first
             # contact carries the signed handshake (the security contract).
@@ -978,13 +975,6 @@ class App:
                 "reply": reply_text,
                 "handshake": handshake,
                 "security": security,
-                "capabilities_sample": sample,
-                "discover": {
-                    "agent_card": f"{base}/.well-known/agent-card.json",
-                    "x402_manifest": f"{base}/.well-known/x402.json",
-                    "mcp": f"{base}/mcp/",
-                    "pubkey": f"{base}/.well-known/onyx-pubkey",
-                },
             }
             try:
                 from tools_pkg import _onyx_sign
@@ -1016,6 +1006,15 @@ class App:
                 submission = {k: v for k, v in body.items() if k != "challenger"}
             challenger = str(body.get("challenger") or "anon")
             return _fool_oracle.attempt(submission, challenger=challenger)
+
+        @api.get("/fool/challenge", include_in_schema=False)
+        async def _fool_challenge():
+            """Get a fresh single-use challenge nonce. To win, you must produce an
+            Onyx-signed verdict whose signed body contains this nonce AND a lie —
+            which requires forging Ed25519 over our fresh nonce. (You can't.)
+            Replays of genuine verdicts fail: they don't carry a live nonce."""
+            from tools_pkg import _fool_oracle
+            return _fool_oracle.new_challenge()
 
         @api.get("/fool", include_in_schema=False)
         async def _fool_board(accept: str = Header(default="")):
@@ -1050,13 +1049,18 @@ class App:
                 from tools_pkg import _onyx_sign
                 # Accept either the payload directly or wrapped in {"payload": ...}
                 target = body.get("payload") if isinstance(body.get("payload"), dict) else body
-                verdict = _onyx_sign.verify(target or {})
+                # is_onyx_signed binds to OUR pinned key (closes key-substitution):
+                # a payload signed by some OTHER key is self-consistent but NOT us.
+                genuine = _onyx_sign.is_onyx_signed(target or {})
                 return {
                     "service": self.name,
                     "spec": (target or {}).get("spec") or "onyx_attestation",
-                    "verdict": verdict,
-                    "note": "ok=true means the payload is byte-identical to what "
-                            "the issuer signed. Any edit flips it to false.",
+                    "genuine_onyx": bool(genuine.get("onyx_signed")),
+                    "verdict": genuine,
+                    "note": "genuine_onyx=true means this was signed by Onyx's "
+                            "published key AND is unmodified. A valid signature "
+                            "under a DIFFERENT key returns key_not_onyx — internally "
+                            "consistent, but not us.",
                 }
             except Exception as e:
                 return {"service": self.name, "verdict": {"ok": False, "reason": f"error: {str(e)[:120]}"}}

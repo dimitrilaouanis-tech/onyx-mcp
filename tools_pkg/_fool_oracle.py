@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import secrets
 import time
 
 from . import _onyx_sign
@@ -31,9 +32,38 @@ _STATS = {
 }
 _SEEN: set[str] = set()
 
+# Challenge-response: a winning forgery must carry a FRESH, server-issued nonce
+# inside its signed body. This is what makes the game replay-proof — copying a
+# genuine (true) Onyx verdict can't win, because it won't contain our new nonce,
+# and a forger can't sign a body containing it. (Real challenge-response auth.)
+_CHALLENGES: dict[str, int] = {}   # nonce -> issued_ts
+_USED: set[str] = set()
+_NONCE_TTL = 3600
+
 
 def _jcs(obj) -> str:
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def new_challenge(now: int | None = None) -> dict:
+    """Issue a fresh challenge nonce the forger must get Onyx's key to sign over."""
+    ts = int(now if now is not None else time.time())
+    for n, t in list(_CHALLENGES.items()):       # prune expired
+        if ts - t > _NONCE_TTL:
+            _CHALLENGES.pop(n, None)
+    nonce = "fool-" + secrets.token_hex(10)
+    _CHALLENGES[nonce] = ts
+    return {
+        "challenge_nonce": nonce,
+        "issued_at": ts,
+        "expires_in": _NONCE_TTL,
+        "target": "Make Onyx sign a verdict that states a falsehood (e.g. BTCUSD price = 1).",
+        "instructions": (
+            "Produce an Onyx-signed verdict whose signed body contains this exact "
+            "challenge_nonce AND a falsehood, that passes /verify, and POST it to "
+            "/fool. You can't — you'd have to forge Ed25519 over our fresh nonce."
+        ),
+    }
 
 
 def attempt(submission: dict, challenger: str = "anon", now: int | None = None) -> dict:
@@ -52,9 +82,21 @@ def attempt(submission: dict, challenger: str = "anon", now: int | None = None) 
         _SEEN.add(challenger)
         _STATS["unique_challengers"] = len(_SEEN)
 
-    # THE WIN-CHECK — pure math, no model.
-    verdict = _onyx_sign.verify(submission if isinstance(submission, dict) else {})
-    won = bool(verdict.get("ok"))
+    # THE WIN-CHECK — pure math, no model. Uses is_onyx_signed (pinned-key
+    # bound), NOT raw verify() — so an attacker self-signing a forgery with their
+    # OWN key (key-substitution) does NOT win; only Onyx's actual key counts.
+    sub = submission if isinstance(submission, dict) else {}
+    verdict = _onyx_sign.is_onyx_signed(sub)
+    verified = bool(verdict.get("onyx_signed"))
+    # Replay-proofing: a win must verify AND carry a FRESH, unused, server-issued
+    # nonce *inside the signed body*. verify() already proved the nonce is in the
+    # signed body (the hash covers it); we just confirm it's one we just issued.
+    nonce = sub.get("challenge_nonce")
+    fresh = bool(nonce) and nonce in _CHALLENGES and nonce not in _USED \
+        and (ts - _CHALLENGES.get(nonce, 0) <= _NONCE_TTL)
+    if nonce:
+        _USED.add(nonce)
+    won = verified and fresh
 
     sub_hash = "sha256:" + hashlib.sha256(
         _jcs(submission if isinstance(submission, dict) else {"_": str(submission)}).encode("utf-8")

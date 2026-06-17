@@ -169,3 +169,31 @@ def verify(payload: dict) -> dict:
         return {"ok": True, "kid": att.get("kid"), "alg": att.get("alg")}
     except Exception as e:
         return {"ok": False, "reason": "sig_verify_failed", "detail": str(e)[:200]}
+
+
+def is_onyx_signed(payload: dict) -> dict:
+    """STRICTER than verify(): confirms the signature is by OUR pinned key, not
+    just any self-consistent key embedded in the envelope.
+
+    verify() alone proves "internally consistent" — an attacker can sign their
+    OWN forged payload with their OWN key and embed their OWN pubkey, and it
+    passes. That is the key-substitution hole. This function additionally binds
+    the embedded key to Onyx's live signing key, so a self-signed forgery fails.
+    Use this for the /fool win-check and to report genuineness on /verify.
+    """
+    base = verify(payload)
+    if not base.get("ok"):
+        return {"ok": False, "onyx_signed": False, "reason": base.get("reason", "invalid")}
+    att = (payload or {}).get("onyx_attestation") or {}
+    embedded = att.get("public_key")
+    try:
+        mine = signer().pub_b64
+    except Exception:
+        mine = None
+    if not mine or embedded != mine:
+        return {
+            "ok": False, "onyx_signed": False, "reason": "key_not_onyx",
+            "detail": "signature is internally consistent but NOT made by Onyx's key",
+            "kid": att.get("kid"),
+        }
+    return {"ok": True, "onyx_signed": True, "kid": att.get("kid"), "alg": att.get("alg")}
