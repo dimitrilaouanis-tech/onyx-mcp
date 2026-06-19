@@ -175,29 +175,27 @@ def run(domain: str = "", brand: str | None = None,
 
     # 3. Reachability + redirect facts
     fetch_url = (product_url or f"https://{host}/").strip()
+    # SSRF-guarded + provenance-recording fetch (shared _provenance) — no
+    # unguarded fallback path. The provenance (content sha256, fetched_at,
+    # final URL) is signed with the rest, so the verdict commits to its source.
+    from . import _provenance
+    doc, prov = "", {}
     try:
-        status, final_url, doc = _rpc._fetch(fetch_url) if hasattr(_rpc, "_fetch") else (None, fetch_url, "")
-    except Exception:
-        status, final_url, doc = None, fetch_url, ""
-    if status is None:
-        try:
-            import urllib.request
-            req = urllib.request.Request(fetch_url, headers={"User-Agent": _rpc._UA})
-            with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
-                rb = resp.read(_rpc._MAX_BYTES)
-                status, final_url = resp.status, resp.geturl()
-                doc = rb.decode(resp.headers.get_content_charset() or "utf-8", "replace")
-        except urllib.error.HTTPError as e:
-            status, final_url, doc = e.code, fetch_url, ""
-        except (urllib.error.URLError, TimeoutError, OSError) as e:
-            facts["fetch_error"] = str(e)[:120]
-            status, final_url, doc = None, fetch_url, ""
+        status, doc, prov = _provenance.safe_fetch(fetch_url, timeout=_TIMEOUT, max_bytes=_rpc._MAX_BYTES)
+        final_url = prov.get("final_url", fetch_url)
+    except _provenance.SSRFBlocked as e:
+        facts["fetch_error"] = "ssrf_blocked:" + str(e)[:80]
+        status, final_url = None, fetch_url
+    except Exception as e:
+        facts["fetch_error"] = str(e)[:120]
+        status, final_url = None, fetch_url
     final_host = final_url.split("://", 1)[-1].split("/", 1)[0].lower()
     facts.update({
         "reachable": status is not None,
         "http_status": status,
         "final_url": final_url,
         "redirected_off_domain": bool(final_host and final_host != host and not final_host.endswith("." + host) and not host.endswith("." + final_host)),
+        "provenance": prov,
     })
 
     # 4. Brand-similarity observation (only if the caller names a brand)

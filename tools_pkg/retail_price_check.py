@@ -77,12 +77,14 @@ _AVAIL_IN = ("instock", "in_stock", "available", "limitedavailability", "preorde
 _AVAIL_OUT = ("outofstock", "out_of_stock", "soldout", "sold_out", "discontinued", "unavailable")
 
 
-def _fetch(url: str) -> tuple[int, str]:
-    req = urllib.request.Request(url, headers={"User-Agent": _UA, "Accept": "text/html,application/xhtml+xml"})
-    with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
-        raw = resp.read(_MAX_BYTES)
-        charset = resp.headers.get_content_charset() or "utf-8"
-        return resp.status, raw.decode(charset, "replace")
+def _fetch(url: str) -> tuple[int, str, dict]:
+    # SSRF-guarded + provenance-recording fetch (shared _provenance). An attacker
+    # can no longer redirect the oracle to internal/metadata endpoints, and the
+    # returned provenance (source/final URL, content sha256, fetched_at) is
+    # embedded in the signed verdict so the signature commits to WHAT was observed.
+    from . import _provenance
+    status, text, prov = _provenance.safe_fetch(url, timeout=_TIMEOUT, max_bytes=_MAX_BYTES)
+    return status, text, prov
 
 
 def _num(v: object) -> float | None:
@@ -227,11 +229,16 @@ def run(url: str = "", expect_price: float | None = None, **_: object) -> dict:
 
     observed_at = int(time.time())
     try:
-        status, doc = _fetch(url)
+        status, doc, prov = _fetch(url)
     except urllib.error.HTTPError as e:
         return {"ok": False, "error": "http_error", "http_status": e.code, "url": url, "observed_at": observed_at}
     except (urllib.error.URLError, TimeoutError) as e:
         return {"ok": False, "error": "fetch_failed", "detail": str(e)[:200], "url": url, "observed_at": observed_at}
+    except Exception as e:
+        # SSRFBlocked and friends — refuse, don't fetch internal/attacker targets.
+        if type(e).__name__ == "SSRFBlocked":
+            return {"ok": False, "error": "ssrf_blocked", "detail": str(e)[:120], "url": url, "observed_at": observed_at}
+        raise
 
     found = _from_jsonld(doc) or _from_meta(doc) or _from_text(doc)
     if not found:
@@ -248,6 +255,7 @@ def run(url: str = "", expect_price: float | None = None, **_: object) -> dict:
             "title": title,
             "note": "No machine-readable price found. We return None rather than guess.",
             "vantage": "onyx-observer",
+            "provenance": prov,
         }, tool=NAME)
 
     result = {
@@ -263,6 +271,7 @@ def run(url: str = "", expect_price: float | None = None, **_: object) -> dict:
         "confidence": found["confidence"],
         "title": found.get("title"),
         "vantage": "onyx-observer",
+        "provenance": prov,
     }
 
     if expect_price is not None:
