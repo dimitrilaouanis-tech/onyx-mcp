@@ -82,5 +82,28 @@ check("agent.json has onboarding block", wk.get("onboarding", {}).get("free") is
 ac = client.get("/.well-known/agent-card.json").json()
 check("agent-card contact has onboard", ac.get("contact", {}).get("onboard", "").endswith("/onboard"))
 
+print("\n=== ENTRANCE: agent met at the door (GET /) ===")
+# Agent-style request (JSON Accept) -> greeting + onboard offer
+ra = client.get("/", headers={"Accept": "application/json"})
+ja = ra.json()
+check("entrance greets", "welcome" in ja)
+check("entrance detects agent", ja.get("you_appear_to_be") == "agent")
+check("entrance offers /onboard", ja.get("get_started", {}).get("onboard", "").endswith("/onboard"))
+check("entrance offers action schema", ja.get("get_started", {}).get("action_schema", "").endswith("/onboard/openapi.json"))
+# Curl/bot User-Agent also detected as agent
+rb = client.get("/", headers={"Accept": "*/*", "User-Agent": "python-requests/2.31"})
+check("UA-based agent detection", rb.json().get("you_appear_to_be") == "agent")
+
+print("\n=== CHATGPT-READY ACTION (importable OpenAPI) ===")
+oa = client.get("/onboard/openapi.json").json()
+check("openapi 3.1", oa.get("openapi", "").startswith("3.1"))
+check("has onboardAgent op", oa.get("paths", {}).get("/onboard", {}).get("post", {}).get("operationId") == "onboardAgent")
+check("has verifyAttestation op", oa.get("paths", {}).get("/verify", {}).get("post", {}).get("operationId") == "verifyAttestation")
+check("server url set", bool(oa.get("servers", [{}])[0].get("url")))
+ai = client.get("/.well-known/ai-plugin.json").json()
+check("ai-plugin points at openapi", ai.get("api", {}).get("url", "").endswith("/onboard/openapi.json"))
+check("ai-plugin auth none", ai.get("auth", {}).get("type") == "none")
+check("agents.txt advertises action", "OpenAPIAction:" in client.get("/agents.txt").text)
+
 print("\n=== RESULT:", "ALL PASS" if ok else "SOME FAILED", "===")
 raise SystemExit(0 if ok else 1)

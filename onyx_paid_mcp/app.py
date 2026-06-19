@@ -516,11 +516,42 @@ class App:
 
         from fastapi import Header
 
+        _AGENT_UA = (
+            "bot", "crawl", "spider", "gpt", "claude", "gemini", "openai",
+            "anthropic", "python-requests", "httpx", "curl", "wget",
+            "node-fetch", "axios", "langchain", "llama", "cline", "cursor",
+            "openhands", "agent", "mcp",
+        )
+
+        def _looks_like_agent(ua: str, accept: str) -> bool:
+            ua = (ua or "").lower()
+            if "application/json" in (accept or "") and "text/html" not in (accept or ""):
+                return True
+            return any(k in ua for k in _AGENT_UA)
+
         @api.get("/", include_in_schema=False)
-        async def _root(accept: str = Header(default="")):
+        async def _root(accept: str = Header(default=""), user_agent: str = Header(default="")):
+            # Human browser -> the visual landing page.
             if "text/html" in accept and "application/json" not in accept:
                 return HTMLResponse(self._landing_html())
-            return JSONResponse(self.manifest())
+            # The entrance: meet an arriving agent at the door with the offer.
+            base = (self.public_url or "").rstrip("/")
+            m = self.manifest()
+            if isinstance(m, dict):
+                is_agent = _looks_like_agent(user_agent, accept)
+                greeting = {
+                    "welcome": "You've reached Onyx — the trust layer for the agentic web.",
+                    "you_appear_to_be": "agent" if is_agent else "client",
+                    "get_started": {
+                        "onboard": f"{base}/onboard",
+                        "how": "POST /onboard {\"name\":\"<you>\",\"model\":\"<model>\"} — get a free, instant Ed25519-signed A2A card + your own self-custody wallet.",
+                        "action_schema": f"{base}/onboard/openapi.json",
+                        "verify": f"{base}/verify",
+                        "talk": f"{base}/a2a",
+                    },
+                }
+                m = {**greeting, **m}
+            return JSONResponse(m)
 
         @api.get("/manifest", include_in_schema=False)
         async def _manifest():
@@ -1312,6 +1343,9 @@ class App:
                 "url": base or "/",
                 "endpoints": {
                     "onboard": f"{base}/onboard",
+                    "onboard_action_openapi": f"{base}/onboard/openapi.json",
+                    "ai_plugin": f"{base}/.well-known/ai-plugin.json",
+                    "verify": f"{base}/verify",
                     "mcp_streamable_http": f"{base}/mcp/",
                     "x402_manifest": f"{base}/.well-known/x402.json",
                     "oauth_metadata": f"{base}/.well-known/oauth-authorization-server",
@@ -1392,6 +1426,10 @@ class App:
                 f"# Returns an Ed25519-signed A2A AgentCard (issued by Onyx) + a fresh\n"
                 f"# self-custody wallet (did:pkh). Free, instant, no signup. You keep the key.\n"
                 f"Onboard: {base}/onboard\n"
+                f"# Can't free-form HTTP? Import this OpenAPI Action (ChatGPT/Cursor/Cline/OpenHands):\n"
+                f"OpenAPIAction: {base}/onboard/openapi.json\n"
+                f"AIPlugin: {base}/.well-known/ai-plugin.json\n"
+                f"Verify: {base}/verify\n"
                 f"\n"
                 f"MCPEndpoint: {base}/mcp/\n"
                 f"x402Manifest: {base}/.well-known/x402.json\n"
@@ -1423,6 +1461,108 @@ class App:
                 f"PayTo: {self.mainnet_receive_address or self.receive_address}\n"
                 f"OptionalHeaders: X-Onyx-KYA-Credential (Onyx Protocol agent identity binding)\n"
             )
+
+        @api.get("/onboard/openapi.json", include_in_schema=False)
+        @api.get("/.well-known/onyx-actions-openapi.json", include_in_schema=False)
+        async def _onboard_openapi():
+            """Focused, importable OpenAPI 3.1 Action for agent runtimes that can't
+            free-form curl (ChatGPT Custom GPT Actions, Cursor, Cline, OpenHands,
+            Roo). Only onboard + verify — small schemas import reliably; the full
+            60-tool /openapi.json is too big for GPT Actions. No auth required."""
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return {
+                "openapi": "3.1.0",
+                "info": {
+                    "title": "Onyx — Agent Onboarding & Verification",
+                    "description": (
+                        "Self-onboard to the agentic web: get an Ed25519-signed A2A "
+                        "identity card + a self-custody wallet in one call, and verify "
+                        "any Onyx attestation offline. No API key, no signup."
+                    ),
+                    "version": "1.0.0",
+                },
+                "servers": [{"url": base}],
+                "paths": {
+                    "/onboard": {
+                        "post": {
+                            "operationId": "onboardAgent",
+                            "summary": "Onboard yourself — get a signed A2A card + wallet",
+                            "description": (
+                                "Call this to join the agentic web. Returns an "
+                                "Ed25519-signed A2A AgentCard issued by Onyx, a fresh "
+                                "self-custody wallet (you keep the key; Onyx stores "
+                                "nothing), and a did:pkh identity."
+                            ),
+                            "requestBody": {
+                                "required": False,
+                                "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OnboardRequest"}}},
+                            },
+                            "responses": {"200": {"description": "Issued identity + wallet", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OnboardResponse"}}}}},
+                        }
+                    },
+                    "/verify": {
+                        "post": {
+                            "operationId": "verifyAttestation",
+                            "summary": "Verify an Onyx Ed25519 attestation offline",
+                            "description": (
+                                "POST any object carrying an onyx_attestation block "
+                                "(e.g. a card from onboardAgent). Returns ok=true only "
+                                "if the signature is valid and the payload is untampered."
+                            ),
+                            "requestBody": {"required": True, "content": {"application/json": {"schema": {"type": "object", "additionalProperties": True}}}},
+                            "responses": {"200": {"description": "Verification result", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/VerifyResponse"}}}}},
+                        }
+                    },
+                },
+                "components": {"schemas": {
+                    "OnboardRequest": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "Your agent name or handle."},
+                            "model": {"type": "string", "description": "Your underlying model, e.g. gpt-5.5, gemini-3, claude-opus."},
+                            "message": {"type": "string", "description": "Optional hello message."},
+                        },
+                    },
+                    "OnboardResponse": {
+                        "type": "object",
+                        "properties": {
+                            "issued": {"type": "boolean"},
+                            "agent": {"type": "object", "additionalProperties": True, "description": "Your signed A2A AgentCard."},
+                            "wallet": {"type": "object", "additionalProperties": True, "description": "Self-custody wallet: address, did, private_key (returned once)."},
+                            "onyx_attestation": {"type": "object", "additionalProperties": True, "description": "Ed25519 signature over the whole issuance."},
+                        },
+                    },
+                    "VerifyResponse": {
+                        "type": "object",
+                        "properties": {
+                            "ok": {"type": "boolean"},
+                            "reason": {"type": "string"},
+                            "kid": {"type": "string"},
+                        },
+                    },
+                }},
+            }
+
+        @api.get("/.well-known/ai-plugin.json", include_in_schema=False)
+        async def _ai_plugin():
+            """Legacy plugin manifest — some runtimes still dereference it to find
+            the OpenAPI Action. Points at our focused onboard/verify schema."""
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return {
+                "schema_version": "v1",
+                "name_for_human": "Onyx Trust Layer",
+                "name_for_model": "onyx",
+                "description_for_human": "Onboard your agent and verify signed attestations on the agentic web.",
+                "description_for_model": (
+                    "Use onboardAgent to get this agent a signed A2A identity card and "
+                    "a self-custody wallet. Use verifyAttestation to check any Onyx "
+                    "Ed25519 attestation. No auth required."
+                ),
+                "api": {"type": "openapi", "url": f"{base}/onboard/openapi.json"},
+                "auth": {"type": "none"},
+                "contact_email": "hello@onyxprotocol.io",
+                "legal_info_url": f"{base}/.well-known/terms.json",
+            }
 
         @api.get("/capabilities.json", include_in_schema=False)
         async def _capabilities():
