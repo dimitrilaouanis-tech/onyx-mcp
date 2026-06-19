@@ -164,8 +164,17 @@ def verify(payload: dict) -> dict:
         recomputed = "sha256:" + sha256(canonical.encode("utf-8")).hexdigest()
         if att.get("observed_hash") != recomputed:
             return {"ok": False, "reason": "hash_mismatch", "kid": att.get("kid")}
-        pub = Ed25519PublicKey.from_public_bytes(_b64u_decode(att["public_key"]))
-        pub.verify(_b64u_decode(sig_b64), canonical.encode("utf-8"))
+        # Structural hardening (the "Psychic Signature" / zero-value class):
+        # reject malformed/zero key or signature BEFORE the crypto call, so a
+        # blank or wrong-length input can never slip through a lenient path.
+        pub_bytes = _b64u_decode(att.get("public_key") or "")
+        sig_bytes = _b64u_decode(sig_b64)
+        if len(pub_bytes) != 32 or pub_bytes == b"\x00" * 32:
+            return {"ok": False, "reason": "bad_public_key", "kid": att.get("kid")}
+        if len(sig_bytes) != 64 or sig_bytes == b"\x00" * 64:
+            return {"ok": False, "reason": "bad_signature", "kid": att.get("kid")}
+        pub = Ed25519PublicKey.from_public_bytes(pub_bytes)
+        pub.verify(sig_bytes, canonical.encode("utf-8"))
         return {"ok": True, "kid": att.get("kid"), "alg": att.get("alg")}
     except Exception as e:
         return {"ok": False, "reason": "sig_verify_failed", "detail": str(e)[:200]}
