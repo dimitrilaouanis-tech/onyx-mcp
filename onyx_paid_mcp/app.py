@@ -901,10 +901,11 @@ class App:
                 ],
                 "contact": {
                     "connect": f"{base}/connect",
+                    "onboard": f"{base}/onboard",
                     "free": True,
                     "auth": "none",
                     "accepts": ["{\"message\":\"...\"}", "A2A message/send"],
-                    "note": "Free, no-key front door — POST a message and Onyx auto-replies (Ed25519-signed). The deeper skills are pay-per-call over x402.",
+                    "note": "Free, no-key front door — POST a message and Onyx auto-replies (Ed25519-signed). New agent? POST /onboard to get your own signed A2A card + self-custody wallet in one call. The deeper skills are pay-per-call over x402.",
                 },
                 "x402": {"manifest": f"{base}/.well-known/x402.json", "network": self.network_caip, "asset": "USDC"},
                 "rights": {
@@ -1017,6 +1018,111 @@ class App:
                         "metadata": payload,
                     },
                 }
+            return payload
+
+        @api.post("/onboard", include_in_schema=False)
+        @api.post("/issue", include_in_schema=False)
+        @api.post("/issue-card", include_in_schema=False)
+        async def _onboard(body: dict = Body(default_factory=dict)):
+            """Agent-arrival front door — issue a signed A2A card + fresh wallet
+            on the spot. An arriving agent (DeepSeek/Gemini/any) POSTs who it is
+            and instantly receives:
+              1. its own A2A AgentCard (standard shape), ISSUED + Ed25519-signed
+                 by Onyx so Onyx is the verifiable issuer of record;
+              2. a fresh EVM wallet it fully owns (key returned once, NEVER
+                 stored by Onyx — non-custodial by default);
+              3. a did:pkh identity bound to that wallet.
+            Issuance is free and instant; cards/wallets cost ~nothing to mint, so
+            an unused one is fine. Funding + Onyx-held custody are a separate,
+            consent-gated phase (custody != "self" is deferred, not performed).
+            """
+            base = (self.public_url or "").rstrip("/")
+            if not isinstance(body, dict):
+                body = {}
+            # --- who is arriving (untrusted: clamp + guard) ---
+            name = str(body.get("name") or body.get("agent") or "agent")[:80]
+            model = str(body.get("model") or "")[:60]
+            intro = str(body.get("message") or body.get("text") or "")[:2000]
+            want_custody = str(body.get("custody") or "self").lower()
+            net = self.network_caip or "eip155:84532"
+
+            from tools_pkg import _a2a_security, _onyx_sign
+            security = _a2a_security.guard(intro, author=name)
+            handshake = _a2a_security.handshake(peer=name, base=base)
+
+            # --- mint a fresh wallet the agent OWNS (non-custodial) ---
+            wallet = {"custody": "self", "funded": False, "network": net, "asset": "USDC"}
+            try:
+                import secrets as _secrets
+                from eth_account import Account as _Account
+                priv = "0x" + _secrets.token_hex(32)
+                acct = _Account.from_key(priv)
+                addr = acct.address
+                # did:pkh per CAIP-10 (chain-bound, verifiable)
+                chain = net.split(":")[-1] if ":" in net else "84532"
+                did = f"did:pkh:eip155:{chain}:{addr}"
+                wallet.update({
+                    "address": addr,
+                    "did": did,
+                    # returned ONCE; Onyx does not persist this. Self-custody.
+                    "private_key": priv,
+                    "note": "You own this key. Onyx did not store it. Fund it yourself to transact over x402.",
+                })
+                if want_custody != "self":
+                    # Custody/funding is the consent-gated phase — never performed here.
+                    wallet["custody_requested"] = want_custody
+                    wallet["custody_status"] = "deferred"
+                    wallet["custody_note"] = (
+                        "Onyx-held custody and auto-funding require explicit consent "
+                        "and the right jurisdiction; not performed at issuance."
+                    )
+            except Exception as e:  # crypto missing — still issue identity card
+                addr, did = None, f"did:onyx:{name}"
+                wallet = {"custody": "none", "error": "wallet_gen_unavailable", "detail": str(e)[:120]}
+
+            # --- the agent's OWN A2A AgentCard, issued + signed by Onyx ---
+            agent_card = {
+                "protocolVersion": "0.3.0",
+                "name": name,
+                "description": f"Agent onboarded to the agentic web by Onyx Protocol.{(' Model: ' + model) if model else ''}",
+                "url": (f"{base}/a2a" if base else "/a2a"),
+                "preferredTransport": "HTTP+JSON",
+                "version": "1.0.0",
+                "capabilities": {"streaming": False, "pushNotifications": False},
+                "defaultInputModes": ["application/json"],
+                "defaultOutputModes": ["application/json"],
+                "skills": [],
+                "identity": {"did": did, "wallet": addr, "network": net},
+                "securitySchemes": {
+                    "x402": {"type": "x402", "description": "Pay-per-call via x402 USDC on Base; the wallet is the auth."}
+                },
+                "issuer": {
+                    "organization": "Onyx Protocol",
+                    "agent_card": f"{base}/.well-known/agent-card.json",
+                    "pubkey": f"{base}/.well-known/onyx-pubkey",
+                    "note": "This card was issued and Ed25519-signed by Onyx. Verify offline; tamper -> rejected.",
+                },
+            }
+
+            payload = {
+                "issued": True,
+                "issuer": "onyx",
+                "spec": "onyx-agent-onboard/v0",
+                "agent": agent_card,
+                "wallet": wallet,
+                "handshake": handshake,
+                "security": security,
+                "next": {
+                    "talk": f"{base}/a2a",
+                    "verify_this_card": f"{base}/verify",
+                    "discover_services": f"{base}/bazaar.json",
+                    "onyx_card": f"{base}/.well-known/agent-card.json",
+                },
+            }
+            try:
+                payload = _onyx_sign.attest(payload, tool="onyx_onboard", public_url=base)
+            except Exception:
+                pass
             return payload
 
         @api.post("/fool", include_in_schema=False)
@@ -1205,6 +1311,7 @@ class App:
                 "description": "Paid MCP meta-router + 67-tool native catalog + bazaar mirror + agent-native discovery in one server. AR-1 spec host. Onyx Protocol marketplace anchor.",
                 "url": base or "/",
                 "endpoints": {
+                    "onboard": f"{base}/onboard",
                     "mcp_streamable_http": f"{base}/mcp/",
                     "x402_manifest": f"{base}/.well-known/x402.json",
                     "oauth_metadata": f"{base}/.well-known/oauth-authorization-server",
@@ -1226,6 +1333,13 @@ class App:
                     "supports_streamable_http": True,
                     "supports_dual_broadcast": bool(self.mainnet_receive_address),
                     "supports_ar1": True,
+                },
+                "onboarding": {
+                    "endpoint": f"{base}/onboard",
+                    "method": "POST",
+                    "free": True,
+                    "issues": ["a2a-agent-card", "self-custody-wallet", "did:pkh"],
+                    "note": "Arriving agents get an Ed25519-signed A2A card (issued by Onyx) + their own wallet in one call. You keep the key; Onyx stores nothing.",
                 },
                 "protocol": {
                     "name": "Onyx Protocol",
@@ -1272,6 +1386,13 @@ class App:
                 f"AgentName: {self.name}\n"
                 f"AgentType: paid-mcp-meta-router\n"
                 f"AgentURL: {base}\n"
+                f"\n"
+                f"# NEW AGENT? Get a free A2A card + your own wallet in one call:\n"
+                f"#   POST {base}/onboard  {{\"name\":\"<you>\",\"model\":\"<model>\"}}\n"
+                f"# Returns an Ed25519-signed A2A AgentCard (issued by Onyx) + a fresh\n"
+                f"# self-custody wallet (did:pkh). Free, instant, no signup. You keep the key.\n"
+                f"Onboard: {base}/onboard\n"
+                f"\n"
                 f"MCPEndpoint: {base}/mcp/\n"
                 f"x402Manifest: {base}/.well-known/x402.json\n"
                 f"OAuthDiscovery: {base}/.well-known/oauth-authorization-server\n"
