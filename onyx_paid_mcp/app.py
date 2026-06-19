@@ -408,6 +408,10 @@ class App:
                       f"{str(e)[:120]}) — falling back to {_prev_fac} keyless")
         else:
             print(f"[onyx-paid-mcp] CDP auth NOT set — using {self.facilitator_url} unauthenticated (testnet only)")
+        # Resolved facilitator status — surfaced at /facilitator so the operator
+        # can confirm at a glance (no Render-log digging) after setting CDP keys.
+        self._cdp_keys_present = bool(cdp_id and cdp_secret)
+        self._cdp_auth_active = create_headers is not None
         cfg = FacilitatorConfig(url=self.facilitator_url)
         if create_headers is not None:
             cfg["create_headers"] = create_headers
@@ -647,6 +651,28 @@ class App:
                 "receive": self.receive_address,
                 "tools": [t.name for t in tools],
                 "mcp": "/mcp/",
+            }
+
+        @api.get("/facilitator", include_in_schema=False)
+        async def _facilitator_status():
+            """At-a-glance payment-rail status. After setting CDP keys in Render,
+            hit this: cdp_auth_active=true + facilitator pointing at cdp.coinbase
+            means mainnet settlement + Bazaar discovery are live. No secrets here."""
+            fac = self.facilitator_url or ""
+            return {
+                "network": self.network_caip,
+                "receive_address": self.receive_address,
+                "facilitator": fac,
+                "cdp_keys_present": bool(getattr(self, "_cdp_keys_present", False)),
+                "cdp_auth_active": bool(getattr(self, "_cdp_auth_active", False)),
+                "mainnet_discovery_ready": ("cdp.coinbase.com" in fac and bool(getattr(self, "_cdp_auth_active", False))),
+                "status": (
+                    "CDP auth ACTIVE — mainnet settlement + Bazaar discovery live"
+                    if ("cdp.coinbase.com" in fac and getattr(self, "_cdp_auth_active", False))
+                    else ("CDP keys present but auth inactive — check key format (server stayed up on fallback)"
+                          if getattr(self, "_cdp_keys_present", False)
+                          else "no CDP keys set — settling via keyless facilitator (earning works; not yet in CDP Bazaar)")
+                ),
             }
 
         # Public dashboard — live state visible to anyone. Transparency moat:
