@@ -52,7 +52,7 @@
       </section>
       <section>
         <name>Design Goals</name>
-        <ol>
+        <ol start="1">
           <li>Hash-bound: terms attach to the exact bytes they license; any
           alteration of the artifact orphans the envelope.</li>
           <li>Offline-verifiable: any third party verifies with approximately
@@ -157,8 +157,25 @@
   <back>
     <references>
       <name>Normative References</name>
-      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
-      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8032.xml"/>
+      <reference anchor="RFC8785" target="https://www.rfc-editor.org/info/rfc8785">
+        <front>
+          <title>JSON Canonicalization Scheme (JCS)</title>
+          <author initials="A." surname="Rundgren"/>
+          <author initials="B." surname="Jordan"/>
+          <author initials="S." surname="Erdtman"/>
+          <date year="2020" month="June"/>
+        </front>
+        <seriesInfo name="RFC" value="8785"/>
+      </reference>
+      <reference anchor="RFC8032" target="https://www.rfc-editor.org/info/rfc8032">
+        <front>
+          <title>Edwards-Curve Digital Signature Algorithm (EdDSA)</title>
+          <author initials="S." surname="Josefsson"/>
+          <author initials="I." surname="Liusvaara"/>
+          <date year="2017" month="January"/>
+        </front>
+        <seriesInfo name="RFC" value="8032"/>
+      </reference>
     </references>
     <section anchor="ack" numbered="false">
       <name>Acknowledgments</name>
