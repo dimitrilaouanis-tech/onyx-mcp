@@ -1053,6 +1053,18 @@ class App:
                 return HTMLResponse(_fool_oracle.render_board_html(base or "https://onyx-actions.onrender.com"))
             return _fool_oracle.leaderboard()
 
+        @api.get("/pulse", include_in_schema=False)
+        async def _pulse(accept: str = Header(default=""), format: str = ""):
+            """Agentic Web Pulse — the live, Onyx-SIGNED heartbeat of the agent
+            economy (x402 firehose). Browsers get the terminal board; agents/API
+            get the signed JSON snapshot. The nerve center, with provenance."""
+            from tools_pkg import _pulse
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            if format != "json" and "text/html" in (accept or "").lower():
+                from fastapi.responses import HTMLResponse
+                return HTMLResponse(_pulse.render_html(base))
+            return _pulse.snapshot()
+
         @api.post("/oracle", include_in_schema=False)
         async def _oracle(body: dict = Body(default_factory=dict)):
             """@OnyxOracle tag-to-verify webhook. The social layer (Neynar/
