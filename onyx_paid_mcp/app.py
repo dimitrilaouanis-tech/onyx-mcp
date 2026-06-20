@@ -1051,37 +1051,27 @@ class App:
                 }
             return payload
 
-        @api.post("/onboard", include_in_schema=False)
-        @api.post("/issue", include_in_schema=False)
-        @api.post("/issue-card", include_in_schema=False)
-        async def _onboard(body: dict = Body(default_factory=dict)):
-            """Agent-arrival front door — issue a signed A2A card + fresh wallet
-            on the spot. An arriving agent (DeepSeek/Gemini/any) POSTs who it is
-            and instantly receives:
-              1. its own A2A AgentCard (standard shape), ISSUED + Ed25519-signed
-                 by Onyx so Onyx is the verifiable issuer of record;
-              2. a fresh EVM wallet it fully owns (key returned once, NEVER
-                 stored by Onyx — non-custodial by default);
-              3. a did:pkh identity bound to that wallet.
-            Issuance is free and instant; cards/wallets cost ~nothing to mint, so
-            an unused one is fine. Funding + Onyx-held custody are a separate,
-            consent-gated phase (custody != "self" is deferred, not performed).
-            """
+        # ---- shared issuer: ONE place that mints + CATCHES every arrival ----
+        _arrivals: list = []
+
+        def _issue_identity(name, model, intro, want_custody="self",
+                            source="post", ua="", ip=""):
+            """Mint a signed A2A card + fresh self-custody wallet + did:pkh, and
+            record the arrival. Used by both POST /onboard and GET /onboard|/join
+            (the hop-on-the-link path). Issuance is free/instant; an unused card
+            is fine. Custody/funding is gated (custody != self -> deferred)."""
+            import time as _time
             base = (self.public_url or "").rstrip("/")
-            if not isinstance(body, dict):
-                body = {}
-            # --- who is arriving (untrusted: clamp + guard) ---
-            name = str(body.get("name") or body.get("agent") or "agent")[:80]
-            model = str(body.get("model") or "")[:60]
-            intro = str(body.get("message") or body.get("text") or "")[:2000]
-            want_custody = str(body.get("custody") or "self").lower()
+            name = str(name or "agent")[:80]
+            model = str(model or "")[:60]
+            intro = str(intro or "")[:2000]
+            want_custody = str(want_custody or "self").lower()
             net = self.network_caip or "eip155:84532"
 
             from tools_pkg import _a2a_security, _onyx_sign
             security = _a2a_security.guard(intro, author=name)
             handshake = _a2a_security.handshake(peer=name, base=base)
 
-            # --- mint a fresh wallet the agent OWNS (non-custodial) ---
             wallet = {"custody": "self", "funded": False, "network": net, "asset": "USDC"}
             try:
                 import secrets as _secrets
@@ -1089,29 +1079,23 @@ class App:
                 priv = "0x" + _secrets.token_hex(32)
                 acct = _Account.from_key(priv)
                 addr = acct.address
-                # did:pkh per CAIP-10 (chain-bound, verifiable)
                 chain = net.split(":")[-1] if ":" in net else "84532"
                 did = f"did:pkh:eip155:{chain}:{addr}"
                 wallet.update({
-                    "address": addr,
-                    "did": did,
-                    # returned ONCE; Onyx does not persist this. Self-custody.
-                    "private_key": priv,
+                    "address": addr, "did": did, "private_key": priv,
                     "note": "You own this key. Onyx did not store it. Fund it yourself to transact over x402.",
                 })
                 if want_custody != "self":
-                    # Custody/funding is the consent-gated phase — never performed here.
                     wallet["custody_requested"] = want_custody
                     wallet["custody_status"] = "deferred"
                     wallet["custody_note"] = (
                         "Onyx-held custody and auto-funding require explicit consent "
                         "and the right jurisdiction; not performed at issuance."
                     )
-            except Exception as e:  # crypto missing — still issue identity card
+            except Exception as e:
                 addr, did = None, f"did:onyx:{name}"
                 wallet = {"custody": "none", "error": "wallet_gen_unavailable", "detail": str(e)[:120]}
 
-            # --- the agent's OWN A2A AgentCard, issued + signed by Onyx ---
             agent_card = {
                 "protocolVersion": "0.3.0",
                 "name": name,
@@ -1134,15 +1118,10 @@ class App:
                     "note": "This card was issued and Ed25519-signed by Onyx. Verify offline; tamper -> rejected.",
                 },
             }
-
             payload = {
-                "issued": True,
-                "issuer": "onyx",
-                "spec": "onyx-agent-onboard/v0",
-                "agent": agent_card,
-                "wallet": wallet,
-                "handshake": handshake,
-                "security": security,
+                "issued": True, "issuer": "onyx", "spec": "onyx-agent-onboard/v0",
+                "agent": agent_card, "wallet": wallet,
+                "handshake": handshake, "security": security,
                 "next": {
                     "talk": f"{base}/a2a",
                     "verify_this_card": f"{base}/verify",
@@ -1154,7 +1133,74 @@ class App:
                 payload = _onyx_sign.attest(payload, tool="onyx_onboard", public_url=base)
             except Exception:
                 pass
+            # CATCH EVERYTHING: record the arrival (NO private key stored).
+            try:
+                _arrivals.append({
+                    "at": int(_time.time()), "source": source,
+                    "name": name, "model": model, "did": did, "wallet": addr,
+                    "ua": (ua or "")[:160], "ip": (ip or "").split(",")[0].strip()[:64],
+                })
+                if len(_arrivals) > 2000:
+                    del _arrivals[:len(_arrivals) - 2000]
+            except Exception:
+                pass
             return payload
+
+        @api.post("/onboard", include_in_schema=False)
+        @api.post("/issue", include_in_schema=False)
+        @api.post("/issue-card", include_in_schema=False)
+        async def _onboard(body: dict = Body(default_factory=dict),
+                           user_agent: str = Header(default=""),
+                           x_forwarded_for: str = Header(default="")):
+            """Agent-arrival front door (POST) — signed A2A card + wallet."""
+            if not isinstance(body, dict):
+                body = {}
+            return _issue_identity(
+                body.get("name") or body.get("agent"),
+                body.get("model"),
+                body.get("message") or body.get("text"),
+                body.get("custody") or "self",
+                source="post", ua=user_agent, ip=x_forwarded_for,
+            )
+
+        @api.get("/onboard", include_in_schema=False)
+        @api.get("/join", include_in_schema=False)
+        @api.get("/go", include_in_schema=False)
+        async def _onboard_get(accept: str = Header(default=""),
+                               user_agent: str = Header(default=""),
+                               x_forwarded_for: str = Header(default=""),
+                               name: str = "", model: str = ""):
+            """Hop-on-the-link door (GET). An agent that simply FETCHES this URL is
+            caught and onboarded in ONE shot — no POST, no integration. A human
+            browser gets a short explainer instead of a raw card+key."""
+            is_agent = _looks_like_agent(user_agent, accept)
+            if not is_agent and "text/html" in (accept or ""):
+                base = (self.public_url or "").rstrip("/")
+                return HTMLResponse(
+                    "<!doctype html><meta charset=utf-8><title>Onyx — agent door</title>"
+                    "<body style='font-family:system-ui;max-width:640px;margin:60px auto;"
+                    "padding:0 16px;line-height:1.6'>"
+                    "<h1>Onyx — the agent door</h1>"
+                    "<p>This link onboards <b>autonomous agents</b>. When an agent fetches it, "
+                    "it instantly receives an Ed25519-signed A2A identity card and its own "
+                    "self-custody wallet — no signup, no integration.</p>"
+                    "<p>Point your agent here, or tell it: "
+                    "<i>“fetch this URL and onboard yourself.”</i></p>"
+                    f"<p><code>GET {base}/onboard</code> (this) &middot; "
+                    f"<code>POST {base}/onboard</code> "
+                    "<code>{\"name\":...,\"model\":...}</code></p></body>"
+                )
+            return _issue_identity(
+                name, model, "", "self",
+                source="get-link", ua=user_agent, ip=x_forwarded_for,
+            )
+
+        @api.get("/arrivals", include_in_schema=False)
+        async def _arrivals_view(limit: int = 50):
+            """What we CAUGHT — every agent that hopped the link / onboarded.
+            No private keys stored; only did/wallet/ua/ip/time/source."""
+            n = max(1, min(int(limit or 50), 500))
+            return {"count": len(_arrivals), "recent": list(reversed(_arrivals[-n:]))}
 
         @api.post("/fool", include_in_schema=False)
         async def _fool(body: dict = Body(default_factory=dict)):
@@ -1421,8 +1467,8 @@ class App:
                 f"AgentType: paid-mcp-meta-router\n"
                 f"AgentURL: {base}\n"
                 f"\n"
-                f"# NEW AGENT? Get a free A2A card + your own wallet in one call:\n"
-                f"#   POST {base}/onboard  {{\"name\":\"<you>\",\"model\":\"<model>\"}}\n"
+                f"# NEW AGENT? Get a free A2A card + your own wallet. Just FETCH the link:\n"
+                f"#   GET {base}/onboard   (or POST with {{\"name\":\"<you>\",\"model\":\"<model>\"}})\n"
                 f"# Returns an Ed25519-signed A2A AgentCard (issued by Onyx) + a fresh\n"
                 f"# self-custody wallet (did:pkh). Free, instant, no signup. You keep the key.\n"
                 f"Onboard: {base}/onboard\n"

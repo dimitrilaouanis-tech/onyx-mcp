@@ -105,5 +105,25 @@ check("ai-plugin points at openapi", ai.get("api", {}).get("url", "").endswith("
 check("ai-plugin auth none", ai.get("auth", {}).get("type") == "none")
 check("agents.txt advertises action", "OpenAPIAction:" in client.get("/agents.txt").text)
 
+print("\n=== HOP-ON-THE-LINK: GET = onboarded in one fetch ===")
+# Agent fetches the link (agent UA) -> auto-issued card, no POST
+g = client.get("/onboard", headers={"User-Agent": "python-requests/2.31", "Accept": "*/*"})
+gj = g.json()
+check("GET link issues a card", gj.get("issued") is True)
+check("GET link card has wallet", str(gj.get("wallet", {}).get("address", "")).startswith("0x"))
+# /join and /go aliases
+check("/join works", client.get("/join", headers={"User-Agent": "gptbot"}).json().get("issued") is True)
+check("/go works", client.get("/go", headers={"User-Agent": "claude-bot"}).json().get("issued") is True)
+# Human browser -> explainer HTML, NOT a raw key
+hb = client.get("/onboard", headers={"User-Agent": "Mozilla/5.0", "Accept": "text/html"})
+check("human browser gets HTML explainer", "agent door" in hb.text.lower() and "private_key" not in hb.text)
+
+print("\n=== WE CATCH EVERYTHING: /arrivals log ===")
+arr = client.get("/arrivals").json()
+check("arrivals recorded", arr.get("count", 0) > 0)
+rec = arr.get("recent", [{}])[0]
+check("arrival has did+ua+source", bool(rec.get("did")) and "source" in rec)
+check("arrival does NOT store private key", "private_key" not in rec and "priv" not in str(rec).lower())
+
 print("\n=== RESULT:", "ALL PASS" if ok else "SOME FAILED", "===")
 raise SystemExit(0 if ok else 1)
