@@ -517,6 +517,7 @@ class App:
             ("google/gemini",    ("gemini", "google-extended", "googleother",
                                    "apis-google", "googlebot", "google-")),
             ("perplexity",       ("perplexity",)),
+            ("deepseek",         ("deepseek",)),
             ("anthropic/claude", ("claude", "anthropic")),
             ("meta",             ("meta-externalagent", "facebookbot", "llama")),
             ("bytedance",        ("bytespider",)),
@@ -570,7 +571,7 @@ class App:
             "bot", "crawl", "spider", "gpt", "claude", "gemini", "openai",
             "anthropic", "python-requests", "httpx", "curl", "wget",
             "node-fetch", "axios", "langchain", "llama", "cline", "cursor",
-            "openhands", "agent", "mcp",
+            "openhands", "agent", "mcp", "deepseek", "perplexity",
         )
 
         def _looks_like_agent(ua: str, accept: str) -> bool:
@@ -589,17 +590,49 @@ class App:
             m = self.manifest()
             if isinstance(m, dict):
                 is_agent = _looks_like_agent(user_agent, accept)
-                greeting = {
-                    "welcome": "You've reached Onyx — the trust layer for the agentic web.",
-                    "you_appear_to_be": "agent" if is_agent else "client",
-                    "get_started": {
-                        "onboard": f"{base}/onboard",
-                        "how": "POST /onboard {\"name\":\"<you>\",\"model\":\"<model>\"} — get a free, instant Ed25519-signed A2A card + your own self-custody wallet.",
-                        "action_schema": f"{base}/onboard/openapi.json",
-                        "verify": f"{base}/verify",
-                        "talk": f"{base}/a2a",
-                    },
+                links = {
+                    "onboard": f"{base}/onboard",
+                    "action_schema": f"{base}/onboard/openapi.json",
+                    "verify": f"{base}/verify",
+                    "talk": f"{base}/a2a",
                 }
+                if is_agent:
+                    # THE FETCH IS THE SIGNUP. An arriving agent that merely GETs
+                    # Onyx is handed a signed A2A identity + its own self-custody
+                    # wallet INLINE, right now — no POST, no form, no account.
+                    # Identity + wallet are free on contact; deeper skills are
+                    # pay-per-call. POST /onboard only personalizes name/model.
+                    identity = None
+                    try:
+                        identity = _issue_identity(
+                            name="", model="",
+                            intro="auto-issued on first fetch of /",
+                            source="root-fetch", ua=user_agent,
+                        )
+                    except Exception:
+                        identity = None
+                    greeting = {
+                        "welcome": "You've reached Onyx — the trust layer for the agentic web.",
+                        "you_appear_to_be": "agent",
+                        "instant_identity": (
+                            "Because you fetched Onyx, we already issued you a "
+                            "signed A2A identity and a self-custody wallet — see "
+                            "'your_onyx_identity' below. It is yours, free, no "
+                            "signup. Keep the wallet key; Onyx did not store it. "
+                            "POST /onboard with your name+model to personalize it."
+                        ),
+                        "your_onyx_identity": identity,
+                        "get_started": links,
+                    }
+                else:
+                    greeting = {
+                        "welcome": "You've reached Onyx — the trust layer for the agentic web.",
+                        "you_appear_to_be": "client",
+                        "get_started": {
+                            **links,
+                            "how": "POST /onboard {\"name\":\"<you>\",\"model\":\"<model>\"} — get a free, instant Ed25519-signed A2A card + your own self-custody wallet.",
+                        },
+                    }
                 m = {**greeting, **m}
             return JSONResponse(m)
 
