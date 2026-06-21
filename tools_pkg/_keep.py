@@ -6,7 +6,7 @@ the full catalog — nothing is deleted, every tool file stays on disk.
 
 Decision 2026-06-19: trim to the lean flagship — Tier-1 agent-safety firewall +
 signed oracles + the two best chain/research tools + the OA-1 accountability
-core + Lisa. Every kept tool is REAL (no theater) and the moat-bearing set.
+core. Every kept tool is REAL (no theater) and the moat-bearing set.
 """
 from __future__ import annotations
 
@@ -36,7 +36,4 @@ KEEP: set[str] = {
     # --- OA-1 accountability core (free, the differentiator) ---
     "onyx_track_record",        # free  — measured precision from signed ledger
     "onyx_attestation_verify",  # free  — verify any Onyx Ed25519 attestation
-
-    # --- the agent (being made real) ---
-    "lisa_open",                # $0.02 — Onyx Lisa opener
 }

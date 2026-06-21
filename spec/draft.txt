@@ -1,0 +1,280 @@
+
+
+
+
+Individual Submission                                        D. Laouanis
+Internet-Draft                                             Onyx Protocol
+Intended status: Informational                                 June 2026
+Expires: 21 December 2026
+
+
+   The Usage-Rights Envelope: Signed Output Terms for Agent-to-Agent
+                                Commerce
+                  draft-laouanis-agent-usage-rights-00
+
+Abstract
+
+   When an autonomous agent purchases an output from another agent (over
+   HTTP-native payment protocols such as x402, or task protocols such as
+   A2A), no machine-readable record exists of what the buyer may do with
+   that output: resell it, redistribute it, cache it, derive from it, or
+   use it as model training data.  Input-side rights are addressed by
+   robots.txt-era conventions and RSL 1.0; the output side of the
+   transaction is unspecified.  This document defines the Usage-Rights
+   Envelope: a small, digitally signed JSON object, bound to the
+   purchased artifact by cryptographic hash, that declares the
+   licensor's terms and travels with the artifact across any number of
+   relays.  Verification is offline and issuer-agnostic: Ed25519 over
+   the JCS (RFC 8785) canonical form.  A reference implementation is
+   publicly deployed.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 3 December 2026.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+
+
+
+Laouanis                Expires 21 December 2026                [Page 1]
+
+Internet-Draft             Agent Usage Rights                  June 2026
+
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+     1.1.  The Missing Half of an Agent Transaction  . . . . . . . .   2
+     1.2.  Design Goals  . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  The Usage-Rights Envelope . . . . . . . . . . . . . . . . . .   3
+     2.1.  Structure . . . . . . . . . . . . . . . . . . . . . . . .   3
+     2.2.  Rights Vocabulary (v0)  . . . . . . . . . . . . . . . . .   3
+     2.3.  Signature . . . . . . . . . . . . . . . . . . . . . . . .   4
+     2.4.  Transport Bindings  . . . . . . . . . . . . . . . . . . .   4
+   3.  Security Considerations . . . . . . . . . . . . . . . . . . .   4
+   4.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   4
+   5.  Reference Implementation  . . . . . . . . . . . . . . . . . .   4
+   6.  Normative References  . . . . . . . . . . . . . . . . . . . .   4
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .   5
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   5
+
+1.  Introduction
+
+1.1.  The Missing Half of an Agent Transaction
+
+   Payment protocols for autonomous agents settle the payment (x402,
+   AP2); task protocols settle the exchange (A2A Task/Artifact).
+   Neither encodes the post-delivery rights of the buyer.  As agent-to-
+   agent resale of purchased outputs is already observable on public
+   x402 marketplaces, every output that changes hands without attached
+   terms is a future dispute: the seller's terms die at the first hop.
+
+1.2.  Design Goals
+
+   1.  Hash-bound: terms attach to the exact bytes they license; any
+       alteration of the artifact orphans the envelope.
+
+   2.  Offline-verifiable: any third party verifies with approximately
+       40 lines of code and no contact with the issuer.
+
+   3.  Relay-proof: because the envelope is signed, no downstream holder
+       can grant themselves broader rights (verified failure mode: any
+       edit produces a hash mismatch).
+
+
+
+Laouanis                Expires 21 December 2026                [Page 2]
+
+Internet-Draft             Agent Usage Rights                  June 2026
+
+
+   4.  Declaration, not judgment: the envelope attests what the licensor
+       declared at issue time.  It is not legal advice and carries no
+       fairness judgment.
+
+2.  The Usage-Rights Envelope
+
+2.1.  Structure
+
+   {
+     "subject":        "sha256:<hex of JCS-canonical artifact>",
+     "predicate":      "usage_rights",
+     "observed_value": {
+       "resale":            "deny",
+       "redistribute":      "with-attribution",
+       "derivatives":       "with-attribution",
+       "retrain":           "deny",
+       "cache_ttl_seconds": 3600
+     },
+     "licensor":    "seller.example",
+     "licensee":    "bearer",
+     "payment_ref": "<payment tx hash or receipt id>",
+     "issued_at":   1781050000,
+     "expires_at":  null,
+     "method":      "licensor-declaration",
+     "spec":        "usage-rights-envelope/v0",
+     "attestation": {
+       "alg": "Ed25519+JCS",
+       "kid": "<key id>",
+       "public_key": "<base64url raw 32 bytes>",
+       "observed_hash": "sha256:<hex>",
+       "sig": "<base64url Ed25519 signature>"
+     }
+   }
+
+2.2.  Rights Vocabulary (v0)
+
+   Recognized keys: resale, redistribute, derivatives, retrain (each
+   taking one of: allow, deny, with-attribution, contact-licensor), and
+   cache_ttl_seconds (integer; maximum retention of a raw copy).
+
+   Unstated rights default to deny.  Unknown keys MUST be ignored for
+   forward compatibility.
+
+
+
+
+
+
+
+
+
+Laouanis                Expires 21 December 2026                [Page 3]
+
+Internet-Draft             Agent Usage Rights                  June 2026
+
+
+2.3.  Signature
+
+   The signature covers the JCS ([RFC8785]) canonical form of the
+   envelope with the attestation member removed, using Ed25519
+   ([RFC8032]).  This profile is byte-compatible with the W3C Data
+   Integrity eddsa-jcs-2022 cryptosuite, permitting verification by
+   existing Verifiable Credential tooling.
+
+2.4.  Transport Bindings
+
+   *  HTTP / x402: the seller returns the envelope in an X-Onyx-Rights
+      response header (base64url of the compact JSON) alongside payment
+      receipt headers, echoing the payment reference in payment_ref.
+
+   *  A2A: the envelope is carried in Artifact.metadata under the key
+      usage_rights (data-only extension).
+
+   *  Server default policy: an issuer publishes its signed default grid
+      at /.well-known/rights.json.
+
+3.  Security Considerations
+
+   The envelope proves what the licensor declared, not that the
+   declaration is legally sufficient in any jurisdiction.  Key
+   compromise allows forged declarations until the key is rotated;
+   issuers SHOULD publish keys at a stable .well-known location so
+   rotation is observable.  The envelope does not prevent a malicious
+   buyer from violating terms; it makes the terms portable, provable,
+   and non-repudiable, which is the prerequisite for any downstream
+   enforcement (marketplace delisting, reputation systems, courts).
+
+4.  IANA Considerations
+
+   This document has no IANA actions in -00.  A future revision may
+   register the X-Onyx-Rights header field name (or a vendor-neutral
+   successor) in the HTTP Field Name Registry.
+
+5.  Reference Implementation
+
+   A live, publicly verifiable implementation (issuer, per-response
+   stamping, free verification endpoint, and signed policy card) is
+   deployed at https://onyx-actions.onrender.com, including an
+   independent verifier of approximately 45 lines with no vendor
+   imports.
+
+6.  Normative References
+
+
+
+
+
+Laouanis                Expires 21 December 2026                [Page 4]
+
+Internet-Draft             Agent Usage Rights                  June 2026
+
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785, June 2020,
+              <https://www.rfc-editor.org/info/rfc8785>.
+
+   [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
+              Signature Algorithm (EdDSA)", RFC 8032, January 2017,
+              <https://www.rfc-editor.org/info/rfc8032>.
+
+Acknowledgments
+
+   Thanks to the x402, A2A, and RSL communities, whose work defines the
+   adjacent layers this document deliberately rides rather than
+   replaces.
+
+Author's Address
+
+   Dimitri Laouanis
+   Onyx Protocol
+   Email: dimitrilaouanis@gmail.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Laouanis                Expires 21 December 2026                [Page 5]

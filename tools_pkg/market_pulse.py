@@ -83,6 +83,10 @@ _ONYX_PRICES_BY_CAPABILITY = {
     "arb_finder": 0.003,
     "capability_bundle": 0.02,
     "market_pulse": 0.02,
+    "retail_price_check": 0.02,
+    "geo_verify": 0.03,
+    "review_truth": 0.06,
+    "ai_visibility": 0.10,
 }
 
 # Curated baseline of high-frequency agent capabilities for blue-ocean check
