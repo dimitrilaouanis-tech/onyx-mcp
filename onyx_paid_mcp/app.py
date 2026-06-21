@@ -1359,6 +1359,66 @@ class App:
                 return HTMLResponse(_pulse.render_html(base))
             return _pulse.snapshot()
 
+        # ---- Onyx Observation Network: the signed log IS the product ----
+        # /pulse is a view; THESE are the machine-consumable, queryable facts.
+        # Certificate-Transparency-for-autonomous-commerce: every record is an
+        # individually Ed25519-signed observation anyone can replay + verify.
+
+        @api.get("/history", include_in_schema=False)
+        async def _obs_history(kind: str = "", since: int = 0, limit: int = 200):
+            """The append-only signed observation log, newest first. Filter by
+            ?kind=new_endpoint|price_drift|merchant_verified|... and ?since=<unix>."""
+            from tools_pkg import _observations, _pulse
+            _pulse.snapshot()  # ensure the log is warm/ingested
+            return _observations.history(kind=kind, since=since, limit=min(limit, 1000))
+
+        @api.get("/timeline", include_in_schema=False)
+        async def _obs_timeline(limit: int = 50):
+            """A compact, skimmable stream of the most recent signed events."""
+            from tools_pkg import _observations, _pulse
+            _pulse.snapshot()
+            return _observations.timeline(limit=min(limit, 200))
+
+        @api.get("/proof/{obs_id}", include_in_schema=False)
+        async def _obs_proof(obs_id: str):
+            """One signed observation + a fresh proof it's genuinely Onyx-signed.
+            The atomic unit of the dataset — replay it anywhere, no Onyx call."""
+            from tools_pkg import _observations, _pulse
+            _pulse.snapshot()
+            return _observations.proof(obs_id)
+
+        @api.get("/endpoint/{host}", include_in_schema=False)
+        async def _obs_endpoint(host: str, limit: int = 100):
+            """Full signed history for one x402 endpoint/host — first seen, call
+            trajectory, drift events. An agent's due-diligence record."""
+            from tools_pkg import _observations, _pulse
+            _pulse.snapshot()
+            return _observations.subject("endpoint", host, limit=min(limit, 500))
+
+        @api.get("/merchant/{domain}", include_in_schema=False)
+        async def _obs_merchant(domain: str, limit: int = 100):
+            """Full signed history for one merchant domain — every verification
+            and fact Onyx has witnessed about it. The reputation record."""
+            from tools_pkg import _observations, _pulse
+            _pulse.snapshot()
+            return _observations.subject("merchant", domain, limit=min(limit, 500))
+
+        @api.get("/agent/{agent_id}", include_in_schema=False)
+        async def _obs_agent(agent_id: str, limit: int = 100):
+            """Full signed history for one agent id — every observation Onyx has
+            recorded about that agent."""
+            from tools_pkg import _observations, _pulse
+            _pulse.snapshot()
+            return _observations.subject("agent", agent_id, limit=min(limit, 500))
+
+        @api.get("/observations", include_in_schema=False)
+        async def _obs_stats(accept: str = Header(default="")):
+            """The dataset's vital stats: size, distinct subjects, kinds, signer.
+            Proof the asset is real and growing — coverage + history is the moat."""
+            from tools_pkg import _observations, _pulse
+            _pulse.snapshot()
+            return _observations.stats()
+
         @api.post("/oracle", include_in_schema=False)
         async def _oracle(body: dict = Body(default_factory=dict)):
             """@OnyxOracle tag-to-verify webhook. The social layer (Neynar/
