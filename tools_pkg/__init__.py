@@ -25,6 +25,7 @@ def discover() -> list[ModuleType]:
     they pay.
     """
     from . import _metadata  # imported here to avoid circular at module load
+    from . import _keep       # lean-flagship allowlist (empty set = full catalog)
     found: list[ModuleType] = []
     for info in pkgutil.iter_modules(__path__):
         if info.name.startswith("_"):
@@ -32,6 +33,8 @@ def discover() -> list[ModuleType]:
         mod = importlib.import_module(f"{__name__}.{info.name}")
         if all(hasattr(mod, k) for k in ("NAME", "PRICE_USDC", "DESCRIPTION",
                                          "INPUT_SCHEMA", "TIER", "run")):
+            if _keep.KEEP and mod.NAME not in _keep.KEEP:
+                continue  # trimmed out of the lean catalog (file kept on disk)
             _metadata.apply(mod)
             found.append(mod)
     return found

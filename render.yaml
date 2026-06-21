@@ -27,3 +27,12 @@ services:
         value: https://facilitator.xpay.sh
       - key: ONYX_PUBLIC_URL
         value: https://onyx-actions.onrender.com
+      # Secret — set the VALUE in the Render dashboard (Environment tab), never
+      # in this file. Powers onyx_ai_visibility (GEO/share-of-voice via Exa)
+      # and the Onyx Lisa real-generation pass.
+      - key: EXA_API_KEY
+        sync: false
+      # Optional — enables onyx_contract_audit deep mode AND lisa_open real
+      # generation; both degrade gracefully without it. Set value in dashboard.
+      - key: ANTHROPIC_API_KEY
+        sync: false
