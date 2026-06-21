@@ -507,6 +507,19 @@ class App:
 
         api = FastAPI(title=self.name, version="0.1.0", lifespan=lifespan)
 
+        # Open CORS so browser-based agent fetchers (and in-page tool calls) can
+        # read our PUBLIC surfaces cross-origin. This exposes nothing new: the
+        # discovery/onboard routes are already public; paid routes stay gated by
+        # x402 (payment), not CORS. Also answers OPTIONS preflight.
+        try:
+            from fastapi.middleware.cors import CORSMiddleware
+            api.add_middleware(
+                CORSMiddleware, allow_origins=["*"],
+                allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"],
+            )
+        except Exception:
+            pass
+
         # ---- agent SIGHTINGS: catch every runtime that checks/fetches us ----
         # Logs non-browser / known-AI fetches to ANY path (not just onboard), so
         # we catch Gemini/ChatGPT/Perplexity etc. the moment their infra hits us
