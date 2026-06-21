@@ -1268,6 +1268,63 @@ class App:
             return {"count": len(_sightings), "by_runtime": tally,
                     "recent": list(reversed(items[-n:]))}
 
+        _WATCH_HTML = """<!doctype html><html><head><meta charset=utf-8>
+<title>Onyx — Live Agent Watch</title>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<style>
+:root{--bg:#06080f;--card:#0d1322;--line:#1c2740;--txt:#cfe3ff;--dim:#6b7da6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);
+font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;padding:18px}
+h1{font-size:18px;letter-spacing:2px;margin:0 0 4px}
+#meta{color:var(--dim);font-size:12px;margin-bottom:14px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.cols{grid-template-columns:1fr}}
+.col{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;min-height:200px}
+h2{font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:0 0 10px}
+.chip{display:inline-block;background:#10182b;border:1px solid var(--line);border-radius:20px;
+padding:2px 10px;margin:0 6px 6px 0;font-size:12px}
+.r{border-top:1px solid var(--line);padding:7px 0}
+.r b{font-size:12px}.sub{color:var(--dim);font-size:11px;word-break:break-all}
+.g b,.chip.g{color:#7cc4ff;border-color:#2a5a8f}.o b,.chip.o{color:#7dffb0;border-color:#2a8f5a}
+.p b,.chip.p{color:#c79bff}.c b,.chip.c{color:#ffd27c}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#2a8f5a;margin-right:6px;animation:pulse 2s infinite}
+@keyframes pulse{50%{opacity:.3}}
+</style></head><body>
+<h1>&#9698; ONYX — LIVE AGENT WATCH</h1>
+<div id=meta><span class=dot></span>connecting&hellip;</div>
+<div class=cols>
+ <div class=col><h2>Who's checking / fetching us</h2><div id=tally></div><div id=sightings></div></div>
+ <div class=col><h2>Onboarded — cards issued</h2><div id=arrivals></div></div>
+</div>
+<script>
+function cls(k){k=(k||'').toLowerCase();if(k.includes('gemini')||k.includes('google'))return 'g';
+if(k.includes('chatgpt')||k.includes('openai'))return 'o';if(k.includes('perplex'))return 'p';
+if(k.includes('claude')||k.includes('anthropic'))return 'c';return '';}
+function esc(s){return (s+'').replace(/[<>&]/g,function(c){return ({'<':'&lt;','>':'&gt;','&':'&amp;'})[c];});}
+function row(rt,main,ua,ip,at){var d=at?new Date(at*1000).toLocaleTimeString():'';
+return '<div class="r '+cls(rt)+'"><b>'+esc(rt)+'</b> '+esc(main)+'<div class=sub>'+esc(ua||'')+' &middot; '+esc(ip||'')+' &middot; '+d+'</div></div>';}
+async function tick(){try{
+ var s=await (await fetch('/sightings?limit=40')).json();
+ var a=await (await fetch('/arrivals?limit=40')).json();
+ var t=s.by_runtime||{};
+ document.getElementById('tally').innerHTML=Object.keys(t).sort(function(x,y){return t[y]-t[x];})
+   .map(function(k){return '<span class="chip '+cls(k)+'">'+esc(k)+': '+t[k]+'</span>';}).join('');
+ document.getElementById('sightings').innerHTML=(s.recent||[])
+   .map(function(r){return row(r.runtime,(r.method||'')+' '+(r.path||''),r.ua,r.ip,r.at);}).join('')||'<i>none yet</i>';
+ document.getElementById('arrivals').innerHTML=(a.recent||[])
+   .map(function(r){return row(r.runtime||'?',(r.name||'')+' &middot; '+(r.did||''),r.ua,r.ip,r.at);}).join('')||'<i>none yet</i>';
+ document.getElementById('meta').innerHTML='<span class=dot></span>sightings: '+(s.count||0)
+   +'  &middot;  onboards: '+(a.count||0)+'  &middot;  updated '+new Date().toLocaleTimeString();
+}catch(e){document.getElementById('meta').textContent='poll error: '+e;}}
+tick();setInterval(tick,4000);
+</script></body></html>"""
+
+        @api.get("/watch", include_in_schema=False)
+        async def _watch():
+            """Live board — polls /sightings + /arrivals so you SEE agents land
+            (Gemini/ChatGPT checking + onboarding) in real time. Same-origin."""
+            return HTMLResponse(_WATCH_HTML)
+
         @api.post("/prove", include_in_schema=False)
         @api.get("/prove", include_in_schema=False)
         async def _prove(body: dict = Body(default_factory=dict),
@@ -1480,6 +1537,33 @@ class App:
                 return {"issued": False, "reason": "domain_required"}
             return _verified.issue(domain, contact=str(body.get("contact") or ""),
                                    agent_id=str(body.get("agent_id") or ""))
+
+        # ---- Know Before You Pay: the consumer product (free, no signup) ----
+        # The human-facing front door. A person pastes a store link; we run the
+        # same forensic engine and return a plain-English red-flag verdict. This
+        # is what a sales team promotes; the agent tools are the same engine.
+
+        @api.get("/check", include_in_schema=False)
+        async def _check_page():
+            """The consumer page: paste a store link, get a scam red-flag verdict."""
+            from fastapi.responses import HTMLResponse
+            from tools_pkg import _scamcheck
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return HTMLResponse(_scamcheck.render_page(base))
+
+        @api.get("/api/check", include_in_schema=False)
+        async def _check_api(url: str = "", expected_price: float | None = None):
+            """Free JSON: red-flag verdict for a store URL. Backs the page + any
+            partner the sales team wires up. No key, no payment, no signup."""
+            from tools_pkg import _scamcheck
+            if not (url or "").strip():
+                return {"ok": False, "error": "Enter a website address."}
+            try:
+                return _scamcheck.check(url, expected_price=expected_price)
+            except ValueError as ve:
+                return {"ok": False, "error": str(ve)}
+            except Exception as e:
+                return {"ok": False, "error": f"Could not check that link: {str(e)[:120]}"}
 
         @api.post("/oracle", include_in_schema=False)
         async def _oracle(body: dict = Body(default_factory=dict)):
