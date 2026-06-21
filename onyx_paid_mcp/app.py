@@ -934,7 +934,7 @@ class App:
                         "description": (t.description or "")[:240],
                         "tags": ["security", "verification", "trust", "x402", "ed25519-signed"],
                     })
-            return {
+            card = {
                 "protocolVersion": "0.3.0",
                 "name": self.name,
                 "description": (
@@ -1021,6 +1021,15 @@ class App:
                     "challenge_us": f"{base}/fool",
                 },
             }
+            # Sign our OWN card — A2A JWS signatures[]. We grade other agents on
+            # whether their card is cryptographically signed; ours must be too.
+            # Verifiable + neutral (anyone can check against /.well-known/onyx-pubkey).
+            try:
+                from tools_pkg import _onyx_sign
+                card = _onyx_sign.sign_card(card, public_url=base)
+            except Exception:
+                pass
+            return card
 
         @api.post("/", include_in_schema=False)
         @api.post("/connect", include_in_schema=False)

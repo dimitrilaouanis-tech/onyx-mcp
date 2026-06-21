@@ -230,6 +230,77 @@ def verify(payload: dict) -> dict:
         return {"ok": False, "reason": "sig_verify_failed", "detail": str(e)[:200]}
 
 
+def sign_card(card: dict, public_url: str | None = None) -> dict:
+    """Attach an A2A-spec JWS signature to an AgentCard (`signatures[]`).
+
+    Detached-JWS over the card: the signed payload is JCS(card without its
+    `signatures` field), so any later edit to the card breaks the signature.
+    Each entry carries `protected` (b64url JWS header with alg=EdDSA, our kid,
+    and the public JWK) and `signature` (b64url Ed25519 over
+    `protected . payload`). A verifier reconstructs the payload from the card
+    itself — nothing extra is stored. If crypto is unavailable we return the
+    card UNSIGNED rather than fake a signature.
+    """
+    if not isinstance(card, dict):
+        return card
+    s = signer()
+    body = {k: v for k, v in card.items() if k != "signatures"}
+    payload_b64 = _b64u(_jcs(body).encode("utf-8"))
+    header = {
+        "alg": "EdDSA",
+        "kid": s.kid,
+        "jwk": {"kty": "OKP", "crv": "Ed25519", "x": s.pub_b64},
+        "onyx_pubkey_url": _PUBKEY_URL,
+    }
+    protected_b64 = _b64u(_jcs(header).encode("utf-8"))
+    sig = s.sign((protected_b64 + "." + payload_b64).encode("ascii"))
+    if not sig:
+        return card
+    out = dict(card)
+    out["signatures"] = [{"protected": protected_b64, "signature": sig}]
+    return out
+
+
+def verify_card(card: dict) -> dict:
+    """Verify an AgentCard's A2A `signatures[]` (detached JWS). Returns
+    {ok, kid?, onyx_signed?, reason?}. Reconstructs the payload from the card
+    minus `signatures`, exactly as sign_card() signed it."""
+    if not _HAS_CRYPTO:
+        return {"ok": False, "reason": "no_crypto_installed"}
+    if not isinstance(card, dict):
+        return {"ok": False, "reason": "not_a_card"}
+    sigs = card.get("signatures")
+    if not isinstance(sigs, list) or not sigs:
+        return {"ok": False, "reason": "no_signatures"}
+    body = {k: v for k, v in card.items() if k != "signatures"}
+    payload_b64 = _b64u(_jcs(body).encode("utf-8"))
+    try:
+        mine = signer().pub_b64
+    except Exception:
+        mine = None
+    for entry in sigs:
+        if not isinstance(entry, dict):
+            continue
+        protected_b64 = entry.get("protected") or ""
+        sig_b64 = entry.get("signature") or ""
+        try:
+            header = json.loads(_b64u_decode(protected_b64))
+            pub_b64 = (header.get("jwk") or {}).get("x") or ""
+            pub_bytes = _b64u_decode(pub_b64)
+            sig_bytes = _b64u_decode(sig_b64)
+            if len(pub_bytes) != 32 or pub_bytes == b"\x00" * 32:
+                continue
+            if len(sig_bytes) != 64 or sig_bytes == b"\x00" * 64:
+                continue
+            Ed25519PublicKey.from_public_bytes(pub_bytes).verify(
+                sig_bytes, (protected_b64 + "." + payload_b64).encode("ascii"))
+            return {"ok": True, "kid": header.get("kid"),
+                    "onyx_signed": bool(mine and pub_b64 == mine)}
+        except Exception:
+            continue
+    return {"ok": False, "reason": "sig_verify_failed"}
+
+
 def is_onyx_signed(payload: dict) -> dict:
     """STRICTER than verify(): confirms the signature is by OUR pinned key, not
     just any self-consistent key embedded in the envelope.
