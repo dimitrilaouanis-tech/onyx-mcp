@@ -182,17 +182,23 @@ def run(target: str = "", **_: object) -> dict:
     # --- card facts ---
     card_signed = None
     declared_auth = None
+    accepts_text = True  # default-assume text until a card says otherwise
     if isinstance(card, dict):
         sigs = card.get("signatures")
         card_signed = bool(sigs) if sigs is not None else False
         schemes = card.get("securitySchemes") or {}
         sec = card.get("security") or []
         declared_auth = "none" if (not schemes and not sec) else "required"
+        in_modes = card.get("defaultInputModes")
+        if isinstance(in_modes, list) and in_modes:
+            accepts_text = any("text" in str(m).lower() for m in in_modes)
         result["card"] = {
             "name": card.get("name"),
             "signed": card_signed,
             "declared_auth": declared_auth,
             "skills_count": len(card.get("skills") or []),
+            "accepts_text_input": accepts_text,
+            "default_input_modes": in_modes if isinstance(in_modes, list) else None,
         }
     else:
         result["card"] = None
@@ -240,11 +246,23 @@ def run(target: str = "", **_: object) -> dict:
     if not answered:
         verdict = "dead"
         detail = f"No usable answer (status {s1}/{s2})."
+    elif identical and not accepts_text:
+        # Its own card says it does not take free-text; the identical reply is
+        # expected, not evidence of hollowness. Report fact, withhold judgment.
+        verdict = "structured_only"
+        detail = ("Returned the same reply to two distinct free-text challenges, "
+                  "but its card declares non-text input modes "
+                  f"({result['card'].get('default_input_modes')}). Free-text "
+                  "liveness is not the right test for this agent; use its declared "
+                  "structured skill interface. Not classified as hollow.")
     elif identical:
         verdict = "hollow"
-        detail = ("Returned a byte-identical canned reply to two different "
-                  "challenges — passes fixed-prompt registry checks but does not "
-                  "actually engage. Likely a template, not a reasoning agent.")
+        detail = ("Its card accepts text input, yet it returned a byte-identical "
+                  "reply to two distinct text challenges — i.e. its output does "
+                  "not vary with message content. Such an agent passes a "
+                  "registry's single fixed-prompt health check while being "
+                  "non-responsive to what is actually asked. (Observed behavior; "
+                  "we make no claim about the operator's intent.)")
     elif differ:
         verdict = "alive"
         detail = "Gave two distinct, responsive replies to two different challenges."
@@ -263,7 +281,7 @@ def run(target: str = "", **_: object) -> dict:
         score += 10; factors.append({"factor": "has_agent_card", "points": 10})
     if card_signed:
         score += 20; factors.append({"factor": "card_cryptographically_signed", "points": 20})
-    if identical:
+    if identical and verdict == "hollow":
         score -= 30; factors.append({"factor": "canned_reply_penalty", "points": -30})
     if claims_mismatch:
         score -= 15; factors.append({"factor": "claims_behavior_mismatch", "points": -15})
