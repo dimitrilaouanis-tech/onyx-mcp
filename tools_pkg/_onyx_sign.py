@@ -46,9 +46,59 @@ def _b64u_decode(s: str) -> bytes:
     return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
 
 
+def _jcs_number(n) -> str:
+    """RFC-8785 §3.2.2.3 number serialization (ECMAScript Number::toString).
+
+    The bug this fixes: Python's json renders the float 1.0 as "1.0" and 0.0 as
+    "0.0", but RFC-8785 (which our spec and IETF draft cite) requires "1" and
+    "0". That divergence made any third party verifying a payload containing a
+    number get a FALSE forgery — fatal for a trust layer. bool is handled by the
+    caller before this (in Python bool is an int subclass).
+    """
+    if isinstance(n, int):
+        return str(n)
+    # float
+    if n != n or n in (float("inf"), float("-inf")):
+        raise ValueError("NaN/Infinity are not permitted in JCS canonical JSON")
+    if n.is_integer():
+        # integral floats serialize as integers: 1.0 -> "1", -50.0 -> "-50"
+        return str(int(n))
+    # non-integral: Python's repr is the shortest round-tripping decimal (PEP
+    # 3101 / since 3.1), which equals ECMAScript Number::toString for the
+    # magnitudes Onyx emits (no exponent needed). e.g. 0.62 -> "0.62".
+    r = repr(n)
+    return r
+
+
+def _jcs_ser(o) -> str:
+    """Recursive RFC-8785 canonical serializer (replaces json.dumps so numbers
+    are spec-correct). Object keys sorted by code point (matches Python's sort
+    for the ASCII keys Onyx uses); strings use JSON minimal escaping."""
+    if o is True:
+        return "true"
+    if o is False:
+        return "false"
+    if o is None:
+        return "null"
+    if isinstance(o, str):
+        return json.dumps(o, ensure_ascii=False)
+    if isinstance(o, bool):  # defensive; covered above
+        return "true" if o else "false"
+    if isinstance(o, (int, float)):
+        return _jcs_number(o)
+    if isinstance(o, dict):
+        return "{" + ",".join(
+            json.dumps(str(k), ensure_ascii=False) + ":" + _jcs_ser(v)
+            for k, v in sorted(o.items(), key=lambda kv: str(kv[0]))
+        ) + "}"
+    if isinstance(o, (list, tuple)):
+        return "[" + ",".join(_jcs_ser(v) for v in o) + "]"
+    raise TypeError(f"not JSON-serializable in JCS: {type(o).__name__}")
+
+
 def _jcs(obj) -> str:
-    """RFC-8785 JCS canonical JSON: sorted keys, compact, UTF-8."""
-    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    """RFC-8785 JCS canonical JSON: sorted keys, compact, spec-correct numbers."""
+    return _jcs_ser(obj)
 
 
 class _OnyxSigner:

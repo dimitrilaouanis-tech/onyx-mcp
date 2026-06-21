@@ -11,9 +11,38 @@ import urllib.request
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 
+def _num(n) -> str:
+    """RFC 8785 §3.2.2.3 number serialization. Integral floats -> integer form
+    (1.0 -> "1", 0.0 -> "0"); this is what makes third-party verification of
+    numeric payloads succeed. (json.dumps gets this WRONG: it emits "1.0".)"""
+    if isinstance(n, bool):
+        return "true" if n else "false"
+    if isinstance(n, int):
+        return str(n)
+    if n != n or n in (float("inf"), float("-inf")):
+        raise ValueError("NaN/Infinity not permitted in JCS")
+    return str(int(n)) if float(n).is_integer() else repr(n)
+
+
 def jcs(obj) -> str:
-    """RFC 8785 canonical JSON (sufficient subset: sorted keys, minimal separators)."""
-    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    """RFC 8785 canonical JSON: sorted keys, minimal separators, spec-correct
+    numbers (the float-as-integer rule json.dumps omits)."""
+    if obj is None:
+        return "null"
+    if isinstance(obj, bool):
+        return "true" if obj else "false"
+    if isinstance(obj, str):
+        return json.dumps(obj, ensure_ascii=False)
+    if isinstance(obj, (int, float)):
+        return _num(obj)
+    if isinstance(obj, dict):
+        return "{" + ",".join(
+            json.dumps(str(k), ensure_ascii=False) + ":" + jcs(v)
+            for k, v in sorted(obj.items(), key=lambda kv: str(kv[0]))
+        ) + "}"
+    if isinstance(obj, (list, tuple)):
+        return "[" + ",".join(jcs(v) for v in obj) + "]"
+    raise TypeError("not JCS-serializable")
 
 
 def b64u_decode(s: str) -> bytes:
