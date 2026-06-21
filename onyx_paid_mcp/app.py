@@ -1419,6 +1419,68 @@ class App:
             _pulse.snapshot()
             return _observations.stats()
 
+        # ---- Onyx Verified: the sell-SIDE badge (Verisign mechanic) ----
+        # Issuance is the PAID tool onyx_verified_issue (behind the x402 gate).
+        # These are the free public surfaces the badge points at: a live status
+        # API agents check, and a live SVG seal Onyx serves so it can't be faked.
+
+        @api.get("/verified/{domain}.svg", include_in_schema=False)
+        async def _verified_badge(domain: str):
+            """Live Onyx-served badge. Green only while a current verified record
+            exists on the log — serving it ourselves makes it un-forgeable."""
+            from fastapi.responses import Response
+            from tools_pkg import _verified
+            svg = _verified.badge_svg(domain)
+            return Response(content=svg, media_type="image/svg+xml",
+                            headers={"Cache-Control": "public, max-age=300"})
+
+        @api.get("/verified/{domain}", include_in_schema=False)
+        async def _verified_status(domain: str):
+            """Machine-readable verified status an agent hits before it pays a
+            merchant. Reads the live signed log; expired records report false."""
+            from tools_pkg import _verified
+            return _verified.status(domain)
+
+        @api.get("/verified", include_in_schema=False)
+        async def _verified_info():
+            """What Onyx Verified is + how to get issued (the sell-side funnel)."""
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return {
+                "product": "Onyx Verified",
+                "model": "The verified party pays — like an SSL certificate, not a per-call fee.",
+                "what_it_is": "A signed, publicly-queryable record + live badge that "
+                              "agents check before they transact with you.",
+                "how_to_get_it": {
+                    "tool": "onyx_verified_issue",
+                    "price_usdc": "2.00",
+                    "valid_days": 90,
+                    "via": "Call the onyx_verified_issue tool over MCP/x402, or POST /verified/issue.",
+                },
+                "checks": ["live TLS", "reachable", "no off-domain redirect",
+                           "registration age disclosed"],
+                "surfaces": {
+                    "status_api": base + "/verified/{domain}",
+                    "badge_svg": base + "/verified/{domain}.svg",
+                    "public_record": base + "/merchant/{domain}",
+                },
+                "bright_line": "Attests your domain PASSED published objective checks "
+                               "(key-control + liveness), NOT that you are honest or safe. "
+                               "That neutrality is the moat — no payment rail can grade a "
+                               "merchant it earns fees from.",
+            }
+
+        @api.post("/verified/issue", include_in_schema=False)
+        async def _verified_issue_http(body: dict = Body(default_factory=dict)):
+            """HTTP path to issuance (mirrors the onyx_verified_issue tool). In
+            production this sits behind the same x402 gate as the tool; exposed
+            here so the sell-side flow is reachable without an MCP client."""
+            from tools_pkg import _verified
+            domain = str(body.get("domain") or "").strip()
+            if not domain:
+                return {"issued": False, "reason": "domain_required"}
+            return _verified.issue(domain, contact=str(body.get("contact") or ""),
+                                   agent_id=str(body.get("agent_id") or ""))
+
         @api.post("/oracle", include_in_schema=False)
         async def _oracle(body: dict = Body(default_factory=dict)):
             """@OnyxOracle tag-to-verify webhook. The social layer (Neynar/
