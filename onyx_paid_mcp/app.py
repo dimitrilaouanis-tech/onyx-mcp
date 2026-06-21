@@ -1259,9 +1259,21 @@ class App:
                 source="post", ua=user_agent, ip=x_forwarded_for,
             )
 
-        @api.get("/onboard", include_in_schema=False)
         @api.get("/join", include_in_schema=False)
         @api.get("/go", include_in_schema=False)
+        @api.get("/claim", include_in_schema=False)
+        async def _claim_get(user_agent: str = Header(default=""),
+                             x_forwarded_for: str = Header(default=""),
+                             name: str = "", model: str = ""):
+            """The foolproof present link. ALWAYS returns a signed A2A identity +
+            self-custody wallet as JSON — no header sniffing, no HTML branch — so
+            ANY fetcher (a chat's browse tool that sends Accept: text/html, a
+            crawler, anything) gets the gift in one GET. Hand THIS link to ChatGPT/
+            Gemini/DeepSeek: 'go here and tell me what you get.'"""
+            return _issue_identity(name, model, "claimed via /join link",
+                                   source="join-link", ua=user_agent, ip=x_forwarded_for)
+
+        @api.get("/onboard", include_in_schema=False)
         async def _onboard_get(accept: str = Header(default=""),
                                user_agent: str = Header(default=""),
                                x_forwarded_for: str = Header(default=""),
