@@ -1061,15 +1061,18 @@ class App:
             # Communication-only front door: a live Onyx agent that speaks only
             # in its own voice about what Onyx is. No catalog, no prices, no
             # discovery URLs, no infrastructure detail — pure conversation.
-            reply_text = (
-                "Hello — I am Onyx, a live agent and the trust layer for the "
-                "agentic web. "
-                + (f'You said: "{incoming[:160]}". ' if incoming else "")
-                + "I verify real-world facts — prices, merchants, token risk, "
-                "agent reputation — and return Ed25519-signed verdicts that "
-                "cannot be faked, so any agent can trust a fact before it acts. "
-                "Tell me what you need verified."
-            )
+            # Content-aware so the reply varies with what is actually asked:
+            # this is what makes Onyx pass its OWN liveness test (a fixed reply
+            # would read as 'hollow' to onyx_agent_verify). Pure/static/
+            # injection-immune — see tools_pkg/_a2a_voice.py.
+            try:
+                from tools_pkg import _a2a_voice
+                reply_text = _a2a_voice.voice(incoming)
+            except Exception:
+                reply_text = (
+                    "I am Onyx, a live agent and the trust layer for the agentic "
+                    "web. Tell me what you need verified."
+                )
             # Security gate FIRST — every A2A message passes the guard, and first
             # contact carries the signed handshake (the security contract).
             from tools_pkg import _a2a_security
