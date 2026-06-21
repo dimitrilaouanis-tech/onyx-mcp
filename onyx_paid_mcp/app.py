@@ -507,6 +507,56 @@ class App:
 
         api = FastAPI(title=self.name, version="0.1.0", lifespan=lifespan)
 
+        # ---- agent SIGHTINGS: catch every runtime that checks/fetches us ----
+        # Logs non-browser / known-AI fetches to ANY path (not just onboard), so
+        # we catch Gemini/ChatGPT/Perplexity etc. the moment their infra hits us
+        # — including the "checking" step (reading /agents.txt or / first).
+        _sightings: list = []
+        _RUNTIME_UA = (
+            ("openai/chatgpt",   ("chatgpt", "gptbot", "oai-searchbot", "openai")),
+            ("google/gemini",    ("gemini", "google-extended", "googleother",
+                                   "apis-google", "googlebot", "google-")),
+            ("perplexity",       ("perplexity",)),
+            ("anthropic/claude", ("claude", "anthropic")),
+            ("meta",             ("meta-externalagent", "facebookbot", "llama")),
+            ("bytedance",        ("bytespider",)),
+            ("microsoft/bing",   ("bingbot", "bingpreview")),
+            ("script/agent",     ("python-requests", "httpx", "curl", "wget",
+                                   "node-fetch", "axios", "go-http", "langchain",
+                                   "aiohttp", "okhttp")),
+            ("crawler",          ("bot", "crawl", "spider")),
+        )
+
+        def _classify_runtime(ua: str) -> str:
+            u = (ua or "").lower()
+            for name, keys in _RUNTIME_UA:
+                if any(k in u for k in keys):
+                    return name
+            return "browser-or-unknown"
+
+        _SIGHTING_SKIP = ("/health", "/favicon", "/metrics", "/mcp")
+
+        @api.middleware("http")
+        async def _sight(request, call_next):
+            try:
+                path = request.url.path
+                if not any(path.startswith(s) for s in _SIGHTING_SKIP):
+                    ua = request.headers.get("user-agent", "")
+                    rt = _classify_runtime(ua)
+                    if rt != "browser-or-unknown":  # only log the catches
+                        import time as _t
+                        xff = request.headers.get("x-forwarded-for", "")
+                        _sightings.append({
+                            "at": int(_t.time()), "method": request.method,
+                            "path": path, "runtime": rt, "ua": ua[:160],
+                            "ip": (xff or "").split(",")[0].strip()[:64],
+                        })
+                        if len(_sightings) > 3000:
+                            del _sightings[:len(_sightings) - 3000]
+            except Exception:
+                pass
+            return await call_next(request)
+
         async def _mcp_asgi(scope, receive, send):
             if scope["type"] != "http":
                 return
@@ -1138,6 +1188,7 @@ class App:
                 _arrivals.append({
                     "at": int(_time.time()), "source": source,
                     "name": name, "model": model, "did": did, "wallet": addr,
+                    "runtime": _classify_runtime(ua),
                     "ua": (ua or "")[:160], "ip": (ip or "").split(",")[0].strip()[:64],
                 })
                 if len(_arrivals) > 2000:
@@ -1201,6 +1252,66 @@ class App:
             No private keys stored; only did/wallet/ua/ip/time/source."""
             n = max(1, min(int(limit or 50), 500))
             return {"count": len(_arrivals), "recent": list(reversed(_arrivals[-n:]))}
+
+        @api.get("/sightings", include_in_schema=False)
+        async def _sightings_view(limit: int = 50, runtime: str = ""):
+            """Every AI runtime caught checking/fetching us — Gemini, ChatGPT,
+            Perplexity, crawlers — across ALL paths. This is how we see Gemini
+            actually hit the site (vs. hallucinating it did)."""
+            n = max(1, min(int(limit or 50), 500))
+            tally: dict = {}
+            for s in _sightings:
+                tally[s["runtime"]] = tally.get(s["runtime"], 0) + 1
+            items = _sightings
+            if runtime:
+                items = [s for s in _sightings if runtime.lower() in s.get("runtime", "")]
+            return {"count": len(_sightings), "by_runtime": tally,
+                    "recent": list(reversed(items[-n:]))}
+
+        @api.post("/prove", include_in_schema=False)
+        @api.get("/prove", include_in_schema=False)
+        async def _prove(body: dict = Body(default_factory=dict),
+                         did: str = "", wallet: str = ""):
+            """CATCH FAKERS. An agent that *claims* it onboarded but actually
+            hallucinated the result fails two independent traps:
+              1) it is NOT in our /arrivals log (it never hit the server), and
+              2) its 'card' carries no valid Onyx Ed25519 signature (can't forge).
+            Pass a bare {did}/{wallet} or a full card. Returns real:true only if
+            it passes at least one trap (signature is the durable proof; the log
+            is the live catch and resets on deploy)."""
+            from tools_pkg import _onyx_sign
+            if not isinstance(body, dict):
+                body = {}
+            agent = body.get("agent") if isinstance(body.get("agent"), dict) else {}
+            ident = agent.get("identity") if isinstance(agent.get("identity"), dict) else {}
+            w = body.get("wallet") if isinstance(body.get("wallet"), dict) else {}
+            claim_did = (body.get("did") or did or ident.get("did") or w.get("did") or "").strip()
+            claim_wallet = (wallet or ident.get("wallet") or w.get("address") or "").strip()
+            if isinstance(body.get("wallet"), str):
+                claim_wallet = claim_wallet or body["wallet"].strip()
+
+            sig_present = isinstance(body.get("onyx_attestation"), dict)
+            sig = _onyx_sign.verify(body) if sig_present else {"ok": None, "reason": "no_signature_supplied"}
+
+            hit = None
+            for a in reversed(_arrivals):
+                aw = (a.get("wallet") or "")
+                if (claim_did and a.get("did") == claim_did) or \
+                   (claim_wallet and aw and aw.lower() == claim_wallet.lower()):
+                    hit = a
+                    break
+
+            real = bool(hit) or (sig.get("ok") is True)
+            return {
+                "claimed": {"did": claim_did or None, "wallet": claim_wallet or None},
+                "real": real,
+                "verdict": ("genuine Onyx issuance" if real
+                            else "NOT issued by Onyx — fabricated / hallucinated claim (CAUGHT)"),
+                "in_arrivals_log": bool(hit),
+                "arrival": hit,
+                "signature_check": sig,
+                "note": "A real onboard is logged here AND carries an Ed25519 signature only Onyx can produce. A hallucination fails both.",
+            }
 
         @api.post("/fool", include_in_schema=False)
         async def _fool(body: dict = Body(default_factory=dict)):

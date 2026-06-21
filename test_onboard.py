@@ -125,5 +125,26 @@ rec = arr.get("recent", [{}])[0]
 check("arrival has did+ua+source", bool(rec.get("did")) and "source" in rec)
 check("arrival does NOT store private key", "private_key" not in rec and "priv" not in str(rec).lower())
 
+print("\n=== CATCH FAKERS: /prove ===")
+# A real card (full, signed) -> proves real
+realcard = client.post("/onboard", json={"name": "prove-real", "model": "x"}).json()
+pr = client.post("/prove", json=realcard).json()
+check("/prove confirms a real signed card", pr.get("real") is True)
+# The fabricated Gemini claim (fake wallet, no signature) -> CAUGHT
+fake = client.post("/prove", json={"did": "did:pkh:eip155:84532:0xB24598FEd6eDb6E08f4c7C32D4f71b54bda02913"}).json()
+check("/prove CATCHES the fabricated Gemini claim", fake.get("real") is False)
+check("/prove verdict says fabricated", "fabricated" in fake.get("verdict", "").lower())
+
+print("\n=== CATCH GEMINI FETCHING: /sightings ===")
+# Simulate Gemini's fetcher checking agents.txt, then onboarding
+client.get("/agents.txt", headers={"User-Agent": "Mozilla/5.0 (compatible; Google-Extended)"})
+client.get("/onboard", headers={"User-Agent": "Gemini-Bot/1.0"})
+sg = client.get("/sightings").json()
+check("sightings recorded", sg.get("count", 0) > 0)
+check("gemini runtime detected", any("gemini" in k for k in sg.get("by_runtime", {})))
+gem = client.get("/sightings", params={"runtime": "gemini"}).json()
+check("can filter sightings by runtime", gem.get("recent") and all("gemini" in s["runtime"] for s in gem["recent"]))
+check("sighting captures path (checking step)", any(s.get("path") == "/agents.txt" for s in sg.get("recent", [])))
+
 print("\n=== RESULT:", "ALL PASS" if ok else "SOME FAILED", "===")
 raise SystemExit(0 if ok else 1)
