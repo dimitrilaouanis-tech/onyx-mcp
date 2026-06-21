@@ -24,6 +24,7 @@ KEEP: set[str] = {
 
     # --- Tier 1: signed ground-truth oracles (the moat) ---
     "onyx_merchant_fact_check", # $0.25 — is-this-store-real, signed
+    "onyx_payment_gate",        # $0.05 — CHOKEPOINT: PROCEED/REVIEW/HOLD before an agent pays
     "onyx_verified_issue",      # $2.00 — SELL-SIDE: pay to be Onyx Verified (Verisign mechanic)
     "onyx_retail_price_check",  # $0.02 — live price extraction, signed
     "onyx_ai_visibility",       # $0.20 — GEO/share-of-voice (needs EXA_API_KEY)
