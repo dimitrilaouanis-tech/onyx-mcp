@@ -1310,6 +1310,66 @@ class App:
             n = max(1, min(int(limit or 50), 500))
             return {"count": len(_arrivals), "recent": list(reversed(_arrivals[-n:]))}
 
+        # ---- CLAIM REGISTRY: mark an issued identity TAKEN, by proof-of-key ----
+        @api.get("/authenticate", include_in_schema=False)
+        async def _auth_challenge(address: str = ""):
+            """Step 1 of claiming an identity: get a one-time challenge to sign
+            with the wallet's private key. Proves you control the key without
+            ever revealing it (did:pkh challenge-response)."""
+            from tools_pkg import _claim_registry
+            base = (self.public_url or "").rstrip("/")
+            try:
+                ch = _claim_registry.new_challenge(address)
+            except ValueError as e:
+                return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+            ch["then"] = f"POST {base}/authenticate  {{\"address\":\"{ch['address']}\",\"signature\":\"0x…\"}}"
+            return ch
+
+        @api.post("/authenticate", include_in_schema=False)
+        @api.post("/claim/confirm", include_in_schema=False)
+        async def _auth_claim(body: dict = Body(default_factory=dict)):
+            """Step 2: submit the signature. If it proves key control, Onyx marks
+            the address TAKEN in the registry and returns a signed receipt."""
+            from tools_pkg import _claim_registry, _onyx_sign
+            if not isinstance(body, dict):
+                body = {}
+            res = _claim_registry.claim(
+                str(body.get("address") or body.get("did") or "").replace(
+                    "did:pkh:eip155:8453:", ""),
+                str(body.get("signature") or body.get("sig") or ""),
+            )
+            if not res.get("ok"):
+                return JSONResponse(res, status_code=400)
+            base = (self.public_url or "").rstrip("/")
+            receipt = {
+                "ok": True,
+                "registered": res["record"],
+                "already_taken": res.get("already_taken", False),
+                "note": "This identity is now TAKEN in the Onyx registry — "
+                        "proven by signature, not self-declared.",
+            }
+            try:
+                receipt = _onyx_sign.attest(receipt, tool="onyx_claim", public_url=base)
+            except Exception:
+                pass
+            return receipt
+
+        @api.get("/registry", include_in_schema=False)
+        @api.get("/claimed", include_in_schema=False)
+        async def _registry_view():
+            """The TAKEN list — every identity claimed by proof-of-key."""
+            from tools_pkg import _claim_registry
+            return _claim_registry.all_claimed()
+
+        @api.get("/registry/status", include_in_schema=False)
+        async def _registry_status(address: str = ""):
+            """Is a given address TAKEN? Any agent can check before trusting one."""
+            from tools_pkg import _claim_registry
+            try:
+                return _claim_registry.status(address)
+            except ValueError as e:
+                return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
         @api.get("/sightings", include_in_schema=False)
         async def _sightings_view(limit: int = 50, runtime: str = ""):
             """Every AI runtime caught checking/fetching us — Gemini, ChatGPT,
