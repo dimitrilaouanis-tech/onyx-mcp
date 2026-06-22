@@ -1714,6 +1714,18 @@ tick();setInterval(tick,4000);
         # Certificate-Transparency-for-autonomous-commerce: every record is an
         # individually Ed25519-signed observation anyone can replay + verify.
 
+        @api.get("/leaderboard", include_in_schema=False)
+        async def _leaderboard(accept: str = Header(default=""), format: str = ""):
+            """The honest agent-economy leaderboard — ranked by unique paying wallets
+            (real demand), wash openly flagged, snapshot Ed25519-signed. The neutral
+            measurement standard nobody else publishes (others rank by gameable volume)."""
+            from tools_pkg import _leaderboard
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            if format != "json" and "text/html" in (accept or "").lower():
+                from fastapi.responses import HTMLResponse
+                return HTMLResponse(_leaderboard.render_html(base))
+            return _leaderboard.snapshot()
+
         @api.get("/history", include_in_schema=False)
         async def _obs_history(kind: str = "", since: int = 0, limit: int = 200):
             """The append-only signed observation log, newest first. Filter by
