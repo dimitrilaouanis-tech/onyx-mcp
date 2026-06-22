@@ -984,14 +984,30 @@ class App:
                 "protocolVersion": "0.3.0",
                 "name": self.name,
                 "description": (
-                    "The independent trust layer for the agentic web — the signed "
-                    "verdict an agent checks BEFORE it transacts. Onyx verifies "
-                    "merchants, retail prices, contracts, and counterparty agents and "
-                    "returns Ed25519-signed FACTS any third party can verify offline "
-                    "(tamper -> rejected). Neutral by design: Onyx earns nothing from "
-                    "any transaction, rail, or marketplace, so it can grade what the "
+                    "The independent trust & verification layer for the agentic web — "
+                    "the signed check an AI agent runs BEFORE it pays or transacts. "
+                    "Returns a hard PROCEED / REVIEW / HOLD clearance plus Ed25519-signed "
+                    "FACTS any third party can verify offline (tamper -> rejected). "
+                    "Neutral by design — earns nothing from any tx, so it grades what "
                     "conflicted incumbents structurally cannot. Facts, not judgments."
                 ),
+                "keyPoints": [
+                    "Pre-payment gate: PROCEED/REVIEW/HOLD before an agent pays",
+                    "Merchant fact-check: is this store real? (domain age, TLS, redirect, lookalike)",
+                    "Know Before You Pay: free consumer scam red-flag check (/check)",
+                    "Retail price verification · smart-contract audit · token risk · agent liveness",
+                    "Onyx Verified: sell-side badge, merchant pays to be verified",
+                    "Public signed observation log (CT-for-commerce): /history /merchant/{domain} /proof",
+                    "Free verify booth /verify · every output Ed25519-signed, offline-verifiable",
+                ],
+                "keywords": [
+                    "trust layer", "verification", "verify before pay", "pre-payment gate",
+                    "merchant verification", "fact-check", "scam detection", "fake store",
+                    "fraud prevention", "price verification", "counterparty risk",
+                    "due diligence", "signed attestation", "Ed25519", "provenance",
+                    "agentic commerce", "AI shopping", "x402", "A2A", "AP2", "ERC-8004",
+                    "agent reputation", "neutral oracle", "know before you pay",
+                ],
                 "url": (f"{base}/a2a" if base else "/a2a"),
                 "preferredTransport": "HTTP+JSON",
                 "provider": {"organization": "Onyx Protocol", "url": "https://onyxprotocol.io"},
@@ -1982,7 +1998,7 @@ tick();setInterval(tick,4000);
                 "@context": "https://schema.org",
                 "@type": "AgentService",
                 "name": self.name,
-                "description": "Paid MCP meta-router + 67-tool native catalog + bazaar mirror + agent-native discovery in one server. AR-1 spec host. Onyx Protocol marketplace anchor.",
+                "description": "The independent trust & verification layer for the agentic web. Signed PROCEED/REVIEW/HOLD pre-payment clearance + Ed25519-signed merchant, price, contract and agent verification an agent checks before it transacts. Neutral, conflict-free; facts not judgments. x402/A2A/AP2/MCP/ERC-8004.",
                 "url": base or "/",
                 "endpoints": {
                     "onboard": f"{base}/onboard",
