@@ -54,10 +54,14 @@ def _derive_checks(facts: dict) -> dict:
     return checks
 
 
-def issue(domain: str, contact: str = "", agent_id: str = "") -> dict:
+def issue(domain: str, contact: str = "", agent_id: str = "", dry_run: bool = False) -> dict:
     """Run checks and, if they pass, mint a signed verified record into the log.
     Returns the issuance result (signed). Does NOT collect payment — the paid
-    tool wrapper sits behind the x402 gate; this is the work that gate buys."""
+    tool wrapper sits behind the x402 gate; this is the work that gate buys.
+
+    dry_run=True runs the checks and reports ELIGIBILITY without minting a record
+    — used by the free HTTP path so it can't be used to mint badges for free
+    (issuance is the paid onyx_verified_issue tool)."""
     from . import merchant_fact_check as _mfc
     raw = (domain or "").strip().lower()
     host = raw.split("://", 1)[-1].split("/", 1)[0].split("?", 1)[0].strip(".")
@@ -67,6 +71,14 @@ def issue(domain: str, contact: str = "", agent_id: str = "") -> dict:
     facts = _mfc.run(domain=host)  # signed raw observations (TLS/RDAP/reachability)
     checks = _derive_checks(facts)
     now = int(time.time())
+
+    if dry_run:
+        return {
+            "issued": False, "dry_run": True, "domain": host,
+            "eligible": checks["passed"], "checks": checks,
+            "how_to_issue": "Issuance is the paid onyx_verified_issue tool "
+                            "($2 via x402/MCP). This free path only previews eligibility.",
+        }
 
     if not checks["passed"]:
         failed = [k for k in checks["hard_checks"] if not checks[k]]

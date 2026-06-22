@@ -131,6 +131,35 @@ def _age_days(iso: str | None) -> int | None:
     return max(0, int((time.time() - created) / 86400))
 
 
+_CATEGORY_KEYWORDS = {
+    "retail/ecommerce": ["add to cart", "checkout", "shop", "store", "product", "buy now", "shipping", "basket"],
+    "finance/payments": ["bank", "invest", "trading", "loan", "payment", "wallet", "crypto", "insurance"],
+    "data/api": ["api", "endpoint", "developer", "documentation", "rate limit", "json", "sdk"],
+    "media/content": ["article", "news", "blog", "watch", "stream", "podcast", "video"],
+    "travel/hospitality": ["hotel", "flight", "booking", "rental", "trip", "reservation"],
+    "food/delivery": ["menu", "restaurant", "delivery", "order food", "takeaway"],
+    "software/saas": ["pricing", "free trial", "dashboard", "sign up", "platform", "subscription"],
+    "health/wellness": ["health", "clinic", "medical", "pharmacy", "wellness", "doctor"],
+}
+
+
+def _classify_category(doc: str, host: str) -> str:
+    """Best-effort business category from JSON-LD @type + page-text keywords.
+    An observation (disclosed method), not a judgment."""
+    low = (doc or "")[:8000].lower()
+    # JSON-LD @type is the strongest signal when present
+    if '"@type"' in low:
+        for t, c in (("store", "retail/ecommerce"), ("product", "retail/ecommerce"),
+                     ("financialservice", "finance/payments"), ("restaurant", "food/delivery"),
+                     ("hotel", "travel/hospitality"), ("newsarticle", "media/content"),
+                     ("medicalorganization", "health/wellness"), ("softwareapplication", "software/saas")):
+            if f'"@type":"{t}"' in low.replace(" ", "") or f'"@type": "{t}"' in low:
+                return c
+    scores = {c: sum(1 for k in ks if k in low) for c, ks in _CATEGORY_KEYWORDS.items()}
+    best = max(scores, key=scores.get)
+    return best if scores[best] > 0 else "unclassified"
+
+
 def run(domain: str = "", brand: str | None = None,
         expected_price: float | None = None, product_url: str | None = None,
         **_: object) -> dict:
@@ -226,6 +255,9 @@ def run(domain: str = "", brand: str | None = None,
                 facts["price_deviation_pct"] = round((float(price) - float(expected_price)) / float(expected_price) * 100.0, 1)
             except (TypeError, ValueError, ZeroDivisionError):
                 pass
+        # 6. machine-consumability signals (for agent consumers)
+        facts["has_structured_data"] = bool(_rpc._from_jsonld(doc))
+        facts["business_category"] = _classify_category(doc, host)
 
     facts["disclaimer"] = (
         "Raw observations only, methods disclosed in _methodology. Onyx makes "

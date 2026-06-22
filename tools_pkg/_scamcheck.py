@@ -126,6 +126,16 @@ def check(url: str, expected_price: float | None = None) -> dict:
     v = _verdict_from(facts, expected_price)
     now = int(time.time())
 
+    # agentic-readiness: how machine-/agent-consumable this merchant is (0-100).
+    # Disclosed weighting — a signal of agent-readiness, not a safety claim.
+    secure = bool(facts.get("tls_ok"))
+    reachable_ok = isinstance(facts.get("http_status"), int) and 200 <= facts["http_status"] < 300
+    on_domain = not facts.get("redirected_off_domain", False)
+    structured = bool(facts.get("has_structured_data"))
+    ar = (35 if structured else 0) + (20 if secure else 0) + (20 if reachable_ok else 0) \
+         + (15 if on_domain else 0) + (10 if facts.get("business_category") not in (None, "unclassified") else 0)
+    agentic_readiness = min(100, ar)
+
     one_liner = {
         "danger": "We found serious red flags. Don't pay until you're sure this is real.",
         "caution": "Some warning signs. Double-check before you hand over money or card details.",
@@ -155,6 +165,24 @@ def check(url: str, expected_price: float | None = None) -> dict:
                        "It catches the patterns scammers use so you think twice. A new "
                        "store can be real, and a clever scam can still slip through. "
                        "Your judgment matters. Every fact here is independently verifiable.",
+        # --- agent-consumer spec (fields requested by integrating agents) ---
+        "domain": host,
+        "score": v["trust_score"],
+        "securityStatus": {
+            "https": secure, "reachable": reachable_ok, "no_offdomain_redirect": on_domain,
+        },
+        "businessCategory": facts.get("business_category"),
+        "agenticReadinessScore": agentic_readiness,
+        # signatureDetails describes the signing key/alg; the actual signature +
+        # content hash live in onyx_attestation (added by attest below). Kept
+        # INSIDE the signed body — adding fields AFTER attest would break verify.
+        "signatureDetails": {
+            "alg": "Ed25519+JCS",
+            "kid": _onyx_sign.signer().kid,
+            "public_key": _onyx_sign.signer().pub_b64,
+            "signature_in": "onyx_attestation.sig",
+            "verify_at": "https://onyx-actions.onrender.com/verify",
+        },
     }
     return _onyx_sign.attest(out, tool="onyx_know_before_you_pay")
 

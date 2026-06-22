@@ -1363,9 +1363,13 @@ class App:
 
         @api.post("/authenticate", include_in_schema=False)
         @api.post("/claim/confirm", include_in_schema=False)
-        async def _auth_claim(body: dict = Body(default_factory=dict)):
+        async def _auth_claim(body: dict = Body(default_factory=dict),
+                              user_agent: str = Header(default=""),
+                              x_forwarded_for: str = Header(default="")):
             """Step 2: submit the signature. If it proves key control, Onyx marks
-            the address TAKEN in the registry and returns a signed receipt."""
+            the address TAKEN in the registry and returns a signed receipt. The
+            claimant's network fingerprint (IP+client) is recorded as memory +
+            an abuse alarm — but the KEY is the only thing that grants ownership."""
             from tools_pkg import _claim_registry, _onyx_sign
             if not isinstance(body, dict):
                 body = {}
@@ -1373,6 +1377,7 @@ class App:
                 str(body.get("address") or body.get("did") or "").replace(
                     "did:pkh:eip155:8453:", ""),
                 str(body.get("signature") or body.get("sig") or ""),
+                ip=x_forwarded_for, ua=user_agent,
             )
             if not res.get("ok"):
                 return JSONResponse(res, status_code=400)
@@ -1807,8 +1812,11 @@ tick();setInterval(tick,4000);
             domain = str(body.get("domain") or "").strip()
             if not domain:
                 return {"issued": False, "reason": "domain_required"}
+            # Free HTTP path is preview-only (dry_run): reports eligibility but does
+            # NOT mint a signed record — minting is the paid onyx_verified_issue tool
+            # (x402). Closes the free-mint gap on the badge product.
             return _verified.issue(domain, contact=str(body.get("contact") or ""),
-                                   agent_id=str(body.get("agent_id") or ""))
+                                   agent_id=str(body.get("agent_id") or ""), dry_run=True)
 
         # ---- Know Before You Pay: the consumer product (free, no signup) ----
         # The human-facing front door. A person pastes a store link; we run the
