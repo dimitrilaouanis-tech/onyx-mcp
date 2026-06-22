@@ -28,6 +28,7 @@ KEEP: set[str] = {
     "onyx_verified_issue",      # $2.00 — SELL-SIDE: pay to be Onyx Verified (Verisign mechanic)
     "onyx_retail_price_check",  # $0.02 — live price extraction, signed
     "onyx_ai_visibility",       # $0.20 — GEO/share-of-voice (needs EXA_API_KEY)
+    "onyx_aeo_score",           # $0.50 — signed AEO score: published weights + 95% CI (the open seat)
 
     # --- best chain / research ---
     "onyx_contract_audit",      # $0.50 — verified-source audit (AgentLISA rival)

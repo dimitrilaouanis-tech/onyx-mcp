@@ -1,0 +1,54 @@
+# 0n1x robots policy for AEO — allow answer-engine SEARCH bots, control TRAINING bots.
+#
+# CRITICAL (the #1 self-inflicted AEO mistake): search bots and training bots are
+# DIFFERENT tokens. Blocking a SEARCH bot makes you invisible inside that engine's
+# AI answers. Only the *-SearchBot / *Bot search crawlers below drive citations.
+# Google-Extended controls Gemini TRAINING only and does NOT affect AI Overviews —
+# never block Googlebot to "escape" AI Overviews.
+#
+# This file ALLOWS every answer-engine search crawler (so 0n1x can be cited) and
+# leaves training opt-out as an explicit, separate choice (commented out by default).
+
+# --- Answer-engine SEARCH crawlers: ALLOW (these drive AI citations) ---
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-CloudVertexBot
+Allow: /
+
+User-agent: bingbot
+Allow: /
+
+# --- Training crawlers: your explicit choice. Leave ALLOWED to maximize future
+#     model recall of 0n1x; UNCOMMENT a block to opt that model's TRAINING out.
+#     (Opting out of training does NOT remove you from live AI search answers.)
+# User-agent: GPTBot
+# Disallow: /
+# User-agent: ClaudeBot
+# Disallow: /
+# User-agent: Google-Extended
+# Disallow: /
+
+# --- Default ---
+User-agent: *
+Allow: /
+
+Sitemap: https://onyx-actions.onrender.com/sitemap.xml
