@@ -48,7 +48,7 @@ def policy_card(*, issuer: str, public_url: str | None = None) -> dict:
         "per_output_header": "X-Onyx-Rights — base64url of the signed envelope, "
                              "hash-bound to the response body.",
         "verify_free": f"{base}/verify",
-        "spec_doc": "https://github.com/dimitrilaouanis-tech/onyx-mcp/blob/main/spec/USAGE_RIGHTS_v0.md",
+        "spec_doc": "https://onyx-actions.onrender.com/blob/main/spec/USAGE_RIGHTS_v0.md",
         "pubkey": f"{base}/.well-known/onyx-pubkey",
     }
     return _onyx_sign.attest(card, tool="usage_rights_policy", public_url=base)

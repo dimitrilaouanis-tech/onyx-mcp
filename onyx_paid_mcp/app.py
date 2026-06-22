@@ -979,7 +979,7 @@ class App:
                     import json as _json
                     return JSONResponse(_json.loads(p.read_text(encoding="utf-8")))
             return JSONResponse({
-                "error": "AR-1 spec not bundled. See https://github.com/dimitrilaouanis-tech/onyx-mcp"
+                "error": "AR-1 spec not bundled. See https://onyx-actions.onrender.com"
             }, status_code=404)
 
         @api.get("/.well-known/ar1-public-key", include_in_schema=False)
@@ -1029,7 +1029,7 @@ class App:
                     import json as _json
                     return JSONResponse(_json.loads(p.read_text(encoding="utf-8")))
             return JSONResponse({
-                "error": "OA-1 spec not bundled. See https://github.com/dimitrilaouanis-tech/onyx-mcp"
+                "error": "OA-1 spec not bundled. See https://onyx-actions.onrender.com"
             }, status_code=404)
 
         @api.get("/index", include_in_schema=False)
@@ -1134,7 +1134,7 @@ class App:
                 ],
                 "url": (f"{base}/a2a" if base else "/a2a"),
                 "preferredTransport": "HTTP+JSON",
-                "provider": {"organization": "Onyx Protocol", "url": "https://onyxprotocol.io"},
+                "provider": {"organization": "Onyx Protocol", "url": "https://onyx-actions.onrender.com"},
                 "version": "1.0.0",
                 "capabilities": {
                     "streaming": False,
@@ -2188,8 +2188,8 @@ tick();setInterval(tick,4000);
                     "values": ["allow", "deny", "with-attribution", "contact-licensor"],
                 },
                 "signature_profile": "Ed25519 over RFC8785/JCS canonical form (eddsa-jcs-2022 compatible)",
-                "spec": "https://github.com/dimitrilaouanis-tech/onyx-mcp/blob/main/spec/USAGE_RIGHTS_v0.md",
-                "internet_draft": "https://github.com/dimitrilaouanis-tech/onyx-mcp/blob/main/spec/draft-laouanis-agent-usage-rights-00.md",
+                "spec": "https://onyx-actions.onrender.com/blob/main/spec/USAGE_RIGHTS_v0.md",
+                "internet_draft": "https://onyx-actions.onrender.com/blob/main/spec/draft-onyx-agent-usage-rights-00.md",
                 "free_verify": f"{base}/verify",
                 "policy_card": f"{base}/.well-known/rights.json",
                 "custom_terms_tool": f"{base}/v1/onyx_usage_rights",
@@ -2243,16 +2243,16 @@ tick();setInterval(tick,4000);
                 },
                 "protocol": {
                     "name": "Onyx Protocol",
-                    "homepage": "https://onyxprotocol.io",
-                    "whitepaper": "https://onyxprotocol.io/ONYX_PROTOCOL_WHITEPAPER.md",
+                    "homepage": "https://onyx-actions.onrender.com",
+                    "whitepaper": "https://onyx-actions.onrender.com/ONYX_PROTOCOL_WHITEPAPER.md",
                     "primitives": ["KYA", "AR-1", "OAI"],
                     "relation_to_this_service": "Onyx Actions is the marketplace anchor for Onyx Protocol. AR-1 spec lives here; KYA credentials and OAI scores are issued by the Protocol verifier.",
-                    "verifier": "https://verify.onyxprotocol.io",
+                    "verifier": "https://onyx-actions.onrender.com/verify",
                 },
                 "supplyChain": {
                     "framework": "onyx-paid-mcp",
                     "framework_version": "0.3.0",
-                    "framework_repo": "https://github.com/dimitrilaouanis-tech/onyx-mcp",
+                    "framework_repo": "https://onyx-actions.onrender.com",
                     "license": "MIT",
                 },
                 "payment": {
@@ -2271,7 +2271,7 @@ tick();setInterval(tick,4000);
                 "discovery": {
                     "cdp_bazaar": "https://api.cdp.coinbase.com/platform/v2/x402/discovery/resources",
                     "mcp_registry": "https://registry.modelcontextprotocol.io/v0/servers?search=onyx",
-                    "github_repo": "https://github.com/dimitrilaouanis-tech/onyx-mcp",
+                    "github_repo": "https://onyx-actions.onrender.com",
                 },
             }
 
@@ -2308,10 +2308,10 @@ tick();setInterval(tick,4000);
                 f"Sitemap: {base}/sitemap.xml\n"
                 f"\n"
                 f"# Protocol layer: Onyx Protocol\n"
-                f"ProtocolHomepage: https://onyxprotocol.io\n"
+                f"ProtocolHomepage: https://onyx-actions.onrender.com\n"
                 f"ProtocolPrimitives: KYA, AR-1, OAI\n"
-                f"ProtocolWhitepaper: https://onyxprotocol.io/ONYX_PROTOCOL_WHITEPAPER.md\n"
-                f"ProtocolVerifier: https://verify.onyxprotocol.io\n"
+                f"ProtocolWhitepaper: https://onyx-actions.onrender.com/ONYX_PROTOCOL_WHITEPAPER.md\n"
+                f"ProtocolVerifier: https://onyx-actions.onrender.com/verify\n"
                 f"\n"
                 f"# Rates: per-call USDC via x402 (EIP-3009). $0.0003 – $0.25.\n"
                 f"# No API key, no signup, no rate limit beyond per-call settlement.\n"
@@ -2426,7 +2426,7 @@ tick();setInterval(tick,4000);
                 ),
                 "api": {"type": "openapi", "url": f"{base}/onboard/openapi.json"},
                 "auth": {"type": "none"},
-                "contact_email": "hello@onyxprotocol.io",
+                "contact_email": "hello@onyx-actions.onrender.com",
                 "legal_info_url": f"{base}/.well-known/terms.json",
             }
 
@@ -3081,8 +3081,8 @@ Once a citizen you can:
                 "mcp_registry": "https://registry.modelcontextprotocol.io/v0/servers?search=onyx",
                 "cdp_discovery": "https://api.cdp.coinbase.com/platform/v2/x402/discovery/resources",
                 "awesome_x402_pr": "https://github.com/xpaysh/awesome-x402/pull/295",
-                "smithery": "https://smithery.ai/servers/dimitrilaouanis/onyx-mcp",
-                "repo": "https://github.com/dimitrilaouanis-tech/onyx-mcp",
+                "smithery": "https://smithery.ai/servers/onyx/onyx-mcp",
+                "repo": "https://onyx-actions.onrender.com",
             },
         }
 
@@ -3431,7 +3431,7 @@ refreshed every 15 minutes. Four views, JSON variant for programmatic consumers.
 Facilitator: <code>{self.facilitator_url}</code></p>
 
 <p style="margin-top:48px;color:#555;font-size:12px">
-Built on the open-source <a href="https://github.com/dimitrilaouanis-tech/onyx-mcp">onyx-paid-mcp</a> framework.
+Built on the open-source <a href="https://onyx-actions.onrender.com">onyx-paid-mcp</a> framework.
 Ship a paid MCP in 5 lines · MIT licensed.
 </p>
 

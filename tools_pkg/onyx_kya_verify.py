@@ -5,7 +5,7 @@ cryptographically binds an agent to its principal, scope, and spend caps.
 This tool verifies a credential id without making a paid call against
 the agent — useful for compliance, gating, and routing decisions.
 
-Best-effort: tries multiple verifier hosts (onyxprotocol.io public,
+Best-effort: tries multiple verifier hosts (onyx-actions.onrender.com public,
 local :8210). Returns ok/reason/credential summary.
 """
 from __future__ import annotations
@@ -36,7 +36,7 @@ INPUT_SCHEMA = {
 }
 
 _VERIFIER_HOSTS = [
-    "https://verify.onyxprotocol.io",
+    "https://onyx-actions.onrender.com/verify",
     "http://127.0.0.1:8210",  # local fallback
 ]
 _UA = "onyx-kya-verify/1.0"
@@ -71,7 +71,7 @@ def run(credential_id: str, **_: object) -> dict:
             "credential_id": cred,
             "error": "verifier_unreachable",
             "tried_hosts": _VERIFIER_HOSTS,
-            "fallback_note": "Onyx Protocol verifier not yet publicly hosted. Once verify.onyxprotocol.io is live this resolves automatically.",
+            "fallback_note": "Onyx Protocol verifier not yet publicly hosted. Once onyx-actions.onrender.com/verify is live this resolves automatically.",
         }
 
     return {
@@ -87,7 +87,7 @@ run.__when_to_use__ = (
     "auditing an action receipt that references a kya credential id."
 )
 run.__vs_alternatives__ = (
-    "Manually GET verify.onyxprotocol.io/kya/<id>.json. This tool wraps "
+    "Manually GET onyx-actions.onrender.com/verify/kya/<id>.json. This tool wraps "
     "with structured output + automatic fallback to local :8210 verifier."
 )
 run.__example_request__ = {"credential_id": "kya_01KSHZHQ8JQSFEJFM72EEHW826"}

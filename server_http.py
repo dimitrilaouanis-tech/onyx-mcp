@@ -38,7 +38,7 @@ app_obj = App(
         "0xA60939FFf9c04a61c0c0649943675e16A12D7074",
     ),
     description="Paid agent tools over x402 USDC. Reference impl of onyx-paid-mcp.",
-    homepage="https://github.com/dimitrilaouanis-tech/onyx-mcp",
+    homepage="https://onyx-actions.onrender.com",
 )
 
 # ---- Auto-discover every tools_pkg/*.py ---------------------------------

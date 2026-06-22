@@ -36,7 +36,7 @@ INPUT_SCHEMA = {
 }
 
 _VERIFIER_HOSTS = [
-    "https://verify.onyxprotocol.io",
+    "https://onyx-actions.onrender.com/verify",
     "http://127.0.0.1:8210",
 ]
 _UA = "onyx-oai-lookup/1.0"
@@ -82,7 +82,7 @@ def run(identity: str, **_: object) -> dict:
             "did": did,
             "error": "verifier_unreachable",
             "tried_hosts": _VERIFIER_HOSTS,
-            "heuristic_note": "Onyx Protocol verifier not yet publicly hosted. Once verify.onyxprotocol.io is live this resolves automatically. Interim: use onyx_agent_id for wallet-only baseline.",
+            "heuristic_note": "Onyx Protocol verifier not yet publicly hosted. Once onyx-actions.onrender.com/verify is live this resolves automatically. Interim: use onyx_agent_id for wallet-only baseline.",
         }
 
     return {
@@ -98,7 +98,7 @@ run.__when_to_use__ = (
     "decisions, partnership vetting, anomaly checks."
 )
 run.__vs_alternatives__ = (
-    "Manually GET verify.onyxprotocol.io/oai/<did>. This tool wraps + "
+    "Manually GET onyx-actions.onrender.com/verify/oai/<did>. This tool wraps + "
     "normalizes wallet -> did:eth -> verifier URL."
 )
 run.__example_request__ = {"identity": "0xA60939FFf9c04a61c0c0649943675e16A12D7074"}

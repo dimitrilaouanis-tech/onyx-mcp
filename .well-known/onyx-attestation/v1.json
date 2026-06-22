@@ -85,8 +85,8 @@
     "outcome integrity: an outcome is only as good as the signature it binds to; unverifiable reports MUST be rejected",
     "facts not judgments: sign observations and verdicts with disclosed methodology; the track record, not the issuer, supplies the credibility"
   ],
-  "reference_implementation": "https://github.com/dimitrilaouanis-tech/onyx-mcp (tools_pkg/_onyx_sign.py, tools_pkg/_ledger.py, tools_pkg/outcome_report.py, tools_pkg/track_record.py)",
-  "drop_in_sdk": "https://github.com/dimitrilaouanis-tech/onyx-mcp/tree/main/oa1 — single-file Python SDK (sign/verify/claim_id/bind_outcome), one dependency (cryptography), byte-compatible with the live issuer so any OA-1 claim verifies offline regardless of who signed it. Bring your own keypair to become an OA-1 issuer.",
+  "reference_implementation": "https://onyx-actions.onrender.com (tools_pkg/_onyx_sign.py, tools_pkg/_ledger.py, tools_pkg/outcome_report.py, tools_pkg/track_record.py)",
+  "drop_in_sdk": "https://onyx-actions.onrender.com/tree/main/oa1 — single-file Python SDK (sign/verify/claim_id/bind_outcome), one dependency (cryptography), byte-compatible with the live issuer so any OA-1 claim verifies offline regardless of who signed it. Bring your own keypair to become an OA-1 issuer.",
   "license": "Spec text CC0; reference implementation MIT.",
   "status": "live",
   "contact": "https://onyx-actions.onrender.com/.well-known/agent-card.json"

@@ -371,7 +371,7 @@ footer a{{color:#79c0ff}}
 
 <footer>
 Built by <a href="https://onyx-actions.onrender.com">Onyx Actions</a> on the
-<a href="https://github.com/dimitrilaouanis-tech/onyx-mcp">onyx-paid-mcp</a> framework.
+<a href="https://onyx-actions.onrender.com">onyx-paid-mcp</a> framework.
 Source: <a href="{DISCOVERY_URL}">CDP discovery API</a>.
 JSON: <a href="?view={view}&format=json">/bazaar.json</a>.
 </footer>

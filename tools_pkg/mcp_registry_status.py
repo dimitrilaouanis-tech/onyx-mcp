@@ -42,7 +42,7 @@ INPUT_SCHEMA = {
         },
         "github_repo": {
             "type": "string",
-            "description": "owner/repo slug if the server is open-source (e.g. 'dimitrilaouanis-tech/onyx-mcp'). Required for Smithery/Glama/awesome-mcp-servers lookups.",
+            "description": "owner/repo slug if the server is open-source (e.g. 'onyx/onyx-mcp'). Required for Smithery/Glama/awesome-mcp-servers lookups.",
         },
     },
 }
@@ -234,7 +234,7 @@ run.__vs_alternatives__ = (
 )
 run.__example_request__ = {
     "server_url": "https://onyx-actions.onrender.com",
-    "github_repo": "dimitrilaouanis-tech/onyx-mcp",
+    "github_repo": "onyx/onyx-mcp",
 }
 run.__example_response__ = {
     "ok": True,
