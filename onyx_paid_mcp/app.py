@@ -3330,7 +3330,7 @@ a {{ color:#79c0ff; }}
 </div>
 
 <h2>Top tools</h2>
-{hero_html}
+{featured_html}
 
 <h2>Install in any MCP client</h2>
 <pre>// claude_desktop_config.json / Cursor / Cline
