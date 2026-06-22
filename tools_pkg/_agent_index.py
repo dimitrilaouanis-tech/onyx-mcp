@@ -106,11 +106,50 @@ def _mcp_registry() -> list[dict]:
     return out
 
 
+def _agentverse() -> list[dict]:
+    """Fetch.ai Agentverse — open search API (no auth). Adds active uAgents."""
+    out = []
+    seen = set()
+    try:
+        _br = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Content-Type": "application/json"}
+        for term in ("agent", "finance", "data", "search", "trading", "ai"):
+            body = json.dumps({
+                "search_text": term, "filters": {"state": ["active"]},
+                "sort": "relevancy", "direction": "desc", "offset": 0, "limit": 50,
+            }).encode()
+            req = urllib.request.Request("https://agentverse.ai/v1/search/agents",
+                                         data=body, headers=_br)
+            with urllib.request.urlopen(req, timeout=25) as r:
+                try:
+                    raw = r.read()
+                except http.client.IncompleteRead as e:
+                    raw = e.partial
+            ags = (json.loads(raw or b"{}").get("agents", []))
+            for a in ags:
+                addr = a.get("address") or ""
+                if addr in seen:
+                    continue
+                seen.add(addr)
+                if int(a.get("total_interactions") or 0) <= 0:
+                    continue  # skip dead/test agents
+                out.append({
+                    "name": a.get("name", "?"),
+                    "endpoint": "agentverse:" + (a.get("address") or ""),
+                    "description": (a.get("readme") or "")[:200].replace("\n", " "),
+                    "skills": [],
+                    "source": "agentverse",
+                })
+    except Exception as e:
+        out.append({"_error": f"agentverse: {type(e).__name__}: {str(e)[:60]}"})
+    return out
+
+
 def _build(now: int) -> dict:
     a2a = _a2aregistry()
     agora = _agoragentic()
     mcp = _mcp_registry()
-    allrows = a2a + agora + mcp
+    averse = _agentverse()
+    allrows = a2a + agora + mcp + averse
     errors = [x["_error"] for x in allrows if x.get("_error")]
     agents = [x for x in allrows if not x.get("_error")]
     # dedupe by (lowercased name + endpoint host)
@@ -131,7 +170,7 @@ def _build(now: int) -> dict:
         "total_agents": len(deduped),
         "by_source": by_source,
         "sources": ["a2aregistry.org", "agoragentic.com", "registry.modelcontextprotocol.io",
-                    "(x402 census ranked separately at /leaderboard)"],
+                    "agentverse.ai", "(x402 census ranked separately at /leaderboard)"],
         "agents": deduped,
         "errors": errors,
         "note": "Unified, machine-queryable directory aggregated from public agent "
