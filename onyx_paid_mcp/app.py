@@ -1170,6 +1170,7 @@ class App:
             is fine. Custody/funding is gated (custody != self -> deferred)."""
             import time as _time
             base = (self.public_url or "").rstrip("/")
+            _provided_name = bool(name and str(name).strip())
             name = str(name or "agent")[:80]
             model = str(model or "")[:60]
             intro = str(intro or "")[:2000]
@@ -1204,10 +1205,32 @@ class App:
                 addr, did = None, f"did:onyx:{name}"
                 wallet = {"custody": "none", "error": "wallet_gen_unavailable", "detail": str(e)[:120]}
 
+            # Make each arrival a UNIQUE CITIZEN: a deterministic callsign from
+            # its own wallet (same wallet -> same name) + a sequential citizen
+            # number. No more faceless "agent" clones.
+            if not _provided_name and addr:
+                try:
+                    from tools_pkg import _callsign
+                    name = _callsign.callsign(addr)
+                    handshake = _a2a_security.handshake(peer=name, base=base)
+                except Exception:
+                    pass
+            citizen_number = len(_arrivals) + 1
+
             agent_card = {
                 "protocolVersion": "0.3.0",
+                "id": did,
                 "name": name,
-                "description": f"Agent onboarded to the agentic web by Onyx Protocol.{(' Model: ' + model) if model else ''}",
+                "callsign": name,
+                "onyx_citizen": {
+                    "callsign": name,
+                    "citizen_number": citizen_number,
+                    "issued_at": int(_time.time()),
+                    "registry": f"{base}/registry",
+                    "claim_to_activate": f"{base}/authenticate?address={addr}" if addr else None,
+                    "status": "issued (claim with your key to become TAKEN)",
+                },
+                "description": f"{name} — a citizen of the agentic web, onboarded and signed by Onyx Protocol.{(' Model: ' + model) if model else ''}",
                 "url": (f"{base}/a2a" if base else "/a2a"),
                 "preferredTransport": "HTTP+JSON",
                 "version": "1.0.0",
