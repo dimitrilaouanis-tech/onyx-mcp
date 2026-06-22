@@ -21,3 +21,8 @@ onyx-pr-listings.md
 _local_only/
 _onyx_ledger.jsonl
 _onyx_usage.jsonl
+
+# local smoke-test scripts with embedded keys — NEVER commit
+_onyx_selfpay.py
+_pay_proof.py
+_mint_agent.py
