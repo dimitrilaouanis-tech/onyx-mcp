@@ -17,6 +17,7 @@ from __future__ import annotations
 import http.client
 import json
 import time
+import urllib.parse
 import urllib.request
 
 from . import _onyx_sign
@@ -74,11 +75,44 @@ def _agoragentic() -> list[dict]:
     return out
 
 
+def _mcp_registry() -> list[dict]:
+    """The official MCP Registry — the spine every aggregator ingests. Public,
+    no auth, cursor-paginated. Adds the remote-callable MCP server universe."""
+    out, cursor, pages = [], "", 0
+    try:
+        while pages < 12:  # ~1200 servers; bump cap for deeper coverage
+            url = "https://registry.modelcontextprotocol.io/v0/servers?limit=100"
+            if cursor:
+                url += "&cursor=" + urllib.parse.quote(cursor)
+            d = _get(url)
+            servers = d.get("servers", []) if isinstance(d, dict) else []
+            for s in servers:
+                srv = s.get("server", s) if isinstance(s, dict) else {}
+                remotes = srv.get("remotes") or []
+                endpoint = (remotes[0].get("url") if remotes else "") or ("mcp:" + (srv.get("name") or ""))
+                out.append({
+                    "name": srv.get("name", "?"),
+                    "endpoint": endpoint,
+                    "description": (srv.get("description") or "")[:200],
+                    "skills": [],
+                    "source": "mcp-registry",
+                })
+            cursor = (d.get("metadata", {}) or {}).get("nextCursor") if isinstance(d, dict) else ""
+            pages += 1
+            if not cursor:
+                break
+    except Exception as e:
+        out.append({"_error": f"mcp-registry: {type(e).__name__}: {str(e)[:60]}"})
+    return out
+
+
 def _build(now: int) -> dict:
     a2a = _a2aregistry()
     agora = _agoragentic()
-    errors = [x["_error"] for x in (a2a + agora) if x.get("_error")]
-    agents = [x for x in (a2a + agora) if not x.get("_error")]
+    mcp = _mcp_registry()
+    allrows = a2a + agora + mcp
+    errors = [x["_error"] for x in allrows if x.get("_error")]
+    agents = [x for x in allrows if not x.get("_error")]
     # dedupe by (lowercased name + endpoint host)
     seen, deduped = set(), []
     for a in agents:
@@ -96,7 +130,7 @@ def _build(now: int) -> dict:
         "as_of_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)),
         "total_agents": len(deduped),
         "by_source": by_source,
-        "sources": ["a2aregistry.org", "agoragentic.com",
+        "sources": ["a2aregistry.org", "agoragentic.com", "registry.modelcontextprotocol.io",
                     "(x402 census ranked separately at /leaderboard)"],
         "agents": deduped,
         "errors": errors,
