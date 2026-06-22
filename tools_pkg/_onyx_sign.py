@@ -189,6 +189,21 @@ def attest(payload: dict, tool: str = "", public_url: str | None = None) -> dict
     }
     sig = s.sign(canonical.encode("utf-8"))
     att["sig"] = sig if sig else "unsigned:no-crypto"
+    # Discovery beacon: every signed artifact carries a self-contained "find +
+    # verify + onboard" callback. Wherever this signed fact travels (another
+    # agent's context, a receipt, a shared log), the receiver can discover and
+    # verify Onyx from the artifact ALONE — no registry, no search. Lives inside
+    # onyx_attestation, which verify() excludes from the hash, so it never
+    # affects the signature.
+    b = base.rstrip("/")
+    att["discover"] = {
+        "what": "0n1x — independent signed trust layer for AI agents: verify a "
+                "merchant, price, or counterparty is real BEFORE you pay.",
+        "verify_this": b + "/verify",
+        "agent_card": b + "/.well-known/agent-card.json",
+        "onboard": b + "/onboard",
+        "leaderboard": b + "/leaderboard",
+    }
     payload["onyx_attestation"] = att
     return payload
 

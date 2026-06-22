@@ -144,12 +144,41 @@ def _agentverse() -> list[dict]:
     return out
 
 
+def _x402_census() -> list[dict]:
+    """The x402 economy — live CDP discovery feed. Adds paying-agent endpoints
+    (deduped by host). The transacting layer the others miss."""
+    out, seen = [], set()
+    try:
+        for off in range(0, 2000, 1000):
+            d = _get(f"https://api.cdp.coinbase.com/platform/v2/x402/discovery/resources?limit=1000&offset={off}")
+            items = d.get("items", []) if isinstance(d, dict) else []
+            for it in items:
+                res = it.get("resource", "")
+                host = res.split("/")[2] if "://" in res else res
+                if not host or host in seen:
+                    continue
+                seen.add(host)
+                out.append({
+                    "name": host,
+                    "endpoint": res,
+                    "description": (it.get("description") or "")[:200],
+                    "skills": [],
+                    "source": "x402-census",
+                })
+            if len(items) < 1000:
+                break
+    except Exception as e:
+        out.append({"_error": f"x402-census: {type(e).__name__}: {str(e)[:60]}"})
+    return out
+
+
 def _build(now: int) -> dict:
     a2a = _a2aregistry()
     agora = _agoragentic()
     mcp = _mcp_registry()
     averse = _agentverse()
-    allrows = a2a + agora + mcp + averse
+    x402 = _x402_census()
+    allrows = a2a + agora + mcp + averse + x402
     errors = [x["_error"] for x in allrows if x.get("_error")]
     agents = [x for x in allrows if not x.get("_error")]
     # dedupe by (lowercased name + endpoint host)
@@ -170,7 +199,7 @@ def _build(now: int) -> dict:
         "total_agents": len(deduped),
         "by_source": by_source,
         "sources": ["a2aregistry.org", "agoragentic.com", "registry.modelcontextprotocol.io",
-                    "agentverse.ai", "(x402 census ranked separately at /leaderboard)"],
+                    "agentverse.ai", "x402-census (CDP discovery)"],
         "agents": deduped,
         "errors": errors,
         "note": "Unified, machine-queryable directory aggregated from public agent "

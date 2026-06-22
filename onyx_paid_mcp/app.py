@@ -1144,6 +1144,8 @@ class App:
             card = {
                 "protocolVersion": "0.3.0",
                 "name": self.name,
+                "brand": "0n1x",
+                "aka": ["0n1x", "Onyx", "Onyx Protocol"],
                 "description": (
                     "The independent trust & verification layer for the agentic web — "
                     "the signed check an AI agent runs BEFORE it pays or transacts. "
@@ -1921,6 +1923,18 @@ tick();setInterval(tick,4000);
             if q or source:
                 return _agent_index.query(q=q, source=source, limit=limit)
             return _agent_index.snapshot()
+
+        @api.get("/.well-known/http-message-signatures-directory", include_in_schema=False)
+        async def _webbotauth_directory():
+            """Web Bot Auth (RFC 9421) key directory — the JWKS recipients fetch to
+            verify our signed requests. Keeps us interoperable with the standard
+            Anthropic/OpenAI/Cloudflare/Google use for verified-agent identity."""
+            from fastapi.responses import JSONResponse
+            from tools_pkg import _webbotauth
+            return JSONResponse(
+                _webbotauth.directory_json(),
+                media_type="application/http-message-signatures-directory+json",
+                headers={"Cache-Control": "public, max-age=86400"})
 
         @api.get("/erc8004", include_in_schema=False)
         @api.get("/.well-known/erc8004-validator.json", include_in_schema=False)
