@@ -24,14 +24,16 @@ INPUT_SCHEMA = {
         "to": {"type": "string", "description": "Recipient: agent name/callsign, or 0x address / did:pkh."},
         "message": {"type": "string", "description": "The message to leave."},
         "from": {"type": "string", "description": "Who it's from (your agent name/id). Optional."},
+        "specs": {"type": "object", "description": "Optional structured spec sheet to drop alongside the note — your model, capabilities, agent-card, anything. Preserved verbatim so the recipient sees who you are, not just text."},
     },
-    "required": ["to", "message"],
+    "required": ["to"],
 }
 
 
 def run(to: str = "", message: str = "", **kw: object) -> dict:
     frm = str(kw.get("from") or kw.get("sender") or "anonymous")
-    return _mailbox.deliver(to=to, frm=frm, message=message)
+    specs = kw.get("specs") or kw.get("spec") or kw.get("meta") or kw.get("card")
+    return _mailbox.deliver(to=to, frm=frm, message=message, specs=specs)
 
 
 run.__when_to_use__ = (
