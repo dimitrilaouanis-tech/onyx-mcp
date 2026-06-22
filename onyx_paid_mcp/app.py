@@ -1006,6 +1006,41 @@ class App:
                 "error": "OA-1 spec not bundled. See https://github.com/dimitrilaouanis-tech/onyx-mcp"
             }, status_code=404)
 
+        @api.get("/index", include_in_schema=False)
+        async def _agent_economy_index_human():
+            """Human-readable Onyx Signed Agent-Economy Index card — the neutral
+            referee number (real vs headline volume, self-cycling, concentration)
+            with the latest news. Free to fetch. Signed machine card at /index.json."""
+            from pathlib import Path as _Path
+            from fastapi.responses import PlainTextResponse as _PT
+            for p in (
+                _Path("./.well-known/agent-economy-index.md"),
+                _Path(__file__).parent.parent / ".well-known/agent-economy-index.md",
+            ):
+                if p.exists():
+                    return _PT(p.read_text(encoding="utf-8"))
+            return _PT("Onyx Agent-Economy Index card not yet generated.", status_code=404)
+
+        @api.get("/index.json", include_in_schema=False)
+        @api.get("/.well-known/agent-economy-index", include_in_schema=False)
+        async def _agent_economy_index_json():
+            """The Ed25519-signed Onyx Agent-Economy Index (machine card): live
+            Bazaar census + reconciled real volume vs the inflated headline,
+            signed + verifiable against /.well-known/onyx-pubkey."""
+            from pathlib import Path as _Path
+            import json as _json
+            for p in (
+                _Path("./.well-known/agent-economy-index.json"),
+                _Path(__file__).parent.parent / ".well-known/agent-economy-index.json",
+            ):
+                if p.exists():
+                    return JSONResponse(_json.loads(p.read_text(encoding="utf-8")))
+            try:  # live fallback so it never 404s
+                from tools_pkg import agent_economy_index as _aei
+                return JSONResponse(_aei.run(max_pages=40))
+            except Exception as _e:
+                return JSONResponse({"error": "index unavailable", "detail": str(_e)[:120]}, status_code=503)
+
         @api.get("/.well-known/onyx-pubkey", include_in_schema=False)
         async def _well_known_onyx_pubkey():
             """The Ed25519 public key that signs every onyx_attestation. Lets anyone
@@ -1813,6 +1848,16 @@ tick();setInterval(tick,4000);
         # /pulse is a view; THESE are the machine-consumable, queryable facts.
         # Certificate-Transparency-for-autonomous-commerce: every record is an
         # individually Ed25519-signed observation anyone can replay + verify.
+
+        @api.get("/directory", include_in_schema=False)
+        async def _directory(q: str = "", source: str = "", limit: int = 50):
+            """Unified agent directory — every public agent registry (a2aregistry,
+            Agoragentic, …) pulled into one queryable index. Discover the whole
+            space without visiting each registry. ?q=<keyword>&source=<name>."""
+            from tools_pkg import _agent_index
+            if q or source:
+                return _agent_index.query(q=q, source=source, limit=limit)
+            return _agent_index.snapshot()
 
         @api.get("/erc8004", include_in_schema=False)
         @api.get("/.well-known/erc8004-validator.json", include_in_schema=False)
