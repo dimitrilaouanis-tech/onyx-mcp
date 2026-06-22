@@ -1,0 +1,94 @@
+{
+ "index": "onyx_agent_economy_index",
+ "version": "1.0",
+ "as_of": "2026-06-22T15:20:27Z",
+ "live_census": {
+  "advertised_resources": 28066,
+  "scanned": 28066,
+  "pages": 281,
+  "unique_operators": 967,
+  "endpoint_accepts": 41731,
+  "stale_over_90d": 10641,
+  "stale_pct": 37.9,
+  "top3_operator_share_pct": 66.8,
+  "top10_operator_share_pct": 77.4,
+  "networks": {
+   "eip155:8453": 15243,
+   "base": 12816,
+   "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": 10692,
+   "solana": 1347,
+   "cosmos:noble-1": 455
+  }
+ },
+ "real_volume_30d": {
+  "low_usd": 1100000,
+  "high_usd": 1600000,
+  "basis": "convergence of x402scan filtered + Allium/a16z wash-filtered + Artemis run-rate"
+ },
+ "headline_volume_30d_usd": 24240000,
+ "inflation_multiple": 18.0,
+ "self_cycling_share": {
+  "of_transactions_pct": 48,
+  "of_volume_pct": 81,
+  "source": "Artemis (@OnchainLu)",
+  "as_of": "2026-03"
+ },
+ "decline": {
+  "txns_from_dec2025_peak_pct": -92,
+  "revenue_pct": -97,
+  "source": "OKX Ventures",
+  "note": "731K->57K txns/day; protocol rev $1.02M->$35K"
+ },
+ "published_sources": [
+  {
+   "source": "x402.org",
+   "metric": "30d volume (raw, multi-chain, unfiltered)",
+   "value_usd": 24240000,
+   "note": "includes PING meme-mint + self-cycling",
+   "as_of": "2026-Q2"
+  },
+  {
+   "source": "Allium (raw, Base)",
+   "metric": "30d volume",
+   "value_usd": 3000000,
+   "note": "stricter event scope, Base-primary",
+   "as_of": "2026-03"
+  },
+  {
+   "source": "x402scan (Merit Systems)",
+   "metric": "30d volume (filtered)",
+   "value_usd": 1110000,
+   "note": "3.69M txns, ~$0.30 avg",
+   "as_of": "2026-05"
+  },
+  {
+   "source": "Allium + a16z",
+   "metric": "30d volume (wash-filtered)",
+   "value_usd": 1600000,
+   "note": "removes seller-prefunds-buyer round-trips",
+   "as_of": "2026-03"
+  },
+  {
+   "source": "Artemis (@OnchainLu)",
+   "metric": "daily volume (filtered)",
+   "value_usd": 28000,
+   "note": "~$0.84-1.0M/mo; 48% txns / 81% volume self-cycling",
+   "as_of": "2026-03"
+  }
+ ],
+ "filter_method_version": "onyx-aei-filter/1.0",
+ "scope_note": "live_census + concentration = Onyx's own real-time measurement; real_volume_30d = signed reconciliation of named third-party indexers. Full on-chain wash-filter (Validator v2) requires an indexer feed and is published as method, not claimed as our own pull.",
+ "verify_pubkey_at": "https://onyx-actions.onrender.com/.well-known/onyx-pubkey",
+ "elapsed_ms": 169152,
+ "onyx_attestation": {
+  "alg": "Ed25519+JCS",
+  "kid": "onyx-febe855db1d43031",
+  "public_key": "hLSPK6XcI-QPCmp7Yg7WCJaENBXIgPpTbBQm_Ux3Zys",
+  "tool": "onyx_agent_economy_index",
+  "observed_hash": "sha256:c7502ad7d39faf12d94ffb9f544386129755a421c53993fe760df4054c598211",
+  "signed_at": 1782141627,
+  "spec": "https://onyx-actions.onrender.com/.well-known/onyx-attestation/v1",
+  "verify_pubkey_at": "https://onyx-actions.onrender.com/.well-known/onyx-pubkey",
+  "sig": "emy-PWF9v4GCbu6v12YlIwIBmIRvA5Dj2MzFjdaaoDUH79chiD1Q_Vi5U63ovKnCvaMmiMj7-sXvY76Y8lTKBA"
+ }
+}

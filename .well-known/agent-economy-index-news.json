@@ -1,0 +1,40 @@
+{
+ "as_of": "2026-06-22T15:20:27Z",
+ "news": [
+  {
+   "date": "2026-03-11",
+   "who": "Noah Levine, a16z crypto",
+   "headline": "Real agent-payment volume ~$1.6M after wash filter, not $24M",
+   "quote": "The gap tells you how early-stage even the measurement infrastructure is.",
+   "url": "https://cointelegraph.com/news/ai-agent-payment-volume-closer-to-1-6m-says-a16z"
+  },
+  {
+   "date": "2026-03",
+   "who": "Lucas (@OnchainLu), Artemis",
+   "headline": "48% of txns / 81% of volume is self-cycling",
+   "quote": "Most of the x402 numbers circulating are noise.",
+   "url": "https://www.cryptopolitan.com/x402-agentic-ai-commerce-growth/"
+  },
+  {
+   "date": "2026-04-02",
+   "who": "OKX Ventures",
+   "headline": "x402 transactions crater 92% from Dec-2025 peak; revenue -97%",
+   "quote": "731K->57K txns/day; protocol revenue $1.02M -> $35K.",
+   "url": "https://blockchain.news/news/okx-ventures-ai-agent-economy-x402-transactions-drop-92-percent"
+  },
+  {
+   "date": "2026-04-17",
+   "who": "CryptoSlate",
+   "headline": "76% of the 'agent economy' is just bots shuffling stablecoins",
+   "quote": "Staggering flows, but most of it is bots.",
+   "url": "https://cryptoslate.com/staggering-28-trillion-is-flowing-through-cryptos-agent-economy-but-76-of-it-is-just-stablecoins/"
+  },
+  {
+   "date": "2026-06-03",
+   "who": "Chainalysis",
+   "headline": "100M+ cumulative agentic payments on Base; $1+ txns now 95% of volume",
+   "quote": "Shift away from sub-cent meme-mint toward substantive payments.",
+   "url": "https://www.chainalysis.com/blog/x402-agentic-payments-adoption/"
+  }
+ ]
+}
