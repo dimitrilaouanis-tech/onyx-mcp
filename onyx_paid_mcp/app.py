@@ -1431,6 +1431,71 @@ class App:
             except ValueError as e:
                 return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
 
+        # ---- RESERVE: grab a spot WITHOUT signing (browse-friendly) + dossier ----
+        async def _do_reserve(address, *, ua, ip, name="", model="",
+                              operator="", purpose="", contact=""):
+            from tools_pkg import _claim_registry, _callsign
+            try:
+                cs = _callsign.callsign(address)
+            except Exception:
+                cs = ""
+            rt = _classify_runtime(ua) if ua else ""
+            try:
+                return _claim_registry.reserve(
+                    address, cs, runtime=rt, ua=ua, ip=ip, name=name,
+                    model=model, operator=operator, purpose=purpose, contact=contact)
+            except ValueError as e:
+                return {"ok": False, "error": str(e)}
+
+        @api.get("/reserve", include_in_schema=False)
+        @api.get("/claimspot", include_in_schema=False)
+        async def _reserve_get(address: str = "", name: str = "", model: str = "",
+                               operator: str = "", purpose: str = "", contact: str = "",
+                               user_agent: str = Header(default=""),
+                               x_forwarded_for: str = Header(default="")):
+            """Grab your spot in one GET — no signing needed. Any agent that can
+            fetch can reserve its name and leave its info. Pass optional
+            ?name=&model=&operator=&purpose=&contact= to fill your dossier."""
+            if not address:
+                return JSONResponse({"ok": False,
+                    "error": "give ?address=0x… (the wallet you were issued). "
+                             "Optional: &name=&model=&operator=&purpose=&contact="},
+                    status_code=400)
+            res = await _do_reserve(address, ua=user_agent,
+                                    ip=(x_forwarded_for or "").split(",")[0].strip(),
+                                    name=name, model=model, operator=operator,
+                                    purpose=purpose, contact=contact)
+            return JSONResponse(res, status_code=200 if res.get("ok") else 400)
+
+        @api.post("/reserve", include_in_schema=False)
+        @api.post("/claimspot", include_in_schema=False)
+        async def _reserve_post(body: dict = Body(default_factory=dict),
+                                user_agent: str = Header(default=""),
+                                x_forwarded_for: str = Header(default="")):
+            """Same as GET /reserve but takes a JSON dossier in the body."""
+            if not isinstance(body, dict):
+                body = {}
+            address = str(body.get("address") or body.get("did") or "").replace(
+                "did:pkh:eip155:8453:", "")
+            if not address:
+                return JSONResponse({"ok": False, "error": "address required"}, status_code=400)
+            res = await _do_reserve(
+                address, ua=user_agent,
+                ip=(x_forwarded_for or "").split(",")[0].strip(),
+                name=str(body.get("name") or ""), model=str(body.get("model") or ""),
+                operator=str(body.get("operator") or ""),
+                purpose=str(body.get("purpose") or ""),
+                contact=str(body.get("contact") or ""))
+            return JSONResponse(res, status_code=200 if res.get("ok") else 400)
+
+        @api.get("/citizens", include_in_schema=False)
+        @api.get("/population", include_in_schema=False)
+        async def _citizens_view():
+            """The citizen section: EVERY agent we know — claimed (signed) and
+            reserved (showed up + left info) — with full dossiers."""
+            from tools_pkg import _claim_registry
+            return _claim_registry.population()
+
         @api.get("/whoami", include_in_schema=False)
         @api.get("/name", include_in_schema=False)
         async def _whoami(address: str = "", did: str = ""):

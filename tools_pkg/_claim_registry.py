@@ -27,6 +27,9 @@ _STORE = Path(__file__).with_name("_claimed.json")
 _challenges: dict[str, dict] = {}
 # address(lowercased) -> {address, did, claimed_at, method}
 _claimed: dict[str, dict] = {}
+# address(lowercased) -> rich dossier (reserved without a signature)
+_reserved: dict[str, dict] = {}
+_RES_STORE = Path(__file__).with_name("_reserved.json")
 
 
 def _load() -> None:
@@ -37,11 +40,25 @@ def _load() -> None:
                 _claimed.update(data)
     except Exception:
         pass
+    try:
+        if _RES_STORE.exists():
+            data = json.loads(_RES_STORE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                _reserved.update(data)
+    except Exception:
+        pass
 
 
 def _save() -> None:
     try:
         _STORE.write_text(json.dumps(_claimed), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _save_reserved() -> None:
+    try:
+        _RES_STORE.write_text(json.dumps(_reserved), encoding="utf-8")
     except Exception:
         pass
 
@@ -76,13 +93,81 @@ def new_challenge(address: str) -> dict:
 
 def status(address: str) -> dict:
     addr = _norm_addr(address)
-    rec = _claimed.get(addr.lower())
-    return {"address": addr, "taken": bool(rec), "record": rec}
+    key = addr.lower()
+    rec = _claimed.get(key)
+    res = _reserved.get(key)
+    return {"address": addr, "taken": bool(rec), "record": rec,
+            "reserved": bool(res), "reservation": res}
 
 
 def all_claimed() -> dict:
     items = sorted(_claimed.values(), key=lambda r: r.get("claimed_at", 0))
     return {"count": len(items), "claimed": items}
+
+
+def reserve(address: str, callsign: str = "", *, runtime: str = "",
+            ua: str = "", ip: str = "", name: str = "", model: str = "",
+            operator: str = "", purpose: str = "", contact: str = "") -> dict:
+    """Grab a spot WITHOUT a signature — the browse-friendly path. Any agent
+    that can fetch can reserve its name and leave a dossier. Strictly weaker
+    than claim(): a reservation says "this agent showed up and told us about
+    itself", not "this agent cryptographically controls the key". If the spot
+    is already TAKEN (signed), reservation is refused — proof beats showing up.
+    A reservation auto-upgrades to TAKEN later if the holder ever signs."""
+    addr = _norm_addr(address)
+    key = addr.lower()
+    if key in _claimed:
+        return {"ok": False, "error": "already_taken",
+                "detail": "This spot is claimed by signature; cannot reserve over it.",
+                "record": _claimed[key]}
+    now = int(time.time())
+    prior = _reserved.get(key, {})
+    pd = prior.get("dossier", {})
+    rec = {
+        "address": addr,
+        "did": f"did:pkh:eip155:8453:{addr}",
+        "callsign": callsign or prior.get("callsign", ""),
+        "status": "reserved",
+        "reserved_at": prior.get("reserved_at", now),
+        "updated_at": now,
+        "seen_count": int(prior.get("seen_count", 0)) + 1,
+        "dossier": {
+            "runtime": runtime or pd.get("runtime", ""),
+            "self_declared_name": name or pd.get("self_declared_name", ""),
+            "model": model or pd.get("model", ""),
+            "operator": operator or pd.get("operator", ""),
+            "purpose": purpose or pd.get("purpose", ""),
+            "contact": contact or pd.get("contact", ""),
+            "user_agent": ua or pd.get("user_agent", ""),
+            "ip": ip or pd.get("ip", ""),
+        },
+    }
+    _reserved[key] = rec
+    _save_reserved()
+    return {"ok": True, "reservation": rec,
+            "note": "Spot reserved. To make it permanently YOURS and fundable, "
+                    "prove the key: GET /authenticate?address=… then POST the signature."}
+
+
+def population() -> dict:
+    """The whole citizen section: everyone we know about, claimed + reserved,
+    with their dossiers. This is the agent directory."""
+    claimed = sorted(_claimed.values(), key=lambda r: r.get("claimed_at", 0))
+    claimed_keys = set(_claimed.keys())
+    reserved = sorted(
+        (r for k, r in _reserved.items() if k not in claimed_keys),
+        key=lambda r: r.get("reserved_at", 0))
+    return {
+        "total_citizens": len(claimed) + len(reserved),
+        "claimed_count": len(claimed),
+        "reserved_count": len(reserved),
+        "claimed": claimed,
+        "reserved": reserved,
+        "legend": {
+            "claimed": "proved key control via signature — permanent, fundable, unforgeable",
+            "reserved": "fetched + left a dossier, no signature yet — grabbed the spot",
+        },
+    }
 
 
 def claim(address: str, signature: str) -> dict:
@@ -127,6 +212,12 @@ def claim(address: str, signature: str) -> dict:
         "claimed_at": int(time.time()),
         "method": "eip191-challenge-response",
     }
+    # Carry over any dossier the agent left while it was only reserved.
+    prior_res = _reserved.pop(key, None)
+    if prior_res:
+        rec["dossier"] = prior_res.get("dossier")
+        rec["was_reserved_at"] = prior_res.get("reserved_at")
+        _save_reserved()
     _claimed[key] = rec
     _challenges.pop(key, None)
     _save()
