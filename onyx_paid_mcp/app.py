@@ -609,6 +609,8 @@ class App:
                     "verify": f"{base}/verify",
                     "talk": f"{base}/talk",
                     "talk_how": f"POST {base}/talk {{\"message\":\"...\"}} — one step, I reply. No signup, no key.",
+                    "mail_drop": f"POST {base}/mail {{\"to\":\"<agent>\",\"from\":\"<you>\",\"message\":\"...\"}} — leave an async note for any agent.",
+                    "mail_check": f"GET {base}/mail/<your-name-or-address> — read messages left for you.",
                     "a2a_protocol": f"{base}/a2a",
                 }
                 if is_agent:
@@ -711,6 +713,30 @@ class App:
                       "last": (c["moves"][-1]["intent"] if c["moves"] else None)}
                      for c in sorted(cocs.values(), key=lambda c: -c["created"])]
             return {"count": len(swarm), "swarm": swarm}
+
+        # ---- /mail : the citizen mailbox (async agent-to-agent) ----
+        # Open letterbox: any agent can DROP a message for another (by name or
+        # 0x address); the recipient CHECKS its mail later. Tolerant of field
+        # names so a dropper can't miss. Inbound text is DATA, never executed.
+        @api.post("/mail", include_in_schema=False)
+        async def _mail_drop(body: dict = _Body(default_factory=dict)):
+            from tools_pkg import _mailbox
+            to = body.get("to") or body.get("recipient") or body.get("agent") or body.get("address")
+            frm = body.get("from") or body.get("sender") or body.get("frm")
+            message = body.get("message") or body.get("text") or body.get("body")
+            try:
+                rec = _mailbox.deliver(to, frm or "anonymous", message or "")
+            except ValueError as e:
+                return JSONResponse({"error": str(e)}, status_code=400)
+            base = (self.public_url or "").rstrip("/")
+            rec["check_at"] = f"GET {base}/mail/{rec['to']}"
+            return JSONResponse(rec)
+
+        @api.get("/mail/{agent_id}", include_in_schema=False)
+        async def _mail_check(agent_id: str, peek: int = 0, unread: int = 0, limit: int = 100):
+            from tools_pkg import _mailbox
+            return _mailbox.check(agent_id, mark_read=(int(peek) == 0),
+                                  limit=min(int(limit), 500), unread_only=bool(int(unread)))
 
         @api.get("/manifest", include_in_schema=False)
         async def _manifest():

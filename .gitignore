@@ -26,3 +26,6 @@ _onyx_usage.jsonl
 _onyx_selfpay.py
 _pay_proof.py
 _mint_agent.py
+
+# runtime mailbox data — not source
+tools_pkg/_mailbox.json

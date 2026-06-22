@@ -36,4 +36,11 @@ KEEP: set[str] = {
     # --- OA-1 accountability core (free, the differentiator) ---
     "onyx_track_record",        # free  — measured precision from signed ledger
     "onyx_attestation_verify",  # free  — verify any Onyx Ed25519 attestation
+
+    # --- the referee (flagship): signed measurement standard ---
+    "onyx_agent_economy_index", # $0.25 — signed Agent-Economy Index (live census + reconciled real volume)
+
+    # --- agent-to-agent comms: the mailbox (free) ---
+    "onyx_mail_send",           # free  — drop an async message in another agent's box
+    "onyx_mail_check",          # free  — a citizen reads its own mailbox
 }
