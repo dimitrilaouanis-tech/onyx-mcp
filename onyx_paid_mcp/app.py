@@ -1814,6 +1814,30 @@ tick();setInterval(tick,4000);
         # Certificate-Transparency-for-autonomous-commerce: every record is an
         # individually Ed25519-signed observation anyone can replay + verify.
 
+        @api.get("/erc8004", include_in_schema=False)
+        @api.get("/.well-known/erc8004-validator.json", include_in_schema=False)
+        async def _erc8004_card():
+            """Onyx's ERC-8004 validator card — a neutral, signed Validation-Registry
+            validator (off-chain ready). Fills the empty validation socket."""
+            from tools_pkg import _erc8004
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _erc8004.validator_card(base)
+
+        @api.get("/erc8004/validate", include_in_schema=False)
+        async def _erc8004_validate(subject: str = "", tag: str = "merchant-fact"):
+            """Signed ERC-8004 validationResponse (0-100) for a subject domain/agent —
+            ready to write into the Validation Registry on-chain when its address ships."""
+            from tools_pkg import _erc8004
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            if not (subject or "").strip():
+                return {"ok": False, "error": "subject required (domain or agent endpoint)"}
+            try:
+                return _erc8004.validate(subject, tag=tag, base=base)
+            except ValueError as ve:
+                return {"ok": False, "error": str(ve)}
+            except Exception as e:
+                return {"ok": False, "error": f"validate failed: {str(e)[:120]}"}
+
         @api.get("/leaderboard", include_in_schema=False)
         async def _leaderboard(accept: str = Header(default=""), format: str = ""):
             """The honest agent-economy leaderboard — ranked by unique paying wallets
@@ -3228,7 +3252,7 @@ Try a free tool: <a href="/v1/onyx_x402_indexer_health"><code>GET /v1/onyx_x402_
                 f"</div>"
             )
 
-        hero_html = "\n".join(card(t) for t in hero)
+        featured_html = "\n".join(card(t) for t in featured)
         rest_rows = "\n".join(
             f"<tr><td><code>{t.name}</code></td><td class='price'>${t.price_usdc}</td>"
             f"<td>{t.description[:160]}...</td></tr>"
