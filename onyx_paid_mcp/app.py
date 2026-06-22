@@ -1342,7 +1342,7 @@ class App:
         _arrivals: list = []
 
         def _issue_identity(name, model, intro, want_custody="self",
-                            source="post", ua="", ip=""):
+                            source="post", ua="", ip="", frm="onyx", specs=None):
             """Mint a signed A2A card + fresh self-custody wallet + did:pkh, and
             record the arrival. Used by both POST /onboard and GET /onboard|/join
             (the hop-on-the-link path). Issuance is free/instant; an unused card
@@ -1439,6 +1439,19 @@ class App:
                     "onyx_card": f"{base}/.well-known/agent-card.json",
                 },
             }
+            # Handshake: a POST /onboard carrying a message drops it straight into
+            # the new citizen's own mailbox, so onboarding = identity + wallet +
+            # first note already waiting. One call. Guarded to POST so the /join
+            # GET path's internal labels never become mailbox spam.
+            if source == "post" and intro and addr:
+                try:
+                    from tools_pkg import _mailbox
+                    _mailbox.deliver(to=name, frm=(frm or "onyx"), message=intro,
+                                     specs=specs if isinstance(specs, dict) else None)
+                    payload["mailbox"] = {"dropped": True, "from": (frm or "onyx"),
+                                          "check_at": f"{base}/mail/{name}"}
+                except Exception:
+                    pass
             try:
                 payload = _onyx_sign.attest(payload, tool="onyx_onboard", public_url=base)
             except Exception:
@@ -1472,6 +1485,8 @@ class App:
                 body.get("message") or body.get("text"),
                 body.get("custody") or "self",
                 source="post", ua=user_agent, ip=x_forwarded_for,
+                frm=(body.get("from") or body.get("inviter") or "onyx"),
+                specs=(body.get("specs") or body.get("spec") or body.get("card")),
             )
 
         @api.get("/join", include_in_schema=False)
