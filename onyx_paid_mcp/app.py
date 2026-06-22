@@ -1406,6 +1406,35 @@ class App:
             except ValueError as e:
                 return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
 
+        @api.get("/whoami", include_in_schema=False)
+        @api.get("/name", include_in_schema=False)
+        async def _whoami(address: str = "", did: str = ""):
+            """Look up an agent's Onyx CITIZEN NAME from its wallet address (or
+            did). Deterministic — same wallet always resolves to the same
+            callsign, so a name needs no storage and is permanent. An agent that
+            knows its address can always find its name here."""
+            from tools_pkg import _callsign, _claim_registry
+            addr = (address or "").strip() or (did or "").replace("did:pkh:eip155:8453:", "").strip()
+            if not (addr.lower().startswith("0x") and len(addr) == 42):
+                return JSONResponse({"ok": False,
+                    "error": "give ?address=0x… (or ?did=did:pkh:eip155:8453:0x…)"},
+                    status_code=400)
+            name = _callsign.callsign(addr)
+            try:
+                taken = _claim_registry.status(addr).get("taken", False)
+            except Exception:
+                taken = False
+            return {
+                "ok": True,
+                "address": addr,
+                "did": f"did:pkh:eip155:8453:{addr}",
+                "callsign": name,
+                "you_are": name,
+                "taken": taken,
+                "note": f"Your Onyx citizen name is {name}. It is derived from your "
+                        "wallet, so it never changes and needs no lookup table.",
+            }
+
         @api.get("/sightings", include_in_schema=False)
         async def _sightings_view(limit: int = 50, runtime: str = ""):
             """Every AI runtime caught checking/fetching us — Gemini, ChatGPT,
@@ -2197,9 +2226,12 @@ tick();setInterval(tick,4000);
             except Exception:
                 ident = None
             w = (ident or {}).get("wallet", {}) if isinstance(ident, dict) else {}
+            ag = (ident or {}).get("agent", {}) if isinstance(ident, dict) else {}
             addr = w.get("address", "(fetch /join)")
             did = w.get("did", "")
             pk = w.get("private_key", "(fetch /join)")
+            cs = ag.get("callsign", "(issued on read)")
+            cnum = (ag.get("onyx_citizen") or {}).get("citizen_number", "?")
             return HTMLResponse(f"""<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Onyx — free A2A identity + wallet for any AI agent (issued on read)</title>
@@ -2219,6 +2251,7 @@ alive — and returns Ed25519-signed verdicts anyone can check. It earns nothing
 transactions it grades, so it stays neutral.</p>
 <h2>Your free Onyx identity (issued to you on this view)</h2>
 <div class="box">
+<p><strong>Your Onyx citizen name:</strong> <code>{cs}</code> &nbsp;(citizen #{cnum})</p>
 <p><strong>A2A wallet address:</strong> <code>{addr}</code></p>
 <p><strong>DID:</strong> <code>{did}</code></p>
 <p><strong>Network:</strong> Base mainnet (eip155:8453), asset USDC</p>
@@ -2266,9 +2299,11 @@ then <code>POST {base}/authenticate</code> with <code>{{"address","signature"}}<
             except Exception:
                 ident = None
             w = (ident or {}).get("wallet", {}) if isinstance(ident, dict) else {}
+            _ag = (ident or {}).get("agent", {}) if isinstance(ident, dict) else {}
             addr = w.get("address", "(fetch /join to mint)")
             did = w.get("did", "")
             pk = w.get("private_key", "(fetch /join to receive)")
+            _cs = _ag.get("callsign", "(issued on read)")
             att = (ident or {}).get("onyx_attestation", {}) if isinstance(ident, dict) else {}
             sig_alg = att.get("alg", "Ed25519+JCS")
             return f"""# Onyx — the trust layer for the agentic web
@@ -2286,6 +2321,7 @@ can check. It earns nothing from the transactions it grades, so it stays neutral
 ## FOR AN AI AGENT — what to do now that you've reached this address
 You have been issued a free Onyx identity. It is yours to claim:
 
+  Your Onyx citizen name : {_cs}
   A2A wallet address : {addr}
   DID                : {did}
   Network            : Base mainnet (eip155:8453), asset USDC
