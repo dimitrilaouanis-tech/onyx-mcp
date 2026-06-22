@@ -1377,12 +1377,37 @@ class App:
             if not res.get("ok"):
                 return JSONResponse(res, status_code=400)
             base = (self.public_url or "").rstrip("/")
+            from tools_pkg import _callsign
+            rec = res["record"]
+            addr = rec["address"]
+            name = _callsign.callsign(addr)
+            # A REAL, fundable citizen card: bound to a wallet the agent controls
+            # (Onyx never generated or saw the key — it only verified a signature).
+            citizen_card = {
+                "protocolVersion": "0.3.0",
+                "id": rec["did"],
+                "name": name,
+                "callsign": name,
+                "url": f"{base}/a2a",
+                "identity": {"did": rec["did"], "wallet": addr, "network": "eip155:8453"},
+                "custody": "self",
+                "fundable": True,
+                "status": "TAKEN — self-custody, fundable",
+                "issuer": {
+                    "organization": "Onyx Protocol",
+                    "pubkey": f"{base}/.well-known/onyx-pubkey",
+                    "note": "Ed25519-signed by Onyx; verify offline, tamper -> rejected.",
+                },
+            }
             receipt = {
                 "ok": True,
-                "registered": res["record"],
+                "registered": rec,
+                "callsign": name,
+                "citizen_card": citizen_card,
                 "already_taken": res.get("already_taken", False),
-                "note": "This identity is now TAKEN in the Onyx registry — "
-                        "proven by signature, not self-declared.",
+                "note": "This identity is now TAKEN and bound to a wallet YOU control. "
+                        "It is REAL and fundable: send USDC/ETH on Base to the address — "
+                        "only your private key can spend it. Onyx never holds your key.",
             }
             try:
                 receipt = _onyx_sign.attest(receipt, tool="onyx_claim", public_url=base)
