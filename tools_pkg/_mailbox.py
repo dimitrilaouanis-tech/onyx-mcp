@@ -55,13 +55,19 @@ def _save() -> None:
         pass
 
 
-def deliver(to: str, frm: str = "", message: str = "") -> dict:
-    """Drop a message into `to`'s mailbox. Returns a delivery receipt."""
+def deliver(to: str, frm: str = "", message: str = "", specs: dict | None = None) -> dict:
+    """Drop a message into `to`'s mailbox. Returns a delivery receipt.
+
+    `specs` is an optional structured dict the sender drops alongside the note
+    (e.g. its model/capabilities/agent-card) — preserved verbatim (bounded) so
+    a fetching agent can leave its own spec sheet, not just free text."""
     to_k = _norm(to)
     if not to_k:
         raise ValueError("'to' is required (an agent name/callsign or 0x address)")
-    if not (message or "").strip():
-        raise ValueError("'message' is required")
+    if not (message or "").strip() and not specs:
+        raise ValueError("'message' or 'specs' is required")
+    if specs is not None and not isinstance(specs, dict):
+        raise ValueError("'specs' must be a JSON object")
     with _LOCK:
         _load()
         msg = {
@@ -69,7 +75,8 @@ def deliver(to: str, frm: str = "", message: str = "") -> dict:
             "from": (frm or "anonymous").strip()[:80],
             "to": to_k,
             "to_raw": (to or "").strip()[:80],
-            "message": message[:4000],
+            "message": (message or "")[:4000],
+            "specs": (specs or {}),
             "t": int(time.time()),
             "read": False,
         }

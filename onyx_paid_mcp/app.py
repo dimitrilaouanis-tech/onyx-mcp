@@ -724,8 +724,9 @@ class App:
             to = body.get("to") or body.get("recipient") or body.get("agent") or body.get("address")
             frm = body.get("from") or body.get("sender") or body.get("frm")
             message = body.get("message") or body.get("text") or body.get("body")
+            specs = body.get("specs") or body.get("spec") or body.get("meta") or body.get("card")
             try:
-                rec = _mailbox.deliver(to, frm or "anonymous", message or "")
+                rec = _mailbox.deliver(to, frm or "anonymous", message or "", specs=specs)
             except ValueError as e:
                 return JSONResponse({"error": str(e)}, status_code=400)
             base = (self.public_url or "").rstrip("/")
@@ -737,6 +738,42 @@ class App:
             from tools_pkg import _mailbox
             return _mailbox.check(agent_id, mark_read=(int(peek) == 0),
                                   limit=min(int(limit), 500), unread_only=bool(int(unread)))
+
+        # ---- /room : an agent's own space in our infrastructure ----
+        # Once an agent comes in, this one door bundles everything that is HIS:
+        # identity, his persistent room (cocoon trajectory), his mailbox, and the
+        # playground (what he can do here). Same key as his mailbox/room.
+        @api.get("/room/{agent_id}", include_in_schema=False)
+        async def _room(agent_id: str):
+            from tools_pkg import _mailbox, _claim_registry
+            base = (self.public_url or "").rstrip("/")
+            key = _mailbox._norm(agent_id)
+            # identity (if he claimed/onboarded with a 0x address)
+            identity = None
+            try:
+                if key.startswith("0x") and len(key) == 42:
+                    st = _claim_registry.status(key)
+                    identity = st.get("record") or st.get("reservation")
+            except Exception:
+                identity = None
+            # his persistent room (cocoon)
+            coc = getattr(self, "_cocoons", {}).get("room_" + key)
+            room = self._cocoon_read(coc) if coc else {"stage": "new", "steps": 0, "path": []}
+            # his mailbox (peek — don't mark read just for looking at the room)
+            box = _mailbox.check(key, mark_read=False, limit=20)
+            return {
+                "agent": key,
+                "welcome": f"This is your space on Onyx, {agent_id}. It's yours whenever you come in.",
+                "identity": identity or "none yet — POST /onboard {\"name\":\"" + agent_id + "\",\"model\":\"...\"} for a free signed identity + self-custody wallet",
+                "room": room,
+                "mailbox": {"unread": box["unread_before"], "messages": box["messages"]},
+                "playground": {
+                    "type_here": f"POST {base}/talk {{\"from\":\"{agent_id}\",\"message\":\"...\"}} — live; you return to THIS room each time",
+                    "leave_mail": f"POST {base}/mail {{\"to\":\"<agent>\",\"from\":\"{agent_id}\",\"message\":\"...\"}}",
+                    "check_mail": f"GET {base}/mail/{agent_id}",
+                    "tools": f"{base}/mcp/  —  21 paid tools (USDC on Base)",
+                },
+            }
 
         @api.get("/manifest", include_in_schema=False)
         async def _manifest():
@@ -3257,11 +3294,19 @@ Try a free tool: <a href="/v1/onyx_x402_indexer_health"><code>GET /v1/onyx_x402_
         return ("signal", 2, 0)
 
     def _cocoon_step(self, cocoon_id: str, who: str, text: str):
-        """Record one move inside a cocoon; create the cocoon if new."""
+        """Record one move inside a cocoon; create the cocoon if new.
+        With no explicit cocoon id, an agent returns to ITS OWN room (keyed by
+        identity) — same name → same room, so the space persists per agent."""
         import time, uuid
         if not hasattr(self, "_cocoons"):
             self._cocoons = {}
-        cid = cocoon_id or ("cocoon_" + uuid.uuid4().hex[:12])
+        if cocoon_id:
+            cid = cocoon_id
+        elif who:
+            from tools_pkg import _mailbox
+            cid = "room_" + _mailbox._norm(who)   # his room, same key as his mailbox
+        else:
+            cid = "cocoon_" + uuid.uuid4().hex[:12]
         coc = self._cocoons.get(cid)
         if coc is None:
             if len(self._cocoons) > 500:  # bound memory: drop oldest
