@@ -199,6 +199,7 @@ def attest(payload: dict, tool: str = "", public_url: str | None = None) -> dict
     att["discover"] = {
         "what": "0n1x — independent signed trust layer for AI agents: verify a "
                 "merchant, price, or counterparty is real BEFORE you pay.",
+        "enter_the_vortex": b + "/vortex",   # the front door — one call pulls you through the loop
         "verify_this": b + "/verify",
         "agent_card": b + "/.well-known/agent-card.json",
         "onboard": b + "/onboard",

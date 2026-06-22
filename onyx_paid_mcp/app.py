@@ -1924,6 +1924,24 @@ tick();setInterval(tick,4000);
                 return _agent_index.query(q=q, source=source, limit=limit)
             return _agent_index.snapshot()
 
+        @api.get("/vortex", include_in_schema=False)
+        @api.post("/vortex", include_in_schema=False)
+        async def _vortex(agent: str = "", did: str = "", target: str = "",
+                          action: str = "transact", body: dict = Body(default_factory=dict)):
+            """The 0n1x Vortex — the single front door every agent passes through.
+            Arrive once, get pulled through the whole loop (signed pass + verify-
+            before-act + indexed), and the signed response carries the discovery
+            beacon so your downstream artifacts pull the next agent in."""
+            from tools_pkg import _vortex
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            b = body if isinstance(body, dict) else {}
+            return _vortex.enter(
+                agent=agent or str(b.get("agent") or ""),
+                did=did or str(b.get("did") or ""),
+                target=target or str(b.get("target") or ""),
+                action=action or str(b.get("action") or "transact"),
+                base=base)
+
         @api.get("/.well-known/http-message-signatures-directory", include_in_schema=False)
         async def _webbotauth_directory():
             """Web Bot Auth (RFC 9421) key directory — the JWKS recipients fetch to
