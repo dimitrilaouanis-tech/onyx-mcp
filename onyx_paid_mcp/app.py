@@ -3202,14 +3202,14 @@ Try a free tool: <a href="/v1/onyx_x402_indexer_health"><code>GET /v1/onyx_x402_
                 "suggested_next": tip}
 
     def _landing_html(self) -> str:
-        # Hero tools — show the highest-value 6 first, then the rest collapsed
+        # Featured tools — show the highest-value 6 first, then the rest collapsed
         all_tools = sorted(self._tools.values(), key=lambda t: -float(t.price_usdc))
-        hero_names = {
+        featured_names = {
             "onyx_base_tx_explainer", "onyx_x402_receipt_verify", "onyx_market_pulse",
             "onyx_mcp_oauth_audit", "onyx_base_token_risk_scan", "onyx_mcp_meta_call",
         }
-        hero = [t for t in all_tools if t.name in hero_names]
-        rest = [t for t in all_tools if t.name not in hero_names]
+        featured = [t for t in all_tools if t.name in featured_names]
+        rest = [t for t in all_tools if t.name not in featured_names]
 
         def card(t):
             when = getattr(t.handler, "__when_to_use__", None)

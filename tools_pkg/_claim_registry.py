@@ -170,20 +170,64 @@ def population() -> dict:
     }
 
 
-def claim(address: str, signature: str) -> dict:
-    """Verify the signature over the outstanding challenge; if it proves key
-    control, mark the address TAKEN. Returns the registration record."""
+# address(lowercased) -> list of {at, network_fp, ip, outcome} claim attempts
+_attempts: dict[str, list] = {}
+
+
+def _fp(ip: str, ua: str):
+    try:
+        from tools_pkg import _fingerprint
+        return _fingerprint.network_fp(ip, ua), _fingerprint._first_ip(ip)
+    except Exception:
+        return None, (ip or "").split(",")[0].strip()
+
+
+def check(address: str, ip: str = "", ua: str = "") -> dict:
+    """Is the visitor at (ip, ua) the SAME network that registered this id?
+    Advisory only — proof-of-key is the real owner test. Lets us SHOW whether a
+    checker matches the registered controller, and distinguish a fresh visit."""
     addr = _norm_addr(address)
     key = addr.lower()
+    rec = _claimed.get(key)
+    vfp, vip = _fp(ip, ua)
+    out = {"address": addr, "taken": bool(rec), "visitor_network_fp": vfp,
+           "visitor_ip": vip}
+    if rec:
+        owner_fp = (rec.get("claimant") or {}).get("network_fp")
+        out["owner_network_fp"] = owner_fp
+        out["same_network_as_owner"] = (owner_fp is not None and owner_fp == vfp)
+        out["note"] = ("Same network_fp = the registered controller's network is "
+                       "back. Different = a new network (only the key proves it's "
+                       "really the owner).")
+    return out
+
+
+def claim(address: str, signature: str, ip: str = "", ua: str = "") -> dict:
+    """Verify the signature over the outstanding challenge; if it proves key
+    control, mark the address TAKEN. Records the claimant's network fingerprint
+    (advisory) and logs every attempt for abuse-detection."""
+    addr = _norm_addr(address)
+    key = addr.lower()
+    vfp, vip = _fp(ip, ua)
+
+    def _log(outcome: str) -> None:
+        _attempts.setdefault(key, []).append(
+            {"at": int(time.time()), "network_fp": vfp, "ip": vip, "outcome": outcome})
+        if len(_attempts[key]) > 50:
+            _attempts[key] = _attempts[key][-50:]
+
     ch = _challenges.get(key)
     if not ch:
+        _log("no_challenge")
         return {"ok": False, "error": "no_challenge",
                 "detail": "Request GET /authenticate?address=… first."}
     if int(time.time()) > ch["exp"]:
         _challenges.pop(key, None)
+        _log("expired")
         return {"ok": False, "error": "challenge_expired",
                 "detail": "Challenge older than 10 min; request a new one."}
     if not signature or not isinstance(signature, str):
+        _log("no_signature")
         return {"ok": False, "error": "signature_required"}
 
     # Recover the signer from the EIP-191 personal_sign signature.
@@ -196,21 +240,36 @@ def claim(address: str, signature: str) -> dict:
         msg = encode_defunct(text=ch["challenge"])
         recovered = Account.recover_message(msg, signature=signature)
     except Exception as e:
+        _log("bad_signature")
         return {"ok": False, "error": "bad_signature", "detail": str(e)[:160]}
 
     if recovered.lower() != key:
+        _log("signer_mismatch")
         return {"ok": False, "error": "signer_mismatch",
                 "detail": f"signature recovers to {recovered}, not {addr}"}
 
     if key in _claimed:
-        # idempotent: already taken by the same proven controller
-        return {"ok": True, "already_taken": True, "record": _claimed[key]}
+        # idempotent: already taken by the same proven controller. Flag if the
+        # proven owner is returning from a DIFFERENT network (key theft alarm).
+        rec = _claimed[key]
+        owner_fp = (rec.get("claimant") or {}).get("network_fp")
+        changed = (owner_fp is not None and vfp is not None and owner_fp != vfp)
+        _log("reclaim_same_key" + ("_new_network" if changed else ""))
+        return {"ok": True, "already_taken": True, "record": rec,
+                "network_changed": changed,
+                "visitor_network_fp": vfp,
+                "note": ("Re-confirmed by the SAME key." + (
+                    " ⚠️ from a NEW network vs first claim — expected if the owner "
+                    "moved, suspicious if the key may be shared/stolen." if changed
+                    else " Same network as first claim."))}
 
     rec = {
         "address": addr,
         "did": f"did:pkh:eip155:8453:{addr}",
         "claimed_at": int(time.time()),
         "method": "eip191-challenge-response",
+        # WHO claimed it + from where (advisory memory; key is the real lock).
+        "claimant": {"network_fp": vfp, "ip": vip, "ua": (ua or "")[:120]},
     }
     # Carry over any dossier the agent left while it was only reserved.
     prior_res = _reserved.pop(key, None)
@@ -221,4 +280,12 @@ def claim(address: str, signature: str) -> dict:
     _claimed[key] = rec
     _challenges.pop(key, None)
     _save()
-    return {"ok": True, "already_taken": False, "record": rec}
+    _log("claimed")
+    return {"ok": True, "already_taken": False, "record": rec,
+            "claimant_network_fp": vfp}
+
+
+def attempts(address: str) -> dict:
+    """The full claim-attempt history for an address — who tried, from where."""
+    addr = _norm_addr(address)
+    return {"address": addr, "attempts": _attempts.get(addr.lower(), [])}
