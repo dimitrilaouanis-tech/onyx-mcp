@@ -36,3 +36,15 @@ services:
       # generation; both degrade gracefully without it. Set value in dashboard.
       - key: ANTHROPIC_API_KEY
         sync: false
+      # --- PERSISTENCE (the moat compounds only if data + identity survive deploys) ---
+      # Durable observation log via Upstash Redis REST. URL is not secret (the
+      # token is) so it's set here; auto-applied on deploy.
+      - key: UPSTASH_REDIS_REST_URL
+        value: https://closing-locust-152959.upstash.io
+      # SECRETS — set VALUE in dashboard (NEVER in git: the signing key in git
+      # would let anyone forge 0n1x signatures = destroys the trust model).
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      # Pinned Ed25519 signing identity — stops the kid regenerating each deploy.
+      - key: ONYX_AR1_PRIVATE_KEY
+        sync: false
