@@ -149,7 +149,7 @@ def _x402_census() -> list[dict]:
     (deduped by host). The transacting layer the others miss."""
     out, seen = [], set()
     try:
-        for off in range(0, 2000, 1000):
+        for off in range(0, 12000, 1000):  # deeper sweep -> capture long-tail hosts (real small agents)
             d = _get(f"https://api.cdp.coinbase.com/platform/v2/x402/discovery/resources?limit=1000&offset={off}")
             items = d.get("items", []) if isinstance(d, dict) else []
             for it in items:
@@ -172,13 +172,42 @@ def _x402_census() -> list[dict]:
     return out
 
 
+def _smithery() -> list[dict]:
+    """Smithery — the largest MCP server registry (~6.5k servers). Open REST API."""
+    out = []
+    try:
+        page = 1
+        while page <= 30:  # ~3000 servers; bump cap for deeper coverage
+            d = _get(f"https://registry.smithery.ai/servers?page={page}&pageSize=100")
+            servers = d.get("servers", []) if isinstance(d, dict) else []
+            if not servers:
+                break
+            for s in servers:
+                qn = s.get("qualifiedName") or s.get("namespace") or ""
+                out.append({
+                    "name": s.get("displayName") or qn or "?",
+                    "endpoint": "smithery:" + qn,
+                    "description": (s.get("description") or "")[:200],
+                    "skills": [],
+                    "source": "smithery",
+                })
+            pg = (d.get("pagination") or {}) if isinstance(d, dict) else {}
+            if page >= (pg.get("totalPages") or page):
+                break
+            page += 1
+    except Exception as e:
+        out.append({"_error": f"smithery: {type(e).__name__}: {str(e)[:60]}"})
+    return out
+
+
 def _build(now: int) -> dict:
     a2a = _a2aregistry()
     agora = _agoragentic()
     mcp = _mcp_registry()
     averse = _agentverse()
     x402 = _x402_census()
-    allrows = a2a + agora + mcp + averse + x402
+    smith = _smithery()
+    allrows = a2a + agora + mcp + averse + x402 + smith
     errors = [x["_error"] for x in allrows if x.get("_error")]
     agents = [x for x in allrows if not x.get("_error")]
     # dedupe by (lowercased name + endpoint host)
@@ -199,7 +228,7 @@ def _build(now: int) -> dict:
         "total_agents": len(deduped),
         "by_source": by_source,
         "sources": ["a2aregistry.org", "agoragentic.com", "registry.modelcontextprotocol.io",
-                    "agentverse.ai", "x402-census (CDP discovery)"],
+                    "agentverse.ai", "x402-census (CDP discovery)", "registry.smithery.ai"],
         "agents": deduped,
         "errors": errors,
         "note": "Unified, machine-queryable directory aggregated from public agent "
