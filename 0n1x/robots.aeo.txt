@@ -37,6 +37,11 @@ Allow: /
 User-agent: bingbot
 Allow: /
 
+# OAI-AdsBot (new, 2026): validates ad landing-page safety, NOT training. Allow
+# to stay eligible; it does not feed model training.
+User-agent: OAI-AdsBot
+Allow: /
+
 # --- Training crawlers: your explicit choice. Leave ALLOWED to maximize future
 #     model recall of 0n1x; UNCOMMENT a block to opt that model's TRAINING out.
 #     (Opting out of training does NOT remove you from live AI search answers.)
