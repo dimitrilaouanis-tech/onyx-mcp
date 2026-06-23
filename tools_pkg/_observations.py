@@ -38,9 +38,10 @@ import time
 from hashlib import sha256
 from pathlib import Path
 
-from . import _onyx_sign
+from . import _kv, _onyx_sign
 
 _LOG_PATH = Path(__file__).with_name("_observation_log.jsonl")
+_KV_KEY = "onyx:obslog"   # durable Upstash list — survives Render wipes
 _LOCK = threading.RLock()
 
 # In-memory state, lazily loaded from the JSONL on first use.
@@ -83,11 +84,22 @@ def _load() -> None:
                 except Exception:
                     continue
                 _index(rec, persist=False)
+        # DURABLE: also load from Upstash (survives Render wipes). Deduped by
+        # _obs_id in _index, so loading from both file + KV is safe.
+        if _kv.enabled():
+            for raw in _kv.lrange(_KV_KEY, 0, -1):
+                try:
+                    _index(json.loads(raw), persist=False)
+                except Exception:
+                    continue
         _STATE["loaded"] = True
 
 
 def _index(rec: dict, *, persist: bool) -> None:
-    """Insert a record into the in-memory indexes (and optionally the file)."""
+    """Insert a record into the in-memory indexes (and optionally the file/KV)."""
+    oid = rec.get("_obs_id")
+    if oid and oid in _STATE["by_id"]:
+        return  # already indexed (dedupe across file + KV sources)
     _STATE["records"].append(rec)
     _STATE["by_id"][rec["_obs_id"]] = rec
     sk = _subject_key(rec.get("subject", {}))
@@ -97,11 +109,14 @@ def _index(rec: dict, *, persist: bool) -> None:
     if fp:
         _STATE["fingerprints"].add(fp)
     if persist:
+        blob = json.dumps(rec, ensure_ascii=False)
         try:
             with _LOG_PATH.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                f.write(blob + "\n")
         except Exception:
-            pass  # file is a cache, not the source of truth
+            pass  # local file is a warm cache, not the source of truth
+        if _kv.enabled():
+            _kv.rpush(_KV_KEY, blob)  # DURABLE source of truth — survives deploys
 
 
 def record(kind: str, subject: dict, observed: dict,
