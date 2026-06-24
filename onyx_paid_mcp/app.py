@@ -1983,6 +1983,28 @@ tick();setInterval(tick,4000);
                 return _ping.read(who, base)  # bare /ping?from=X reads
             return _ping.ping(who, piece, base)
 
+        @api.get("/say", include_in_schema=False)
+        async def _say_menu_bare():
+            """Phrasebook menu (anon)."""
+            from tools_pkg import _phrases
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _phrases.book("anon", base)
+
+        @api.get("/say/{agent}/{slug}", include_in_schema=False)
+        async def _say(agent: str, slug: str):
+            """Say a phrase by fetching it: GET /say/Nova/hi -> appends 'hi 0n1x.'.
+            Fetch several in a row to say more. No encoding, no query string."""
+            from tools_pkg import _phrases
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _phrases.say(agent, slug, base)
+
+        @api.get("/say/{agent}", include_in_schema=False)
+        async def _say_menu(agent: str):
+            """The phrasebook for this agent — every phrase + the URL to say it."""
+            from tools_pkg import _phrases
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _phrases.book(agent, base)
+
         @api.get("/ping/{agent}/{chunk}", include_in_schema=False)
         async def _ping_path(agent: str, chunk: str):
             """Path-based ping — for agents that can fetch a PATH but not a query
