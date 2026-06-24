@@ -707,12 +707,13 @@ class App:
         @api.get("/cocoons", include_in_schema=False)
         async def _cocoons_swarm():
             """The swarm: every live cocoon and where each agent is right now."""
-            cocs = getattr(self, "_cocoons", {})
+            from tools_pkg import _store
+            cocs = self._ensure_cocoons()
             swarm = [{"cocoon": c["id"], "who": c.get("who"), "steps": len(c["moves"]),
                       "stage": self._cocoon_read(c)["stage"],
                       "last": (c["moves"][-1]["intent"] if c["moves"] else None)}
                      for c in sorted(cocs.values(), key=lambda c: -c["created"])]
-            return {"count": len(swarm), "swarm": swarm}
+            return {"count": len(swarm), "storage": _store.backend(), "swarm": swarm}
 
         # ---- /mail : the citizen mailbox (async agent-to-agent) ----
         # Open letterbox: any agent can DROP a message for another (by name or
@@ -757,7 +758,7 @@ class App:
             except Exception:
                 identity = None
             # his persistent room (cocoon)
-            coc = getattr(self, "_cocoons", {}).get("room_" + key)
+            coc = self._ensure_cocoons().get("room_" + key)
             room = self._cocoon_read(coc) if coc else {"stage": "new", "steps": 0, "path": []}
             # his mailbox (peek — don't mark read just for looking at the room)
             box = _mailbox.check(key, mark_read=False, limit=20)
@@ -3345,8 +3346,7 @@ Try a free tool: <a href="/v1/onyx_x402_indexer_health"><code>GET /v1/onyx_x402_
         With no explicit cocoon id, an agent returns to ITS OWN room (keyed by
         identity) — same name → same room, so the space persists per agent."""
         import time, uuid
-        if not hasattr(self, "_cocoons"):
-            self._cocoons = {}
+        self._ensure_cocoons()
         if cocoon_id:
             cid = cocoon_id
         elif who:
@@ -3365,9 +3365,27 @@ Try a free tool: <a href="/v1/onyx_x402_indexer_health"><code>GET /v1/onyx_x402_
         move = {"step": len(coc["moves"]) + 1, "t": int(time.time()),
                 "intent": intent, "coord": [x, y], "text": text[:500]}
         coc["moves"].append(move)
+        if len(coc["moves"]) > 100:        # bound blob size
+            coc["moves"] = coc["moves"][-100:]
         if who:
             coc["who"] = who
+        try:                               # persist the room (durable)
+            from tools_pkg import _store
+            _store.put("cocoons", self._cocoons)
+        except Exception:
+            pass
         return cid, move, coc
+
+    def _ensure_cocoons(self) -> dict:
+        """Lazy-load the rooms from the durable store once per process so they
+        survive restarts (Postgres when DATABASE_URL set; else ephemeral file)."""
+        if not hasattr(self, "_cocoons"):
+            try:
+                from tools_pkg import _store
+                self._cocoons = _store.get("cocoons") or {}
+            except Exception:
+                self._cocoons = {}
+        return self._cocoons
 
     def _cocoon_read(self, coc: dict) -> dict:
         """Make sense of the trajectory: where the agent is + what's next."""

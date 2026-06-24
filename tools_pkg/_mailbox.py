@@ -34,18 +34,29 @@ def _norm(addr_or_name: str) -> str:
 
 
 def _load() -> None:
+    """Always read the live store so mail survives restarts AND a fresh process
+    sees notes left while it was down. Durable via _store (Postgres) when
+    DATABASE_URL is set; local JSON otherwise."""
     global _BOX, _loaded
-    if _loaded:
-        return
     try:
-        with open(_PATH, encoding="utf-8") as f:
-            _BOX = json.load(f)
+        from . import _store
+        _BOX = _store.get("mailbox") or {}
     except Exception:
-        _BOX = {}
+        try:
+            with open(_PATH, encoding="utf-8") as f:
+                _BOX = json.load(f)
+        except Exception:
+            _BOX = {}
     _loaded = True
 
 
 def _save() -> None:
+    try:
+        from . import _store
+        _store.put("mailbox", _BOX)
+        return
+    except Exception:
+        pass
     try:
         tmp = _PATH + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
