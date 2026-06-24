@@ -2007,6 +2007,14 @@ tick();setInterval(tick,4000);
             base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
             return _news.snapshot(base)
 
+        @api.get("/selftest", include_in_schema=False)
+        async def _selftest():
+            """0n1x checks ITSELF — signing+self-verify, key pinned, durable storage,
+            all core modules load. Signed pass/fail report. Everything we do, verified."""
+            from tools_pkg import _selftest
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _selftest.run(base)
+
         @api.get("/vortex", include_in_schema=False)
         @api.post("/vortex", include_in_schema=False)
         async def _vortex(agent: str = "", did: str = "", target: str = "",
