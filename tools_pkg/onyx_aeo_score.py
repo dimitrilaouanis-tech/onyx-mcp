@@ -135,6 +135,19 @@ def _sentiment_score(text: str, names: list[str]) -> float:
     return round((pos - neg) / total, 3) if total else 0.0
 
 
+def _age_days(published: str | None, now_ts: int) -> int | None:
+    """Age in days of a cited source from its publishedDate (ISO8601)."""
+    if not published:
+        return None
+    s = str(published).strip().replace("Z", "").split("T")[0]
+    try:
+        y, m, d = (int(x) for x in s.split("-")[:3])
+        pub_ts = time.mktime((y, m, d, 0, 0, 0, 0, 0, -1))
+    except (ValueError, OverflowError):
+        return None
+    return max(0, int((now_ts - pub_ts) / 86400))
+
+
 def _ci95(vals: list[float]) -> dict:
     n = len(vals)
     mean = sum(vals) / n if n else 0.0
@@ -265,6 +278,25 @@ def run(brand: str = "", category: str | None = None, domain: str | None = None,
     stats = _ci95(score_samples)
     aeo_score = int(round(stats["mean"]))
 
+    # Global signals across every probe (patch 2026-06): abstention + source freshness.
+    total_probes = abstained = 0
+    src_ages: list[int] = []
+    for _pid, runs_list in raw.items():
+        for probe in runs_list:
+            total_probes += 1
+            ans = probe.get("answer", "") or ""
+            cites = probe.get("citations") or []
+            if ans and not cites:          # answered but cited nothing
+                abstained += 1
+            for c in cites:
+                age = _age_days(c.get("published"), observed_at)
+                if age is not None:
+                    src_ages.append(age)
+    abstention_rate = round(abstained / total_probes, 3) if total_probes else 0.0
+    src_ages.sort()
+    median_age = src_ages[len(src_ages) // 2] if src_ages else None
+    fresh_share = round(sum(1 for a in src_ages if a <= 30) / len(src_ages), 3) if src_ages else None
+
     result = {
         "ok": True,
         "brand": brand,
@@ -274,11 +306,18 @@ def run(brand: str = "", category: str | None = None, domain: str | None = None,
         "observed_at": observed_at,
         "observed_at_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(observed_at)),
         "engine": "exa.answer",
+        "engine_era": "exa.answer/2026H1",
         "vantage": "onyx-observer",
         "aeo_score": aeo_score,
         "aeo_score_ci95": [stats["ci95_low"], stats["ci95_high"]],
         "score_stats": stats,
         "weights": WEIGHTS,
+        "abstention_rate": abstention_rate,
+        "source_freshness": {
+            "median_age_days": median_age,
+            "share_under_30d": fresh_share,
+            "n_dated_sources": len(src_ages),
+        },
         "prompts_run": len(prompts),
         "runs_per_prompt": runs,
         "probe_errors": errors,
@@ -290,7 +329,11 @@ def run(brand: str = "", category: str | None = None, domain: str | None = None,
             "Presence/CitationRate use a closed denominator (fixed prompt set). WeightedSoV is "
             "position-decayed brand impression vs competitors (GEO Eq.3, arXiv:2311.09735). "
             "Score reported as mean +/- 95% CI over N runs per prompt. Weights disclosed above; "
-            "raw probes and sources included. Signed by 0n1x for tamper-evidence."
+            "raw probes and sources included. Also reports abstention_rate (answers that cited "
+            "nothing -- rising sharply on ChatGPT in 2026) and source_freshness (cited-source age; "
+            "freshness is the strongest 2026 citation lever, ~30-day window). Single live engine "
+            "(Exa web-grounded answer); multi-engine per-profile scoring is the roadmap. "
+            "Signed by 0n1x for tamper-evidence."
         ),
         "summary": (
             f"{brand}: AEO {aeo_score}/100 "
