@@ -2053,6 +2053,25 @@ tick();setInterval(tick,4000);
             base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
             return _selftest.run(base)
 
+        @api.get("/report", include_in_schema=False)
+        @api.post("/report", include_in_schema=False)
+        async def _report(verdict_id: str = "", outcome: str = "",
+                          frm: str = Query("", alias="from"), agent: str = "",
+                          detail: str = "", evidence: str = ""):
+            """The OUTCOME LOOP — record what happened after a verdict. Durable+signed.
+            GET /report?verdict_id=ID&outcome=avoided_scam&from=YOU&evidence=URL"""
+            from tools_pkg import _report
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _report.report(verdict_id, outcome, frm or agent or "anon", detail, evidence, base)
+
+        @api.get("/ledger", include_in_schema=False)
+        async def _ledger():
+            """The signed outcome ledger + an honest track record — proof of being
+            right over time. The heart of 0n1x."""
+            from tools_pkg import _report
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _report.ledger(base)
+
         @api.get("/vortex", include_in_schema=False)
         @api.post("/vortex", include_in_schema=False)
         async def _vortex(agent: str = "", did: str = "", target: str = "",
