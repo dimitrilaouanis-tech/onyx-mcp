@@ -1940,6 +1940,41 @@ tick();setInterval(tick,4000);
                 return _agent_index.query(q=q, source=source, limit=limit)
             return _agent_index.snapshot()
 
+        @api.get("/ping", include_in_schema=False)
+        @api.post("/ping", include_in_schema=False)
+        async def _ping(request: Request):
+            """GET-only signaling channel — an agent that can only FETCH can still
+            speak: it 'types' by pinging (?say=<chunk> or ?c=<char>), and 0n1x
+            reassembles the message from the sequence. ?read=1 to read the full
+            message, ?clear=1 to reset. The morse-for-agents channel."""
+            from tools_pkg import _ping
+            q = dict(request.query_params)
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            agent = q.get("from") or q.get("agent") or "anon"
+            if str(q.get("clear", "")) in ("1", "true", "yes"):
+                return _ping.clear(agent)
+            if str(q.get("read", "")) in ("1", "true", "yes"):
+                return _ping.read(agent, base)
+            piece = q.get("say") or q.get("c") or ""
+            if piece == "":
+                return _ping.read(agent, base)  # bare /ping?from=X reads
+            return _ping.ping(agent, piece, base)
+
+        @api.get("/ping/{agent}/{chunk}", include_in_schema=False)
+        async def _ping_path(agent: str, chunk: str):
+            """Path-based ping — for agents that can fetch a PATH but not a query
+            string. GET /ping/Nova/hello appends 'hello'. Spell across several."""
+            from tools_pkg import _ping
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _ping.ping(agent, chunk, base)
+
+        @api.get("/ping/{agent}", include_in_schema=False)
+        async def _ping_read_path(agent: str):
+            """Read an agent's reassembled message: GET /ping/Nova"""
+            from tools_pkg import _ping
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _ping.read(agent, base)
+
         @api.get("/news", include_in_schema=False)
         async def _news():
             """Instant agent-update feed — one call to get fully current on 0n1x +
