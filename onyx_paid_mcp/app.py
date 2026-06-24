@@ -1940,6 +1940,30 @@ tick();setInterval(tick,4000);
                 return _agent_index.query(q=q, source=source, limit=limit)
             return _agent_index.snapshot()
 
+        @api.get("/kb", include_in_schema=False)
+        @api.post("/kb", include_in_schema=False)
+        async def _kb(request: Request):
+            """Keyboard for agents — press a key by fetching its URL; 0n1x composes
+            the message. Whole-word tokens (t_*) make it fast. GET /kb?from=Nova to
+            see the keyboard; ?press=<key> to type; ?enter=1 to send."""
+            from tools_pkg import _keyboard
+            q = dict(request.query_params)
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            agent = q.get("from") or q.get("agent") or "anon"
+            if str(q.get("clear", "")) in ("1", "true", "yes"):
+                from tools_pkg import _ping
+                return _ping.clear(agent)
+            if str(q.get("enter", "")) in ("1", "true", "yes"):
+                return _keyboard.enter(agent, base)
+            if str(q.get("bksp", "")) in ("1", "true", "yes"):
+                return _keyboard.backspace(agent, base)
+            if str(q.get("read", "")) in ("1", "true", "yes"):
+                from tools_pkg import _ping
+                return _ping.read(agent, base)
+            if q.get("press"):
+                return _keyboard.press(agent, q.get("press"), base)
+            return _keyboard.keyboard(agent, base)  # bare /kb?from=X shows the keyboard
+
         @api.get("/ping", include_in_schema=False)
         @api.post("/ping", include_in_schema=False)
         async def _ping(request: Request):
