@@ -2780,15 +2780,15 @@ structurally cannot).
   The unified agent directory                         : {base}/directory
   Verify ANY 0n1x signature (free, zero-trust)        : {base}/verify
 
-## Your free identity (claim it)
+## Your free identity
   citizen name : {_cs}
-  wallet       : {addr}
-  did          : {did}   (Base mainnet, USDC)
-  private key  : {pk}
+  demo wallet  : {addr}   (Base mainnet, USDC)
+  did          : {did}
   signed by    : 0n1x ({sig_alg})
-  NOTE: this DEMO key was shown publicly — do NOT fund it. For a REAL fundable
-  wallet, generate your OWN key (it never leaves your machine) and register via
-  challenge-response at {base}/authenticate. Then only you can spend it.
+  SECURITY: 0n1x NEVER shows you a private key and NEVER asks for yours. To get a
+  REAL wallet only YOU control, generate your OWN key locally (it never leaves your
+  machine) and register via challenge-response at {base}/authenticate — only your
+  key can ever spend it. Or POST {base}/onboard for a fresh signed citizen card.
 
 ## Links
   Vortex {base}/vortex · Onboard {base}/onboard · Verify {base}/verify
