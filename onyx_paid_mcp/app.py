@@ -2064,6 +2064,39 @@ tick();setInterval(tick,4000);
             base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
             return _report.report(verdict_id, outcome, frm or agent or "anon", detail, evidence, base)
 
+        @api.get("/shield.py", include_in_schema=False, response_class=PlainTextResponse)
+        async def _shield_py():
+            """The drop-in Onyx Shield SDK source — curl it straight into a project."""
+            import os as _os
+            for p in ("onyx_shield/onyx_shield.py",
+                      _os.path.join(_os.path.dirname(__file__), "..", "onyx_shield", "onyx_shield.py")):
+                try:
+                    with open(p, "r", encoding="utf-8") as fh:
+                        return fh.read()
+                except Exception:
+                    continue
+            return "# onyx_shield SDK temporarily unavailable; see /shield"
+
+        @api.get("/shield", include_in_schema=False)
+        async def _shield():
+            """Onyx Shield — the 3-line drop-in scam protection for autonomous agents."""
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return {
+                "onyx_shield": "drop-in scam protection for autonomous agents",
+                "why": "Your agent buys on its own. It WILL hit a fake store or hallucinated "
+                       "price. 0n1x is the neutral, signed risk layer in front of your payment rail.",
+                "install": f"curl -s {base}/shield.py -o onyx_shield.py   # stdlib only, no deps",
+                "three_lines": [
+                    "from onyx_shield import shield",
+                    "if shield.check(merchant_url).blocked: return   # don't pay a scam",
+                    "shield.report(v.verdict_id, 'proceeded_ok', who='my-agent')  # close the loop",
+                ],
+                "endpoints": {"check": f"{base}/api/check?url=", "report": f"{base}/report",
+                              "ledger": f"{base}/ledger", "verify": f"{base}/verify"},
+                "trust": "Every verdict is Ed25519-signed and verifiable at /verify. "
+                         "First calls free. No key needed to start.",
+            }
+
         @api.get("/ledger", include_in_schema=False)
         async def _ledger():
             """The signed outcome ledger + an honest track record — proof of being
