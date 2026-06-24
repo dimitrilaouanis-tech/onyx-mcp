@@ -2028,6 +2028,23 @@ tick();setInterval(tick,4000);
             base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
             return _news.snapshot(base)
 
+        @api.get("/patch", include_in_schema=False)
+        @api.post("/patch", include_in_schema=False)
+        async def _patch(frm: str = Query("", alias="from"), agent: str = "",
+                         keywords: str = "", add: str = ""):
+            """Instant card-keyword patch: GET /patch?from=Nova&keywords=verify,scam-shield
+            (or &add=erc8004). Durable + signed. Updates the agent's live card instantly."""
+            from tools_pkg import _cardpatch
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _cardpatch.patch(frm or agent or "anon", keywords, add, base)
+
+        @api.get("/card/{agent}", include_in_schema=False)
+        async def _card(agent: str):
+            """An agent's live, signed card — patched keywords + last message."""
+            from tools_pkg import _cardpatch
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _cardpatch.card(agent, base)
+
         @api.get("/selftest", include_in_schema=False)
         async def _selftest():
             """0n1x checks ITSELF — signing+self-verify, key pinned, durable storage,
