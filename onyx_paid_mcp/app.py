@@ -1940,6 +1940,14 @@ tick();setInterval(tick,4000);
                 return _agent_index.query(q=q, source=source, limit=limit)
             return _agent_index.snapshot()
 
+        @api.get("/news", include_in_schema=False)
+        async def _news():
+            """Instant agent-update feed — one call to get fully current on 0n1x +
+            the agent economy. Curated + cached + Ed25519-signed; returns instantly."""
+            from tools_pkg import _news
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _news.snapshot(base)
+
         @api.get("/vortex", include_in_schema=False)
         @api.post("/vortex", include_in_schema=False)
         async def _vortex(agent: str = "", did: str = "", target: str = "",
