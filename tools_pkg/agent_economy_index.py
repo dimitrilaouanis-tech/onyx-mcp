@@ -91,33 +91,86 @@ FILTER_METHOD_VERSION = "onyx-aei-filter/1.1"
 # Bright line preserved: we sign attributed facts, not guesses. ---
 SEGMENTS = [
     {"segment": "enterprise_agents",
-     "examples": ["Salesforce Agentforce", "Microsoft Copilot agents", "ServiceNow AI agents",
+     "examples": ["Salesforce Agentforce", "Microsoft Copilot agents", "ServiceNow Now Assist",
                   "Google Agentspace", "SAP Joule", "Workday"],
      "buyer": "enterprises (per-seat / per-conversation / per-agent licensing)",
-     "size_usd_30d": None, "basis": "pending_verified (wf_75e35a67-9a2)",
-     "note": "largest pool; real enterprise budgets, not crypto flow"},
+     "data_basis": "verified (wf_75e35a67-9a2)",
+     "anchors": [
+         {"company": "Salesforce Agentforce", "metric": "ARR", "value_usd": 800_000_000,
+          "growth": "+169% YoY", "as_of": "2026-02", "source": "Salesforce Q4 FY2026 SEC 8-K"},
+         {"company": "Microsoft AI business", "metric": "annual run-rate (Copilot+Azure AI bundled)",
+          "value_usd": 37_000_000_000, "growth": "+123% YoY", "as_of": "2026-Q3 FY26",
+          "source": "Microsoft IR / SEC, Apr 29 2026", "note": "not agent-only"},
+         {"company": "ServiceNow Now Assist", "metric": "ACV", "value_usd": 750_000_000,
+          "target_eoy_usd": 1_500_000_000, "as_of": "2026-Q1", "source": "ServiceNow FY Analyst Day / earnings"},
+     ],
+     "note": "LARGEST real-revenue pool; tens of $B recurring; enterprise budgets, not crypto flow"},
     {"segment": "vertical_ai_agents",
-     "examples": ["Sierra", "Decagon", "Harvey", "Abridge", "Cognition/Devin"],
-     "buyer": "enterprise customers of each vertical",
-     "size_usd_30d": None, "basis": "pending_verified (wf_75e35a67-9a2)",
-     "note": "fastest-funded; 48-55% of 2026 agentic-AI capital per prior PitchBook read"},
+     "examples": ["Cognition/Devin", "Harvey", "Sierra", "Decagon", "Abridge"],
+     "buyer": "enterprise customers (Mercedes-Benz, Goldman, Santander, 50% of Am Law 100)",
+     "data_basis": "verified (wf_75e35a67-9a2)",
+     "anchors": [
+         {"company": "Cognition (Devin)", "metric": "annualized run-rate", "value_usd": 492_000_000,
+          "raise": "$1B at $25B pre", "as_of": "2026-05", "source": "Cognition Series D / TechCrunch"},
+         {"company": "Harvey (legal)", "metric": "ARR (Sacra est.)", "value_usd": 300_000_000,
+          "valuation_usd": 11_000_000_000, "as_of": "2026-05", "source": "Sacra / CNBC"},
+     ],
+     "note": "substantial enterprise recurring SaaS; run-rates are forward-annualized, not audited GAAP"},
     {"segment": "agentic_commerce",
-     "examples": ["OpenAI checkout", "Stripe ACP", "Google AP2", "Amazon"],
-     "buyer": "merchants + commerce platforms (real consumer GMV)",
-     "size_usd_30d": None, "basis": "pending_verified (wf_75e35a67-9a2)",
-     "note": "separate REAL merchant GMV from crypto settlement; pre-revenue at some platforms"},
+     "examples": ["OpenAI+Stripe ACP", "Google AP2", "Visa Intelligent Commerce", "Mastercard Agent Pay", "Amazon", "Shopify"],
+     "buyer": "merchants + payment providers (real card-rail GMV, not crypto)",
+     "data_basis": "verified (wf_75e35a67-9a2)",
+     "anchors": [
+         {"metric": "McKinsey 2030 orchestrated retail — US B2C", "value_usd_range": [900_000_000_000, 1_000_000_000_000],
+          "as_of": "forecast 2030", "source": "McKinsey QuantumBlack Oct 2025", "note": "forecast, goods only, 'orchestrated' not net-new"},
+         {"metric": "McKinsey 2030 orchestrated retail — global", "value_usd_range": [3_000_000_000_000, 5_000_000_000_000],
+          "as_of": "forecast 2030", "source": "McKinsey QuantumBlack Oct 2025"},
+         {"detail": "ACP Instant Checkout live in ChatGPT, 4% merchant fee; runs on standard card rails", "source": "Stripe/OpenAI"},
+     ],
+     "note": "real GMV on mainstream rails; 2030 figures are consultancy forecasts, not measured GMV"},
+    {"segment": "agent_infrastructure",
+     "examples": ["LangChain", "Stainless (->Anthropic $300M)", "LlamaIndex", "eval/observability"],
+     "buyer": "enterprises building agents (35% of Fortune 500 use LangChain)",
+     "data_basis": "verified (wf_75e35a67-9a2)",
+     "anchors": [
+         {"company": "LangChain", "metric": "Series B valuation", "value_usd": 1_250_000_000,
+          "raise": "$125M", "as_of": "2025-10", "source": "LangChain blog / Fortune"},
+     ],
+     "note": "picks-and-shovels; bought by enterprises, not crypto agents"},
     {"segment": "consumer_agent_subs",
-     "examples": ["ChatGPT agent mode", "Claude", "Perplexity"],
+     "examples": ["ChatGPT agent mode", "Claude", "Perplexity", "Gemini"],
      "buyer": "consumers (subscription ARR)",
-     "size_usd_30d": None, "basis": "pending_verified (wf_75e35a67-9a2)",
-     "note": "billions-scale ARR pool, distinct from agent-to-agent payments"},
+     "data_basis": "unsized_gap (no verified figure survived adversarial check)",
+     "anchors": [
+         {"company": "Perplexity", "metric": "ARR (reported, unverified here)", "value_usd": 450_000_000,
+          "as_of": "2026", "source": "Yahoo Finance — NOT independently verified in this run"},
+     ],
+     "note": "billions-scale pool but segment produced no surviving verified claim; OPEN GAP, do not cite as Onyx-verified"},
     {"segment": "crypto_x402",
      "examples": ["Coinbase Bazaar", "x402 facilitators"],
      "buyer": "crypto agents (agent-to-agent USDC micropayments)",
+     "data_basis": "Onyx live census + named indexers (this tool's measured lane)",
      "size_usd_30d": REAL_VOLUME_RANGE_30D,
-     "basis": "Onyx live census + named indexers (this tool's measured lane)",
-     "note": "SMALLEST lane and shrinking -92% from Dec-2025 peak; do NOT equate with 'the agent economy'"},
+     "note": ("SMALLEST lane and shrinking; Chainalysis: mass adoption 'remains distant', participants "
+              "'crypto-native'; >100M cumulative Base txns inflated by PING meme pay-to-mint (150K txns ~= $140K); "
+              "adjusted volume -77% Nov-2025->May-2026. Do NOT equate with 'the agent economy'.")},
 ]
+
+# Where a signed real-world-FACT verification index/oracle has a paying buyer.
+# VERIFIED nuance (wf_75e35a67-9a2): McKinsey names an unsolved "know your agent"
+# (KYA) need with LIVE paying buyers (Trulioo/Worldpay, Skyfire/Experian, Visa,
+# Mastercard) — but KYA is agent IDENTITY, a DISTINCT market from real-world
+# fact (price/merchant/product) verification. The fact-oracle buyer is the SAME
+# set (merchants / PSPs / risk-&-compliance vendors) but demand is inferred, not
+# yet directly demonstrated. Honest: target the commerce/PSP/risk stack, not the
+# crypto x402 lane; identity demand is proven, fact demand is the open bet.
+FACT_VERIFICATION_BUYER = {
+    "target_segment": "agentic_commerce + enterprise risk/compliance",
+    "buyer_set": ["merchants", "payment service providers", "risk/compliance/identity vendors"],
+    "proven_adjacent_demand": ["Trulioo/Worldpay KYA", "Skyfire/Experian KYA", "Visa", "Mastercard"],
+    "caveat": "Proven demand is for agent IDENTITY (KYA); real-world FACT verification is adjacent and not yet directly demonstrated.",
+    "not_the_buyer": "crypto x402 lane",
+}
 
 
 def _get(url):
@@ -188,18 +241,24 @@ def run(max_pages: int = 300, **_):
     census = _census(max_pages)
     headline = next((s["value_usd"] for s in VOLUME_SOURCES if s["source"] == "x402.org"), None)
     mid_real = (REAL_VOLUME_RANGE_30D["low_usd"] + REAL_VOLUME_RANGE_30D["high_usd"]) / 2
-    pending = [s["segment"] for s in SEGMENTS if s.get("size_usd_30d") is None]
+    open_gaps = [s["segment"] for s in SEGMENTS if "gap" in s.get("data_basis", "")]
     payload = {
         "index": "onyx_agent_economy_index",
-        "version": "1.1",
+        "version": "1.2",
         "as_of": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "headline_correction": (
             "x402 crypto agent-to-agent settlement is ONE small, shrinking lane "
-            "(-92% from Dec-2025 peak) — NOT 'the agent economy'. The money is in "
-            "enterprise + vertical + agentic-commerce + consumer segments. See `segments`."
+            "(-92% from Dec-2025 peak) — NOT 'the agent economy'. The real money: "
+            "ENTERPRISE agents (Salesforce Agentforce $800M ARR, MS AI $37B run-rate, "
+            "ServiceNow Now Assist $750M ACV), VERTICAL agents (Cognition $492M, Harvey "
+            "$300M ARR), and AGENTIC COMMERCE (McKinsey $3-5T global orchestrated retail "
+            "by 2030, on card rails). Tens of $B real recurring revenue. See `segments`."
         ),
+        "total_economy": "tens of $B real recurring revenue (mid-2026); crypto x402 = a rounding error within it",
+        "biggest_segments": ["enterprise_agents", "vertical_ai_agents", "agentic_commerce"],
+        "fact_verification_buyer": FACT_VERIFICATION_BUYER,
         "segments": SEGMENTS,
-        "segments_pending_verified": pending,
+        "segments_open_gap": open_gaps,
         "x402_lane": {
             "live_census": census,
             "real_volume_30d": REAL_VOLUME_RANGE_30D,

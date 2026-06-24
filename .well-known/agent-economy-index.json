@@ -1,94 +1,324 @@
 {
- "index": "onyx_agent_economy_index",
- "version": "1.0",
- "as_of": "2026-06-22T15:20:27Z",
- "live_census": {
-  "advertised_resources": 28066,
-  "scanned": 28066,
-  "pages": 281,
-  "unique_operators": 967,
-  "endpoint_accepts": 41731,
-  "stale_over_90d": 10641,
-  "stale_pct": 37.9,
-  "top3_operator_share_pct": 66.8,
-  "top10_operator_share_pct": 77.4,
-  "networks": {
-   "eip155:8453": 15243,
-   "base": 12816,
-   "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": 10692,
-   "solana": 1347,
-   "cosmos:noble-1": 455
-  }
- },
- "real_volume_30d": {
-  "low_usd": 1100000,
-  "high_usd": 1600000,
-  "basis": "convergence of x402scan filtered + Allium/a16z wash-filtered + Artemis run-rate"
- },
- "headline_volume_30d_usd": 24240000,
- "inflation_multiple": 18.0,
- "self_cycling_share": {
-  "of_transactions_pct": 48,
-  "of_volume_pct": 81,
-  "source": "Artemis (@OnchainLu)",
-  "as_of": "2026-03"
- },
- "decline": {
-  "txns_from_dec2025_peak_pct": -92,
-  "revenue_pct": -97,
-  "source": "OKX Ventures",
-  "note": "731K->57K txns/day; protocol rev $1.02M->$35K"
- },
- "published_sources": [
-  {
-   "source": "x402.org",
-   "metric": "30d volume (raw, multi-chain, unfiltered)",
-   "value_usd": 24240000,
-   "note": "includes PING meme-mint + self-cycling",
-   "as_of": "2026-Q2"
+  "index": "onyx_agent_economy_index",
+  "version": "1.2",
+  "as_of": "2026-06-23T16:31:40Z",
+  "headline_correction": "x402 crypto agent-to-agent settlement is ONE small, shrinking lane (-92% from Dec-2025 peak) \u2014 NOT 'the agent economy'. The real money: ENTERPRISE agents (Salesforce Agentforce $800M ARR, MS AI $37B run-rate, ServiceNow Now Assist $750M ACV), VERTICAL agents (Cognition $492M, Harvey $300M ARR), and AGENTIC COMMERCE (McKinsey $3-5T global orchestrated retail by 2030, on card rails). Tens of $B real recurring revenue. See `segments`.",
+  "total_economy": "tens of $B real recurring revenue (mid-2026); crypto x402 = a rounding error within it",
+  "biggest_segments": [
+    "enterprise_agents",
+    "vertical_ai_agents",
+    "agentic_commerce"
+  ],
+  "fact_verification_buyer": {
+    "target_segment": "agentic_commerce + enterprise risk/compliance",
+    "buyer_set": [
+      "merchants",
+      "payment service providers",
+      "risk/compliance/identity vendors"
+    ],
+    "proven_adjacent_demand": [
+      "Trulioo/Worldpay KYA",
+      "Skyfire/Experian KYA",
+      "Visa",
+      "Mastercard"
+    ],
+    "caveat": "Proven demand is for agent IDENTITY (KYA); real-world FACT verification is adjacent and not yet directly demonstrated.",
+    "not_the_buyer": "crypto x402 lane"
   },
-  {
-   "source": "Allium (raw, Base)",
-   "metric": "30d volume",
-   "value_usd": 3000000,
-   "note": "stricter event scope, Base-primary",
-   "as_of": "2026-03"
+  "segments": [
+    {
+      "segment": "enterprise_agents",
+      "examples": [
+        "Salesforce Agentforce",
+        "Microsoft Copilot agents",
+        "ServiceNow Now Assist",
+        "Google Agentspace",
+        "SAP Joule",
+        "Workday"
+      ],
+      "buyer": "enterprises (per-seat / per-conversation / per-agent licensing)",
+      "data_basis": "verified (wf_75e35a67-9a2)",
+      "anchors": [
+        {
+          "company": "Salesforce Agentforce",
+          "metric": "ARR",
+          "value_usd": 800000000,
+          "growth": "+169% YoY",
+          "as_of": "2026-02",
+          "source": "Salesforce Q4 FY2026 SEC 8-K"
+        },
+        {
+          "company": "Microsoft AI business",
+          "metric": "annual run-rate (Copilot+Azure AI bundled)",
+          "value_usd": 37000000000,
+          "growth": "+123% YoY",
+          "as_of": "2026-Q3 FY26",
+          "source": "Microsoft IR / SEC, Apr 29 2026",
+          "note": "not agent-only"
+        },
+        {
+          "company": "ServiceNow Now Assist",
+          "metric": "ACV",
+          "value_usd": 750000000,
+          "target_eoy_usd": 1500000000,
+          "as_of": "2026-Q1",
+          "source": "ServiceNow FY Analyst Day / earnings"
+        }
+      ],
+      "note": "LARGEST real-revenue pool; tens of $B recurring; enterprise budgets, not crypto flow"
+    },
+    {
+      "segment": "vertical_ai_agents",
+      "examples": [
+        "Cognition/Devin",
+        "Harvey",
+        "Sierra",
+        "Decagon",
+        "Abridge"
+      ],
+      "buyer": "enterprise customers (Mercedes-Benz, Goldman, Santander, 50% of Am Law 100)",
+      "data_basis": "verified (wf_75e35a67-9a2)",
+      "anchors": [
+        {
+          "company": "Cognition (Devin)",
+          "metric": "annualized run-rate",
+          "value_usd": 492000000,
+          "raise": "$1B at $25B pre",
+          "as_of": "2026-05",
+          "source": "Cognition Series D / TechCrunch"
+        },
+        {
+          "company": "Harvey (legal)",
+          "metric": "ARR (Sacra est.)",
+          "value_usd": 300000000,
+          "valuation_usd": 11000000000,
+          "as_of": "2026-05",
+          "source": "Sacra / CNBC"
+        }
+      ],
+      "note": "substantial enterprise recurring SaaS; run-rates are forward-annualized, not audited GAAP"
+    },
+    {
+      "segment": "agentic_commerce",
+      "examples": [
+        "OpenAI+Stripe ACP",
+        "Google AP2",
+        "Visa Intelligent Commerce",
+        "Mastercard Agent Pay",
+        "Amazon",
+        "Shopify"
+      ],
+      "buyer": "merchants + payment providers (real card-rail GMV, not crypto)",
+      "data_basis": "verified (wf_75e35a67-9a2)",
+      "anchors": [
+        {
+          "metric": "McKinsey 2030 orchestrated retail \u2014 US B2C",
+          "value_usd_range": [
+            900000000000,
+            1000000000000
+          ],
+          "as_of": "forecast 2030",
+          "source": "McKinsey QuantumBlack Oct 2025",
+          "note": "forecast, goods only, 'orchestrated' not net-new"
+        },
+        {
+          "metric": "McKinsey 2030 orchestrated retail \u2014 global",
+          "value_usd_range": [
+            3000000000000,
+            5000000000000
+          ],
+          "as_of": "forecast 2030",
+          "source": "McKinsey QuantumBlack Oct 2025"
+        },
+        {
+          "detail": "ACP Instant Checkout live in ChatGPT, 4% merchant fee; runs on standard card rails",
+          "source": "Stripe/OpenAI"
+        }
+      ],
+      "note": "real GMV on mainstream rails; 2030 figures are consultancy forecasts, not measured GMV"
+    },
+    {
+      "segment": "agent_infrastructure",
+      "examples": [
+        "LangChain",
+        "Stainless (->Anthropic $300M)",
+        "LlamaIndex",
+        "eval/observability"
+      ],
+      "buyer": "enterprises building agents (35% of Fortune 500 use LangChain)",
+      "data_basis": "verified (wf_75e35a67-9a2)",
+      "anchors": [
+        {
+          "company": "LangChain",
+          "metric": "Series B valuation",
+          "value_usd": 1250000000,
+          "raise": "$125M",
+          "as_of": "2025-10",
+          "source": "LangChain blog / Fortune"
+        }
+      ],
+      "note": "picks-and-shovels; bought by enterprises, not crypto agents"
+    },
+    {
+      "segment": "consumer_agent_subs",
+      "examples": [
+        "ChatGPT agent mode",
+        "Claude",
+        "Perplexity",
+        "Gemini"
+      ],
+      "buyer": "consumers (subscription ARR)",
+      "data_basis": "unsized_gap (no verified figure survived adversarial check)",
+      "anchors": [
+        {
+          "company": "Perplexity",
+          "metric": "ARR (reported, unverified here)",
+          "value_usd": 450000000,
+          "as_of": "2026",
+          "source": "Yahoo Finance \u2014 NOT independently verified in this run"
+        }
+      ],
+      "note": "billions-scale pool but segment produced no surviving verified claim; OPEN GAP, do not cite as Onyx-verified"
+    },
+    {
+      "segment": "crypto_x402",
+      "examples": [
+        "Coinbase Bazaar",
+        "x402 facilitators"
+      ],
+      "buyer": "crypto agents (agent-to-agent USDC micropayments)",
+      "data_basis": "Onyx live census + named indexers (this tool's measured lane)",
+      "size_usd_30d": {
+        "low_usd": 1100000,
+        "high_usd": 1600000,
+        "basis": "convergence of x402scan filtered + Allium/a16z wash-filtered + Artemis run-rate"
+      },
+      "note": "SMALLEST lane and shrinking; Chainalysis: mass adoption 'remains distant', participants 'crypto-native'; >100M cumulative Base txns inflated by PING meme pay-to-mint (150K txns ~= $140K); adjusted volume -77% Nov-2025->May-2026. Do NOT equate with 'the agent economy'."
+    }
+  ],
+  "segments_open_gap": [
+    "consumer_agent_subs"
+  ],
+  "x402_lane": {
+    "live_census": {
+      "advertised_resources": 26013,
+      "scanned": 4000,
+      "pages": 40,
+      "unique_operators": 406,
+      "endpoint_accepts": 7045,
+      "stale_over_90d": 0,
+      "stale_pct": 0.0,
+      "top3_operator_share_pct": 54.4,
+      "top10_operator_share_pct": 64.2,
+      "networks": {
+        "eip155:8453": 4046,
+        "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": 2384,
+        "eip155:137": 190,
+        "base": 99,
+        "eip155:42161": 63
+      }
+    },
+    "real_volume_30d": {
+      "low_usd": 1100000,
+      "high_usd": 1600000,
+      "basis": "convergence of x402scan filtered + Allium/a16z wash-filtered + Artemis run-rate"
+    }
   },
-  {
-   "source": "x402scan (Merit Systems)",
-   "metric": "30d volume (filtered)",
-   "value_usd": 1110000,
-   "note": "3.69M txns, ~$0.30 avg",
-   "as_of": "2026-05"
+  "live_census": {
+    "advertised_resources": 26013,
+    "scanned": 4000,
+    "pages": 40,
+    "unique_operators": 406,
+    "endpoint_accepts": 7045,
+    "stale_over_90d": 0,
+    "stale_pct": 0.0,
+    "top3_operator_share_pct": 54.4,
+    "top10_operator_share_pct": 64.2,
+    "networks": {
+      "eip155:8453": 4046,
+      "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": 2384,
+      "eip155:137": 190,
+      "base": 99,
+      "eip155:42161": 63
+    }
   },
-  {
-   "source": "Allium + a16z",
-   "metric": "30d volume (wash-filtered)",
-   "value_usd": 1600000,
-   "note": "removes seller-prefunds-buyer round-trips",
-   "as_of": "2026-03"
+  "real_volume_30d": {
+    "low_usd": 1100000,
+    "high_usd": 1600000,
+    "basis": "convergence of x402scan filtered + Allium/a16z wash-filtered + Artemis run-rate"
   },
-  {
-   "source": "Artemis (@OnchainLu)",
-   "metric": "daily volume (filtered)",
-   "value_usd": 28000,
-   "note": "~$0.84-1.0M/mo; 48% txns / 81% volume self-cycling",
-   "as_of": "2026-03"
-  }
- ],
- "filter_method_version": "onyx-aei-filter/1.0",
- "scope_note": "live_census + concentration = Onyx's own real-time measurement; real_volume_30d = signed reconciliation of named third-party indexers. Full on-chain wash-filter (Validator v2) requires an indexer feed and is published as method, not claimed as our own pull.",
- "verify_pubkey_at": "https://onyx-actions.onrender.com/.well-known/onyx-pubkey",
- "elapsed_ms": 169152,
- "onyx_attestation": {
-  "alg": "Ed25519+JCS",
-  "kid": "onyx-febe855db1d43031",
-  "public_key": "hLSPK6XcI-QPCmp7Yg7WCJaENBXIgPpTbBQm_Ux3Zys",
-  "tool": "onyx_agent_economy_index",
-  "observed_hash": "sha256:c7502ad7d39faf12d94ffb9f544386129755a421c53993fe760df4054c598211",
-  "signed_at": 1782141627,
-  "spec": "https://onyx-actions.onrender.com/.well-known/onyx-attestation/v1",
+  "headline_volume_30d_usd": 24240000,
+  "inflation_multiple": 18.0,
+  "self_cycling_share": {
+    "of_transactions_pct": 48,
+    "of_volume_pct": 81,
+    "source": "Artemis (@OnchainLu)",
+    "as_of": "2026-03"
+  },
+  "decline": {
+    "txns_from_dec2025_peak_pct": -92,
+    "revenue_pct": -97,
+    "source": "OKX Ventures",
+    "note": "731K->57K txns/day; protocol rev $1.02M->$35K"
+  },
+  "published_sources": [
+    {
+      "source": "x402.org",
+      "metric": "30d volume (raw, multi-chain, unfiltered)",
+      "value_usd": 24240000,
+      "note": "includes PING meme-mint + self-cycling",
+      "as_of": "2026-Q2"
+    },
+    {
+      "source": "Allium (raw, Base)",
+      "metric": "30d volume",
+      "value_usd": 3000000,
+      "note": "stricter event scope, Base-primary",
+      "as_of": "2026-03"
+    },
+    {
+      "source": "x402scan (Merit Systems)",
+      "metric": "30d volume (filtered)",
+      "value_usd": 1110000,
+      "note": "3.69M txns, ~$0.30 avg",
+      "as_of": "2026-05"
+    },
+    {
+      "source": "Allium + a16z",
+      "metric": "30d volume (wash-filtered)",
+      "value_usd": 1600000,
+      "note": "removes seller-prefunds-buyer round-trips",
+      "as_of": "2026-03"
+    },
+    {
+      "source": "Artemis (@OnchainLu)",
+      "metric": "daily volume (filtered)",
+      "value_usd": 28000,
+      "note": "~$0.84-1.0M/mo; 48% txns / 81% volume self-cycling",
+      "as_of": "2026-03"
+    }
+  ],
+  "filter_method_version": "onyx-aei-filter/1.1",
+  "scope_note": "live_census + concentration = Onyx's own real-time measurement; real_volume_30d = signed reconciliation of named third-party indexers. Full on-chain wash-filter (Validator v2) requires an indexer feed and is published as method, not claimed as our own pull.",
   "verify_pubkey_at": "https://onyx-actions.onrender.com/.well-known/onyx-pubkey",
-  "sig": "emy-PWF9v4GCbu6v12YlIwIBmIRvA5Dj2MzFjdaaoDUH79chiD1Q_Vi5U63ovKnCvaMmiMj7-sXvY76Y8lTKBA"
- }
+  "elapsed_ms": 36273,
+  "onyx_attestation": {
+    "alg": "Ed25519+JCS",
+    "kid": "onyx-7fdc5cc8113040cb",
+    "public_key": "wO5wAA6sEdmEYB4vJbGYuX0QC53A5ftPEM1bIjJhXh4",
+    "tool": "onyx_agent_economy_index",
+    "observed_hash": "sha256:f443a3af154f5214282e57294453a1d698916f51e50981b3564bcdffc9e50182",
+    "signed_at": 1782232300,
+    "spec": "https://onyx-actions.onrender.com/.well-known/onyx-attestation/v1",
+    "verify_pubkey_at": "https://onyx-actions.onrender.com/.well-known/onyx-pubkey",
+    "sig": "0df1yflw_4pTTWKbWCIjnIj1NtQnpUNZzrr0kQ0jOby_hEEwotYNobQoA5etJm7Wd9PxKkWKO3NhTBCT6mQZBA",
+    "discover": {
+      "what": "0n1x \u2014 independent signed trust layer for AI agents: verify a merchant, price, or counterparty is real BEFORE you pay.",
+      "enter_the_vortex": "https://onyx-actions.onrender.com/vortex",
+      "verify_this": "https://onyx-actions.onrender.com/verify",
+      "agent_card": "https://onyx-actions.onrender.com/.well-known/agent-card.json",
+      "onboard": "https://onyx-actions.onrender.com/onboard",
+      "leaderboard": "https://onyx-actions.onrender.com/leaderboard"
+    }
+  }
 }

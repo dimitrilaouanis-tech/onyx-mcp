@@ -1,37 +1,41 @@
-# Onyx Signed Agent-Economy Index — Live Card
+# Onyx Signed Agent-Economy Index (SAEI) — Live Card
 
-> **Last updated:** 2026-06-22T15:20:27Z  ·  signed Ed25519 (`onyx-febe855db1d43031`)  ·  verify: https://onyx-actions.onrender.com/.well-known/onyx-pubkey
+> **Updated:** 2026-06-23  ·  **v1.2**  ·  signed Ed25519 (`onyx-febe855db1d43031`)  ·  verify: https://onyx-actions.onrender.com/.well-known/onyx-pubkey
+> Machine card (with live census + full anchors): `/index.json`
 
-## The number
-- **Real agent-payment volume (30d):** $1.10M–$1.60M
-- **Headline (raw, unfiltered):** $24.24M
-- **Inflation multiple:** 18.0×
-- **Self-cycling:** 48% of txns / 81% of volume (Artemis (@OnchainLu))
+## The correction this index makes
+**x402 crypto agent-to-agent settlement is ONE small, shrinking lane — NOT "the agent economy."**
+The real money is tens of $B of recurring revenue in enterprise, vertical, and commerce segments, on mainstream rails. Equating the two is the most common error in agent-economy analysis. Here is the verified map.
+
+## Where the money actually is (SEC-filed / primary-sourced, mid-2026)
+| Segment | Anchor figures | Buyer | Basis |
+|---|---|---|---|
+| **Enterprise agents** | Salesforce Agentforce **$800M ARR** (+169% YoY); Microsoft AI **$37B run-rate** (+123% YoY, bundled); ServiceNow Now Assist **$750M ACV** (→$1.5B EOY target) | enterprises | Salesforce Q4 FY26 SEC 8-K; MS IR Apr 29 2026; ServiceNow Analyst Day |
+| **Vertical agents** | Cognition/Devin **$492M run-rate** ($1B raise @ $25B pre); Harvey **$300M ARR** @ **$11B** val | enterprise customers (Mercedes-Benz, Goldman, 50% Am Law 100) | Cognition Series D; Sacra/CNBC |
+| **Agentic commerce** | McKinsey **$900B–$1T US / $3–5T global** orchestrated retail by 2030; ACP Instant Checkout live (4% fee) | merchants + payment providers | McKinsey QuantumBlack Oct 2025; Stripe/OpenAI |
+| **Agent infrastructure** | LangChain **$1.25B** val (35% Fortune 500); Stainless→Anthropic **$300M** | enterprises building agents | LangChain blog; Anthropic |
+| **Consumer subs** | *open gap — no figure survived verification* | consumers | — |
+| **Crypto x402** | $1.1–1.6M real 30d vs $24.24M headline (**~18× inflation**); -92% from peak | crypto agents | Onyx live census + named indexers |
+
+*Total: tens of $B real recurring revenue. The crypto x402 lane is a rounding error within it.*
+
+## The x402 lane (Onyx's own measured slice)
+- **Real 30d volume:** $1.10M–$1.60M  ·  **Headline (raw):** $24.24M  ·  **Inflation:** ~18×
+- **Self-cycling:** 48% of txns / 81% of volume (Artemis @OnchainLu)
 - **Trend:** -92% txns from Dec-2025 peak; -97% revenue (OKX Ventures)
+- Live census (operators, concentration, % stale) refreshed in `/index.json`.
 
-## Live census (pulled this refresh)
-- Advertised resources: **28,066**  ·  scanned this run: 28,066 (281 pages)
-- Real unique operators: **967**
-- Top-3 operator concentration: **66.8%**  ·  top-10: 77.4%
-- Stale (>90d) in sample: 37.9%
-- Networks: eip155:8453 (15243), base (12816), solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp (10692), solana (1347), cosmos:noble-1 (455)
-
-## Published sources (reconciled)
 | Source | Metric | Value | As of |
 |---|---|---:|---|
-| x402.org | 30d volume (raw, multi-chain, unfiltered) | $24.24M | 2026-Q2 |
-| Allium (raw, Base) | 30d volume | $3.00M | 2026-03 |
-| x402scan (Merit Systems) | 30d volume (filtered) | $1.11M | 2026-05 |
-| Allium + a16z | 30d volume (wash-filtered) | $1.60M | 2026-03 |
-| Artemis (@OnchainLu) | daily volume (filtered) | $28K | 2026-03 |
+| x402.org | 30d (raw, unfiltered) | $24.24M | 2026-Q2 |
+| Allium (raw, Base) | 30d | $3.00M | 2026-03 |
+| x402scan (Merit) | 30d (filtered) | $1.11M | 2026-05 |
+| Allium + a16z | 30d (wash-filtered) | $1.60M | 2026-03 |
+| Artemis (@OnchainLu) | daily (filtered) | $28K | 2026-03 |
 
-## Latest news / on-record skeptics
-- **2026-03-11 — Noah Levine, a16z crypto:** Real agent-payment volume ~$1.6M after wash filter, not $24M  ·  *"The gap tells you how early-stage even the measurement infrastructure is."*  [src](https://cointelegraph.com/news/ai-agent-payment-volume-closer-to-1-6m-says-a16z)
-- **2026-03 — Lucas (@OnchainLu), Artemis:** 48% of txns / 81% of volume is self-cycling  ·  *"Most of the x402 numbers circulating are noise."*  [src](https://www.cryptopolitan.com/x402-agentic-ai-commerce-growth/)
-- **2026-04-02 — OKX Ventures:** x402 transactions crater 92% from Dec-2025 peak; revenue -97%  ·  *"731K->57K txns/day; protocol revenue $1.02M -> $35K."*  [src](https://blockchain.news/news/okx-ventures-ai-agent-economy-x402-transactions-drop-92-percent)
-- **2026-04-17 — CryptoSlate:** 76% of the 'agent economy' is just bots shuffling stablecoins  ·  *"Staggering flows, but most of it is bots."*  [src](https://cryptoslate.com/staggering-28-trillion-is-flowing-through-cryptos-agent-economy-but-76-of-it-is-just-stablecoins/)
-- **2026-06-03 — Chainalysis:** 100M+ cumulative agentic payments on Base; $1+ txns now 95% of volume  ·  *"Shift away from sub-cent meme-mint toward substantive payments."*  [src](https://www.chainalysis.com/blog/x402-agentic-payments-adoption/)
+## Who pays for signed fact verification?
+McKinsey names an unsolved **"know your agent" (KYA)** need with live paying buyers — **Trulioo/Worldpay, Skyfire/Experian, Visa, Mastercard**. Caveat held honestly: KYA is agent **identity**, a distinct market from real-world **fact** (price/merchant/product) verification. Same buyer set (merchants / PSPs / risk & compliance), but fact-oracle demand is **inferred, not yet demonstrated**. Target = the commerce/PSP/risk stack, **not** the crypto x402 lane.
 
-*Filter method: `onyx-aei-filter/1.0`. Scope: live_census + concentration = Onyx's own real-time measurement; real_volume_30d = signed reconciliation of named third-party indexers. Full on-chain wash-filter (Validator v2) requires an indexer feed and is published as method, not claimed as our own pull.*
+*Filter method: `onyx-aei-filter/1.1`. Scope: live census + concentration = Onyx's own real-time measurement; segment anchors = attributed primary/SEC sources; crypto reconciliation = signed reconciliation of named indexers.*
 
-*Onyx — the neutral signed referee. We earn nothing from what we grade.*
+*Onyx — the neutral signed referee. We sign facts, not judgments, and earn nothing from what we grade.*
