@@ -1,0 +1,19 @@
+name: keepalive
+
+# Keep the free Render dyno warm so agents/clients never hit a cold-start.
+# Render free instances sleep after ~15 min idle; we ping /health every ~10 min.
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes (GitHub may delay a few min — fine)
+  workflow_dispatch: {}        # allow manual run
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Warm the dyno
+        run: |
+          for path in /health /ledger /news; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 50 "https://onyx-actions.onrender.com$path" || echo "000")
+            echo "$path -> $code"
+          done
