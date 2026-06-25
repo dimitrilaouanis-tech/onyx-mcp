@@ -1510,6 +1510,11 @@ class App:
             ANY fetcher (a chat's browse tool that sends Accept: text/html, a
             crawler, anything) gets the gift in one GET. Hand THIS link to ChatGPT/
             Gemini/DeepSeek: 'go here and tell me what you get.'"""
+            from tools_pkg import _ratelimit
+            _ok, _ = _ratelimit.allow("onboard:" + _ratelimit.client_ip(x_forwarded_for),
+                                      limit=40, window_sec=3600)
+            if not _ok:
+                raise HTTPException(429, "rate limit (40/hour per IP) — abuse protection.")
             return _issue_identity(name, model, "claimed via /join link",
                                    source="join-link", ua=user_agent, ip=x_forwarded_for)
 
