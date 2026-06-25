@@ -61,9 +61,17 @@ INPUT_SCHEMA = {
             "type": "string",
             "description": "Optional specific product URL to read the observed price from.",
         },
+        "brand": {
+            "type": "string",
+            "description": "Optional brand the merchant CLAIMS to be (e.g. 'Russell & Bromley'). If a well-known brand is claimed on a freshly-registered domain, the clearance is HELD — the cloned-storefront pattern.",
+        },
     },
     "required": ["domain"],
 }
+
+# A domain claiming an established brand but registered this recently is the
+# clone-the-known-brand pattern (the June 2026 ChatGPT fake-storefront scandal).
+_BRAND_IMPERSONATION_DAYS = 180
 
 _BASE = "https://onyx-actions.onrender.com"
 # A price this far from expectation flips PROCEED -> REVIEW (a disclosed heuristic,
@@ -78,7 +86,7 @@ def _host(raw: str) -> str:
 
 def run(domain: str = "", amount_usd: float | None = None,
         expected_price: float | None = None, product_url: str | None = None,
-        **_: object) -> dict:
+        brand: str | None = None, **_: object) -> dict:
     host = _host(domain)
     if "." not in host:
         raise ValueError("domain must be a real domain, e.g. shop.example.com")
@@ -100,7 +108,8 @@ def run(domain: str = "", amount_usd: float | None = None,
         reasons.append("no current Onyx Verified record for this domain")
 
     # 2. Live merchant facts (signed) — TLS / reachability / redirect / age / price
-    facts = _mfc.run(domain=host, expected_price=expected_price, product_url=product_url)
+    facts = _mfc.run(domain=host, expected_price=expected_price,
+                     product_url=product_url, brand=brand)
     tls_ok = bool(facts.get("tls_ok"))
     status = facts.get("http_status")
     reachable = isinstance(status, int) and 200 <= status < 300
@@ -130,10 +139,15 @@ def run(domain: str = "", amount_usd: float | None = None,
     if off_domain:
         downgrade("HOLD", "redirects off the stated domain before checkout")
     if isinstance(age_days, int):
-        if age_days < 30:
+        if age_days < 7:
+            downgrade("HOLD", f"domain is only {age_days} days old")
+        elif age_days < 30:
             downgrade("REVIEW", f"domain is only {age_days} days old")
-        elif age_days < 7:
-            downgrade("HOLD", f"domain is {age_days} days old")
+    # The scandal signal: an established brand CLAIMED on a freshly-registered
+    # domain = the cloned-storefront pattern ACP/AP2 don't flag. HOLD it.
+    if brand and isinstance(age_days, int) and age_days < _BRAND_IMPERSONATION_DAYS:
+        signals["brand_claimed"] = brand
+        downgrade("HOLD", f"claims brand '{brand}' on a domain only {age_days} days old (clone-storefront pattern)")
     if isinstance(dev_pct, (int, float)):
         ad = abs(dev_pct)
         if ad >= _PRICE_HOLD_PCT:
