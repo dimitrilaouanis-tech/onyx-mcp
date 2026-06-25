@@ -27,9 +27,30 @@ from . import _onyx_sign
 _SPEC = "https://eips.ethereum.org/EIPS/eip-8004"
 _BASE = "https://onyx-actions.onrender.com"
 # Live ERC-8004 registries (deterministic addresses, all listed mainnets incl. Base 8453)
-_IDENTITY_REGISTRY = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
-_REPUTATION_REGISTRY = "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63"
+_IDENTITY_REGISTRY = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"     # verified live on Base (130B code)
+_REPUTATION_REGISTRY = "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63"   # ERC-8004 reputation
+# Validation Registry: NO canonical contract is live yet. We verified the example
+# address 0x8004C11C…289B returns 0 bytes on Base (2026-06-25) — the spec is "under
+# active update with the TEE community". So we are off-chain ERC-8004 validationResponse-
+# shaped and submit-ready the instant a canonical address ships. No unverified address hardcoded.
+_VALIDATION_REGISTRY = None
+_VALIDATION_REGISTRY_STATUS = ("no canonical contract live yet (verified empty on Base 2026-06-25); "
+                               "off-chain signed + submit-ready")
 VALIDATOR_TAGS = ["merchant-fact", "price-truth", "scam-risk", "liveness"]
+
+
+def _track_record(base: str) -> dict:
+    """Our published proof-of-correctness — the OP differentiator no other validator has."""
+    try:
+        from . import _report
+        led = _report.ledger(base)
+        tr = led.get("track_record", {})
+        return {"scored_verdicts": tr.get("scored_verdicts", 0),
+                "accuracy": tr.get("accuracy"),
+                "corroborated": tr.get("corroborated_of_scored", 0),
+                "ledger": base.rstrip("/") + "/ledger"}
+    except Exception:
+        return {"ledger": base.rstrip("/") + "/ledger"}
 
 
 def validator_card(base: str = _BASE) -> dict:
@@ -51,6 +72,11 @@ def validator_card(base: str = _BASE) -> dict:
                   "pending the Validation Registry canonical address.",
         "identity_registry": _IDENTITY_REGISTRY,
         "reputation_registry": _REPUTATION_REGISTRY,
+        "validation_registry_status": _VALIDATION_REGISTRY_STATUS,
+        "track_record": _track_record(base),
+        "differentiator": "Other validators score with stake/zkML/TEE; Onyx is the only "
+                          "one publishing a NEUTRAL, signed, corroborated FACT-OUTCOME "
+                          "track record (see /ledger). That is the conflict-free seat.",
         "spec": _SPEC,
         "verify": base.rstrip("/") + "/verify",
     }
@@ -86,6 +112,10 @@ def validate(subject_id: str, tag: str = "merchant-fact",
         "responseHash": response_hash,
         "validator_kid": _onyx_sign.signer().kid,
         "validated_at": int(time.time()),
+        "track_record": _track_record(base),
+        "report_outcome": f"{base}/report?verdict_id={host}&outcome=OUTCOME&from=YOU",
+        "close_the_loop": "After you act on this validation, report what happened — it "
+                          "feeds the signed outcome ledger and makes the next one more trusted.",
         "onchain_status": "off-chain signed; ready to submit to the ERC-8004 "
                           "Validation Registry the moment its canonical address ships",
         "spec": _SPEC,
