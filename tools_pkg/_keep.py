@@ -31,6 +31,7 @@ KEEP: set[str] = {
     "onyx_aeo_score",           # $0.50 — signed AEO score: published weights + 95% CI (the open seat)
 
     # --- best chain / research ---
+    "onyx_erc8004_lookup",      # $0.05 — signed on-chain read of ERC-8004 Identity/Reputation registries
     "onyx_contract_audit",      # $0.50 — verified-source audit (AgentLISA rival)
     "onyx_research_intel",      # $0.05 — live OpenAlex prior-art
 
