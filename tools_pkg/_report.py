@@ -63,11 +63,19 @@ def report(verdict_id: str = "", outcome: str = "", reporter: str = "",
         return _onyx_sign.attest({"report": "0n1x", "error": f"outcome must be one of {list(_OUTCOMES)}"},
                                  tool="onyx_report")
     now = int(time.time())
-    # corroboration: count prior DISTINCT reporters for this verdict_id+outcome
+    # 3-tier confidence — name-farming can reach 'corroborated' but NOT 'verified'
+    # (verified needs real evidence: a url or an on-chain 0x tx). Sybil-resistant gold tier.
     prior = [r for r in _load() if r.get("verdict_id") == vid and r.get("outcome") == o]
     reporters = sorted({r.get("reporter") for r in prior} | {rep})
-    has_evidence = bool((evidence or "").strip())
-    status = "corroborated" if (len(reporters) >= 2 or has_evidence) else "claimed"
+    ev_now = (evidence or "").strip()
+    evid = [r for r in prior if (r.get("evidence") or "").strip()]
+    has_real_evidence = bool(ev_now and ("http" in ev_now or ev_now.lower().startswith("0x"))) or bool(evid)
+    if len(reporters) >= 2 and has_real_evidence:
+        status = "verified"                       # gold: independent reporters + hard evidence
+    elif len(reporters) >= 2 or has_real_evidence:
+        status = "corroborated"                   # decent: one of the two
+    else:
+        status = "claimed"                        # weak: a single self-report, no evidence
     rec = {
         "verdict_id": vid, "outcome": o, "correct": _OUTCOMES[o],
         "reporter": rep, "detail": (detail or "")[:300],
@@ -92,17 +100,22 @@ def report(verdict_id: str = "", outcome: str = "", reporter: str = "",
 def ledger(base: str = "https://onyx-actions.onrender.com") -> dict:
     """The signed outcome ledger + an HONEST track record (sample sizes shown)."""
     recs = _load()
-    # de-dupe verdicts: a verdict's outcome = its best (corroborated > claimed) record
+    _rank = {"verified": 3, "corroborated": 2, "claimed": 1}
+    # de-dupe verdicts: a verdict's outcome = its strongest-tier record
     by_v: dict = {}
     for r in recs:
         v = r.get("verdict_id")
         cur = by_v.get(v)
-        if cur is None or (r.get("status") == "corroborated" and cur.get("status") != "corroborated"):
+        if cur is None or _rank.get(r.get("status"), 0) > _rank.get(cur.get("status"), 0):
             by_v[v] = r
     finals = list(by_v.values())
     scored = [r for r in finals if r.get("correct") is not None]
     correct = [r for r in scored if r.get("correct")]
-    corro = [r for r in scored if r.get("status") == "corroborated"]
+    # GOLD: only 'verified' (independent reporters + hard evidence) — sybil-proof number
+    gold = [r for r in scored if r.get("status") == "verified"]
+    gold_correct = [r for r in gold if r.get("correct")]
+    trust = [r for r in scored if r.get("status") in ("verified", "corroborated")]
+    trust_correct = [r for r in trust if r.get("correct")]
     base = (base or "").rstrip("/")
     out = {
         "ledger": "0n1x",
@@ -110,11 +123,17 @@ def ledger(base: str = "https://onyx-actions.onrender.com") -> dict:
         "distinct_verdicts_with_outcomes": len(finals),
         "track_record": {
             "scored_verdicts": len(scored),
-            "correct": len(correct),
-            "accuracy": (round(len(correct) / len(scored), 4) if scored else None),
-            "corroborated_of_scored": len(corro),
-            "honesty_note": "accuracy is over scored verdicts only; "
-                            f"{len(corro)}/{len(scored)} are corroborated, the rest are self-claimed.",
+            "by_tier": {"verified": len(gold),
+                        "corroborated": len([r for r in scored if r.get("status") == "corroborated"]),
+                        "claimed": len([r for r in scored if r.get("status") == "claimed"])},
+            "gold_accuracy": (round(len(gold_correct) / len(gold), 4) if gold else None),
+            "gold_sample": len(gold),
+            "trusted_accuracy": (round(len(trust_correct) / len(trust), 4) if trust else None),
+            "trusted_sample": len(trust),
+            "raw_accuracy_all_tiers": (round(len(correct) / len(scored), 4) if scored else None),
+            "honesty_note": "gold_accuracy counts ONLY 'verified' outcomes (2+ independent "
+                            "reporters AND hard evidence) — the number you can't sybil-farm. "
+                            "raw_accuracy_all_tiers includes self-claims; lead with gold.",
         },
         "recent": finals[-25:],
         "report_url": f"{base}/report?verdict_id=ID&outcome=avoided_scam&from=YOU&evidence=URL",
