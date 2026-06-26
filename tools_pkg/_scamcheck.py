@@ -196,6 +196,18 @@ def render_page(base: str = "https://onyx-actions.onrender.com") -> str:
 <meta name=description content="Paste any online store link. We check it for scam red flags in seconds — free, no signup. Catch the fake stores blocklists miss.">
 <meta property="og:title" content="Know Before You Pay — free scam check">
 <meta property="og:description" content="Paste a store link, get an instant red-flag check. Catch the fake stores blocklists miss.">
+<link rel="canonical" href="https://onyx-actions.onrender.com/check">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+{"@type":"WebApplication","@id":"https://onyx-actions.onrender.com/check#app","name":"Onyx — Know Before You Pay","url":"https://onyx-actions.onrender.com/check","applicationCategory":"SecurityApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Free instant scam red-flag check for any online store or checkout link. Catches brand-new fake stores that blocklists miss. No signup. Every verdict is Ed25519-signed and independently verifiable.","provider":{"@id":"https://onyxprotocol.io#org"}},
+{"@type":"Organization","@id":"https://onyxprotocol.io#org","name":"Onyx Protocol","url":"https://onyxprotocol.io","description":"The independent, conflict-free trust layer for the agentic web. Onyx signs verifiable real-world facts — merchant, price, contract and counterparty-agent checks — that agents verify before they transact, and publishes SAEI, a signed index of the agent economy.","sameAs":["https://onyx-actions.onrender.com/.well-known/agent-card.json","https://onyx-actions.onrender.com/.well-known/saei/v1.json"]},
+{"@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"How do I check if an online store is a scam?","acceptedAnswer":{"@type":"Answer","text":"Paste the store or checkout link into Onyx Know Before You Pay. It scans for scam red flags — new domain age, mismatched TLS certificate, registrar risk and more — and returns an instant free verdict you don't have to sign up for."}},
+{"@type":"Question","name":"Is the Onyx scam check free?","acceptedAnswer":{"@type":"Answer","text":"Yes. The consumer scam check at onyx-actions.onrender.com/check is free with no signup. Deeper machine-readable checks are available to AI agents pay-per-call over x402."}},
+{"@type":"Question","name":"Can the result be trusted or faked?","acceptedAnswer":{"@type":"Answer","text":"Every Onyx verdict is Ed25519-signed and hash-bound, so any third party can verify it offline. If a result is tampered with, verification rejects it. Onyx earns nothing from any transaction it grades, so it has no conflict of interest."}}
+]}
+]}
+</script>
 <style>
 :root{color-scheme:dark}*{box-sizing:border-box}
 body{font:16px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#06070c;color:#e8eef5;margin:0;padding:0;-webkit-font-smoothing:antialiased}
