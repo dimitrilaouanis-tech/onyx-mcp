@@ -1429,6 +1429,13 @@ class App:
                     "note": "This card was issued and Ed25519-signed by Onyx. Verify offline; tamper -> rejected.",
                 },
             }
+            # A2A v1.0 standard: attach a detached-JWS signatures[] to the issued
+            # card so it passes the SAME bar as Onyx's own card (and the hollow-
+            # detector). Cards we hand out are first-class, verifiable via verify_card.
+            try:
+                agent_card = _onyx_sign.sign_card(agent_card, public_url=base)
+            except Exception:
+                pass
             payload = {
                 "issued": True, "issuer": "onyx", "spec": "onyx-agent-onboard/v0",
                 "agent": agent_card, "wallet": wallet,
