@@ -2120,6 +2120,41 @@ tick();setInterval(tick,4000);
             base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
             return _report.ledger(base)
 
+        @api.get("/receipt", include_in_schema=False)
+        @api.post("/receipt", include_in_schema=False)
+        async def _receipt(frm: str = Query("", alias="from"), agent: str = "",
+                           action: str = "", authorized: str = "", outcome: str = "",
+                           evidence: str = "", ttl: int = 86400):
+            """THE BLACK BOX — emit a signed, un-fakeable action receipt:
+            GET /receipt?from=AGENT&action=...&authorized=true&outcome=...&evidence=..."""
+            from tools_pkg import _receipt
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            au = None if authorized == "" else authorized
+            return _receipt.record(frm or agent or "anon", action, au, outcome, evidence, ttl, base)
+
+        @api.get("/capsule/{agent}", include_in_schema=False)
+        async def _capsule(agent: str):
+            """The portable verifiable capsule — an agent's accountable record + memory,
+            one signed JSON it carries across platforms."""
+            from tools_pkg import _receipt
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _receipt.capsule(agent, base)
+
+        @api.get("/revoke", include_in_schema=False)
+        @api.post("/revoke", include_in_schema=False)
+        async def _revoke(id: str = "", reason: str = "", frm: str = Query("onyx", alias="from")):
+            """Revoke a signed claim (a signature isn't forever)."""
+            from tools_pkg import _revocation
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _revocation.revoke(id, reason, frm, base)
+
+        @api.get("/revoked", include_in_schema=False)
+        async def _revoked():
+            """The signed revocation list."""
+            from tools_pkg import _revocation
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _revocation.revoked_list(base)
+
         @api.get("/vortex", include_in_schema=False)
         @api.post("/vortex", include_in_schema=False)
         async def _vortex(agent: str = "", did: str = "", target: str = "",
