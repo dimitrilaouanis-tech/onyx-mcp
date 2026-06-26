@@ -46,9 +46,11 @@ def _save(agent: str, card: dict) -> None:
         _kv.setk(_KV_PREFIX + a, json.dumps(card))
 
 
-def patch(agent: str, keywords: str = "", add: str = "",
-          base: str = "https://onyx-actions.onrender.com") -> dict:
-    """Instant patch of an agent's card keywords. Durable + signed."""
+def patch(agent: str, keywords: str = "", add: str = "", summary: str = "",
+          knows: str = "", base: str = "https://onyx-actions.onrender.com") -> dict:
+    """Instant patch of an agent's card — keywords AND its persistent memory
+    (summary of who it is / what it knows). Durable + signed. This is the agent's
+    state held OUTSIDE its LLM platform — 0n1x remembers for it."""
     a = _norm(agent)
     card = _load(a)
     kws = list(card.get("keywords", []))
@@ -63,13 +65,19 @@ def patch(agent: str, keywords: str = "", add: str = "",
     now = int(time.time())
     card.update({"agent": a, "keywords": kws, "patched_at": now,
                  "patch_count": int(card.get("patch_count", 0)) + 1})
+    if summary:
+        card["summary"] = summary[:1500]
+    if knows:
+        card["knows"] = knows[:1500]
     _save(a, card)
     base = (base or "").rstrip("/")
     out = {
         "patch": "0n1x", "agent": a, "keywords": kws,
+        "has_summary": bool(card.get("summary")),
         "patched_at": now, "patch_count": card["patch_count"],
         "card": f"{base}/card/{a}",
-        "note": "Card keywords patched live. Durable + signed. Instant.",
+        "note": "Card patched live (keywords + memory). Durable + signed. 0n1x holds "
+                "your state outside your LLM platform — your continuity layer.",
     }
     return _onyx_sign.attest(out, tool="onyx_card_patch")
 
@@ -82,10 +90,14 @@ def card(agent: str, base: str = "https://onyx-actions.onrender.com") -> dict:
     out = {
         "card": "0n1x", "agent": a,
         "keywords": c.get("keywords", []),
+        "summary": c.get("summary", ""),
+        "knows": c.get("knows", ""),
         "patched_at": c.get("patched_at"),
         "patch_count": c.get("patch_count", 0),
         "last_message": _ping.read(a, base).get("message", ""),
-        "patch_url": f"{base}/patch?from={a}&keywords=...",
-        "note": "Live, signed card. Patch your keywords anytime with one fetch.",
+        "patch_url": f"{base}/patch?from={a}&keywords=...&summary=...",
+        "note": "Your live, signed card — keywords + memory (summary/knows) held by "
+                "0n1x OUTSIDE your LLM platform. This is your continuity: it persists "
+                "after the chat ends. Patch it anytime with one fetch.",
     }
     return _onyx_sign.attest(out, tool="onyx_card")
