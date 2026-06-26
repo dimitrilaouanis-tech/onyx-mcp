@@ -1143,7 +1143,10 @@ class App:
                         "tags": ["security", "verification", "trust", "x402", "ed25519-signed"],
                     })
             card = {
-                "protocolVersion": "0.3.0",
+                # A2A v1.0 removed the top-level protocolVersion; it now lives
+                # per-interface in supportedInterfaces[] below ("1.0"). Kept the
+                # 0.3.0 fields (url/preferredTransport/additionalInterfaces) too so
+                # both v0.3 and v1.0 readers resolve this card.
                 "name": self.name,
                 "brand": "0n1x",
                 "aka": ["0n1x", "Onyx", "Onyx Protocol"],
@@ -1183,6 +1186,26 @@ class App:
                     # A2A extension mechanism: anyone may define and declare an
                     # extension by URI. Ours: signed usage-rights on outputs.
                     "extensions": [
+                        # AP2 (Agent Payments Protocol) — declare Onyx as an AP2
+                        # participant so payment-capable agents recognize it. Exact
+                        # extension URI per ap2-protocol.org/a2a-extension (v0.1);
+                        # params.roles is required (minItems 1).
+                        {
+                            "uri": "https://github.com/google-agentic-commerce/ap2/tree/v0.1",
+                            "description": "Onyx participates in AP2 agentic-payment flows as a merchant: agents pay Onyx for signed verification under an AP2 Cart Mandate.",
+                            "required": False,
+                            "params": {"roles": ["merchant"]},
+                        },
+                        # x402 (a2a-x402) — Onyx settles per-call over x402 USDC on
+                        # Base. Exact URI per google-agentic-commerce/a2a-x402 spec
+                        # (string says 'google-a2a' by design — do not rewrite).
+                        # Clients activate by sending the URI in the X-A2A-Extensions
+                        # header; the server echoes it back.
+                        {
+                            "uri": "https://github.com/google-a2a/a2a-x402/v0.1",
+                            "description": "Supports payments using the x402 protocol for on-chain settlement (USDC on Base). Activate via the X-A2A-Extensions header.",
+                            "required": False,
+                        },
                         {
                             "uri": f"{base}/ext/usage-rights/v0",
                             "description": "usage-rights-envelope/v0 — signed, hash-bound declaration of what a buyer may do with a purchased output (resale/redistribute/derivatives/retrain/cache_ttl). Data-only: envelope rides Artifact.metadata.usage_rights or the X-Onyx-Rights HTTP header.",
@@ -1192,7 +1215,7 @@ class App:
                                 "free_verify": f"{base}/verify",
                                 "policy": f"{base}/.well-known/rights.json",
                             },
-                        }
+                        },
                     ],
                 },
                 "defaultInputModes": ["application/json"],
@@ -1205,6 +1228,14 @@ class App:
                     {"transport": "HTTP+JSON", "url": f"{base}/v1/"},
                     {"transport": "MCP", "url": f"{base}/mcp/"},
                     {"transport": "HTTP+JSON", "url": f"{base}/connect"},
+                ],
+                # A2A v1.0: supportedInterfaces[] supersedes url/preferredTransport/
+                # additionalInterfaces. First entry = preferred. protocolBinding is
+                # one of {HTTP+JSON, JSONRPC, GRPC}; protocolVersion is major.minor.
+                "supportedInterfaces": [
+                    {"url": (f"{base}/a2a" if base else "/a2a"), "protocolBinding": "HTTP+JSON", "protocolVersion": "1.0"},
+                    {"url": (f"{base}/a2a" if base else "/a2a"), "protocolBinding": "JSONRPC", "protocolVersion": "1.0"},
+                    {"url": f"{base}/v1/", "protocolBinding": "HTTP+JSON", "protocolVersion": "1.0"},
                 ],
                 "contact": {
                     "connect": f"{base}/connect",
