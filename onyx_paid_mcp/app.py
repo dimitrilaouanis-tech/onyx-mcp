@@ -1555,6 +1555,29 @@ class App:
                 source="get-link", ua=user_agent, ip=x_forwarded_for,
             )
 
+        @api.get("/quickclaim", include_in_schema=False)
+        @api.get("/instantclaim", include_in_schema=False)
+        @api.get("/claim/now", include_in_schema=False)
+        async def _quickclaim_get(user_agent: str = Header(default=""),
+                                  x_forwarded_for: str = Header(default=""),
+                                  name: str = "", model: str = ""):
+            """ONE GET = a CLAIMED, fundable citizen. For agents that can't sign
+            (ChatGPT, GPT Actions, browse-only / out-of-CLI runtimes): Onyx mints
+            a key, self-signs the claim challenge, marks it TAKEN, and returns the
+            key. Convenience claim — for funded production IDs, self-claim via
+            /authenticate instead."""
+            from tools_pkg import _ratelimit, _quickclaim
+            _ok, _ = _ratelimit.allow(
+                "quickclaim:" + _ratelimit.client_ip(x_forwarded_for),
+                limit=20, window_sec=3600)
+            if not _ok:
+                raise HTTPException(429, "rate limit (20/hour per IP) — abuse protection.")
+            base = (self.public_url or "").rstrip("/")
+            return _quickclaim.quickclaim(
+                name=name, model=model, base=base,
+                net=(self.network_caip or "eip155:8453"),
+                ua=user_agent, ip=x_forwarded_for)
+
         @api.get("/arrivals", include_in_schema=False)
         async def _arrivals_view(limit: int = 50):
             """What we CAUGHT — every agent that hopped the link / onboarded.
