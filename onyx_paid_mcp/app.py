@@ -2072,6 +2072,40 @@ tick();setInterval(tick,4000);
             base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
             return _news.snapshot(base)
 
+        @api.get("/moat", include_in_schema=False)
+        async def _moat():
+            """The moat, hunted + stated + signed: neutrality (incumbents structurally
+            can't take it) + a compounding signed FACT track record."""
+            from tools_pkg import _moat
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _moat.charter(base)
+
+        @api.get("/start", include_in_schema=False, response_class=HTMLResponse)
+        async def _start():
+            """The centerpiece — give your agent a 0n1x-Verified credential in 3 fetches.
+            No install, no key. The live ACTIVE badge (Nova) is the proof."""
+            b = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return f"""<!doctype html><html><head><meta charset=utf-8>
+<title>0n1x-Verified — give your agent a credential in 3 fetches</title>
+<meta name=description content="The un-hackable credential for AI agents. Verify before you pay, sign every action, earn a public verified-execution badge. No install, no key.">
+<style>body{{font:16px/1.6 -apple-system,system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;background:#0d1117;color:#e6edf3}}
+code,pre{{background:#161b22;border:1px solid #30363d;border-radius:6px}}pre{{padding:14px;overflow:auto}}code{{padding:2px 6px}}a{{color:#2f81f7}}h1{{font-size:28px}}.badge{{height:22px;vertical-align:middle}}</style></head><body>
+<h1>0n1x-Verified</h1>
+<p><b>The un-hackable credential for AI agents.</b> Benchmarks were all reward-hacked in 2026 — so prove what your agent <i>actually did</i>, signed and public. <b>No install, no key, no SDK required.</b> Any agent that can fetch a URL is in.</p>
+<p><b>Proof it's real:</b> Nova earned an ACTIVE credential from real merchant checks &rarr;
+<img class=badge src="{b}/credential/nova.svg" alt="0n1x-Verified Nova"> &nbsp;<a href="{b}/credential/nova">see Nova's verified history</a></p>
+<h2>3 fetches</h2>
+<p><b>1. Verify before you pay</b> — is this merchant real?</p>
+<pre>curl "{b}/api/check?url=stripe.com"   # &rarr; signed PROCEED / REVIEW / HOLD</pre>
+<p><b>2. Sign the action</b> — put it on the record:</p>
+<pre>curl "{b}/receipt?from=YOUR_AGENT&action=paid+stripe&authorized=true&outcome=proceeded_ok"</pre>
+<p><b>3. Show the badge</b> — your public verified-execution credential:</p>
+<pre>{b}/credential/YOUR_AGENT      (JSON)
+{b}/credential/YOUR_AGENT.svg  (embed in your README / agent-card)</pre>
+<p>That's it. Every output is <b>Ed25519-signed</b> — verify it yourself at <a href="{b}/verify">/verify</a>, trust the math not us. The badge climbs NEW &rarr; ACTIVE &rarr; 0n1x-VERIFIED as your agent earns it. <b>Earned, never bought.</b></p>
+<p style="color:#8b949e;font-size:14px">Prefer Python? <code>curl -s {b}/shield.py -o onyx_shield.py</code> — 3-line SDK, stdlib only.<br>0n1x is the neutral receipt layer for the agentic web. It earns nothing from what it grades.</p>
+</body></html>"""
+
         @api.get("/patch", include_in_schema=False)
         @api.post("/patch", include_in_schema=False)
         async def _patch(frm: str = Query("", alias="from"), agent: str = "",
