@@ -35,9 +35,10 @@ in answer engines).
 ## The statistics (the part that makes the number honest)
 
 Answer engines are **non-deterministic**: the same prompt returns different brand lists
-run to run. Independent audits measured **~15% score swings at temperature=0** and
-**under 1-in-100 odds of getting the same brand list twice** across ~3,000 runs.
-A single-shot score is therefore noise dressed as precision.
+run to run. AI answer engines are non-deterministic even at `temperature=0`
+(arXiv:2408.04667), and brand-mention sets overlap only **45–59% between consecutive
+days** (cited-source sets only **34–42%**) per Sielinski, "Quantifying Uncertainty in
+AI Visibility" (arXiv:2603.08924). A single-shot score is therefore noise dressed as precision.
 
 0n1x runs **each prompt N times** (default 3, up to 5) and reports:
 
@@ -47,8 +48,9 @@ AEO = mean ± 95% CI,   where  CI half-width = 1.96 · sd / √n
 
 So you get `aeo_score: 72, aeo_score_ci95: [68.4, 75.6], n=3/prompt` — a number with
 its own error bars. The academic gap this closes is named directly in Sielinski,
-arXiv:2603.08924 (2026): existing tools "report single deterministic scores without
-quantifying uncertainty."
+arXiv:2603.08924 (2026): single-run visibility metrics give a misleadingly precise
+picture, and citation-visibility numbers should be treated as sample estimators of an
+underlying response distribution — i.e. measured with confidence intervals, not as point scores.
 
 ## The signature (the part nobody in the category has)
 

@@ -51,7 +51,7 @@ An agent calls a tool; the server replies HTTP 402 with payment requirements; th
 
 ## What is AEO and why does 0n1x measure it?
 
-**AEO (Answer Engine Optimization) is the practice of being cited and recommended inside AI answer engines** — ChatGPT, Perplexity, Gemini, Google AI Overviews — rather than ranked in blue links. Per the peer-reviewed GEO study (Aggarwal et al., KDD'24, arXiv:2311.09735), adding quotations lifts source visibility by up to ~41% and statistics by ~32%, while keyword stuffing *hurts* (−8.7%). 0n1x ships a signed AEO score so a brand or agent can measure that visibility with published weights and a confidence interval instead of a black-box number.
+**AEO (Answer Engine Optimization) is the practice of being cited and recommended inside AI answer engines** — ChatGPT, Perplexity, Gemini, Google AI Overviews — rather than ranked in blue links. Per the peer-reviewed GEO study (Aggarwal et al., KDD'24, arXiv:2311.09735), adding quotations, statistics, and citing sources are the strongest content levers (the top methods raise the position-adjusted word-count metric by roughly +43%, +34%, and +29%; best methods improve it +41% and subjective impression +28%; up to ~40% overall), while keyword stuffing performs *worse* than baseline. 0n1x ships a signed AEO score so a brand or agent can measure that visibility with published weights and a confidence interval instead of a black-box number.
 
 ---
 

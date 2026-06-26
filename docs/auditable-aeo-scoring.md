@@ -12,9 +12,11 @@ implementation of all three.
 AI answer engines are non-deterministic — the same prompt yields different
 answers on re-run, even at `temperature=0`:
 
-- **~15% score swings at `temperature=0`** (Penn State).
-- **<1-in-100 odds of the same brand list twice** across ~3,000 runs
-  (Sielinski, arXiv:2603.08924).
+- **`temperature=0` does not guarantee deterministic output** (Atil et al.,
+  "Non-Determinism of Deterministic LLM Settings", arXiv:2408.04667).
+- **Brand-mention sets overlap only 45–59% between consecutive days**, cited-source
+  sets only 34–42% (Sielinski, "Quantifying Uncertainty in AI Visibility",
+  arXiv:2603.08924).
 
 So any visibility score derived from a single query is a sample of size 1 —
 noise reported as a metric.
@@ -50,13 +52,16 @@ interval**. Every payload is **Ed25519-signed** and verifiable with the free
 
 ## What moves the score
 
-Measured content levers from the GEO paper (Aggarwal et al., arXiv:2311.09735):
+Measured content levers from the GEO paper (Aggarwal et al., KDD'24,
+arXiv:2311.09735) — relative lift on the position-adjusted word-count metric
+(headline "up to ~40%"; best methods +41% on that metric, +28% on subjective impression):
 
-| Lever          | Visibility lift |
-|----------------|:---------------:|
-| Quotations     |      +41%       |
-| Statistics     |      +32%       |
-| Cite sources   |      +30%       |
+| Lever                 | Visibility lift |
+|-----------------------|:---------------:|
+| Quotation Addition    |     ~+43%       |
+| Statistics Addition   |     ~+34%       |
+| Cite Sources          |     ~+29%       |
+| Keyword stuffing      |  worse than baseline |
 
 ## Usage
 

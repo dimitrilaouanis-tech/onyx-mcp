@@ -59,8 +59,9 @@ Three nested transparency seats. **No funded player occupies even the first.**
    structurally can't publish weights without inviting gaming.
 2. **N>1 sampling + published 95% confidence interval** → only two fringe indies (Gumshoe ~800
    convos/±5pp, Popsight). The **entire funded tier ships N=1 point scores that are statistically
-   noise** — Penn State measured **15% swings at temperature=0**; a 3,000-run study found
-   **<1-in-100 odds of the same brand list twice** (Sielinski, arXiv:2603.08924 names the gap).
+   noise** — answer engines are non-deterministic even at temperature=0 (arXiv:2408.04667),
+   and brand-mention sets overlap only **45–59% day-to-day** (source sets 34–42%) per Sielinski,
+   arXiv:2603.08924, which names the gap.
 3. **Cryptographic signature on the score** → **literally zero occupants** across the whole category.
 
 **`onyx_aeo_score` (0n1x) occupies all three:** published weights
@@ -81,5 +82,5 @@ verifiable signature. That is 0n1x.
 *Sources: Fortune (Profound $96M/$1B), PRNewswire (Sitecore→Scrunch $225M; Bluefish $43M),
 EU-Startups (Peec €18M), arXiv:2311.09735 (GEO), arXiv:2603.08924 (Sielinski uncertainty),
 DOJ v. Google testimony (RankEmbed/FastSearch), IETF draft-meunier-web-bot-auth-architecture,
-C2PA v2.4, schema.org v30.0. Penn State temp=0 swing + 3,000-run repeat study via vendor audits
-(Popsight, authoritytech.io).*
+C2PA v2.4, schema.org v30.0. Non-determinism: arXiv:2408.04667 (temp=0 not deterministic) +
+Sielinski arXiv:2603.08924 (45–59% brand-set day-to-day overlap).*

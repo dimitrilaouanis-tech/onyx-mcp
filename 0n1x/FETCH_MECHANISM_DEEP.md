@@ -134,7 +134,7 @@ server HTML** (non-rendering bots never see hydrated JSON-LD).
   (LangChain Recursive/MarkdownHeader) split on `\n\n`/headings → lists/Q&A/rows land on
   clean boundaries; prose gets cut mid-sentence. **Provenance correction:** the "4.2×
   tables" figure is **folklore [RE]**; the defensible primary is **Princeton GEO
-  (SIGKDD'24): +41% quotations / +32% stats / +30% cite-sources / +28% fluency.**
+  (KDD'24): top levers ~+43% quotations / ~+34% stats / ~+29% cite-sources on position-adjusted word count (best methods +41% that metric, +28% subjective impression; up to ~40% overall).**
 - **Dedup collapses you to ONE representative per cluster** [DOC]: Google **SimHash**
   (64-bit, Hamming ≤3, 8B pages); LLM corpora **MinHash-LSH** (FineWeb 5-gram, 112 hashes,
   14×8 bands, ~0.75; per-snapshot beat global). Bing (Dec'25): "LLMs group near-duplicate

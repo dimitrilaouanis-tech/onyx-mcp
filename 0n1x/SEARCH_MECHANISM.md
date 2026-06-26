@@ -84,7 +84,7 @@ middle"). Rank #1 after Stage 5 = read first here.
 ## STAGE 7 — Generation with citation (the moment "come first" happens)
 Per claim the model picks which source to attribute, preferring passages that are
 **extractable** (clean paraphrasable sentence), **quotable** (stat/quote — GEO: quotations
-+41%, stats +32%, citations +30%), and **self-describing**.
+~+43%, stats ~+34%, citations ~+29% on position-adjusted word count, up to ~40%), and **self-describing**.
 **Lever:** the Stat-Quote-Cite sentence stacks all three winners in one line.
 
 ## STAGE 8 — Answer ranking / Share-of-Voice (the scoreboard = the AEO score)
@@ -128,7 +128,7 @@ execution problem, not a popularity contest.
 4. Chunk → self-contained 100–300w blocks, tables, FAQ
 5. Rerank → fresh `dateModified` + cross-source consensus (no conflicts)
 6. Ground → rank #1 = read first (position bias)
-7. Generate → Stat-Quote-Cite = the +41/32/30% citation levers
+7. Generate → Stat-Quote-Cite = the top GEO levers (~+43/34/29% pos-adj word count, up to ~40%)
 8. Score → `onyx_aeo_score` (N-runs + CI) proves it took hold
 9. Feedback → Reddit/awesome/Wikipedia compound authority every cycle
 
