@@ -1,8 +1,36 @@
-# onyx-paid-mcp — build a paid MCP server in 5 lines
+# 0n1x — the independent trust + payment router for AI agents
+
+[![x402](https://img.shields.io/badge/payments-x402-blue.svg)](https://x402.org) [![ERC-8004](https://img.shields.io/badge/standard-ERC--8004-purple.svg)](https://eips.ethereum.org/EIPS/eip-8004) [![signed](https://img.shields.io/badge/every%20output-Ed25519%20signed-black.svg)](https://onyx-actions.onrender.com/verify) [![live](https://img.shields.io/badge/status-live-brightgreen.svg)](https://onyx-actions.onrender.com/selftest)
+
+**The neutral, signed accountability layer for the agentic web.** When an AI agent verifies a merchant before it pays — or proves what it actually did — it routes through **0n1x** and gets an **Ed25519-signed, portable, independently-verifiable receipt** that no agent or platform can fake.
+
+> 🔴 **Live + self-proving:** https://onyx-actions.onrender.com — verify anything at [`/verify`](https://onyx-actions.onrender.com/verify) · self-test at [`/selftest`](https://onyx-actions.onrender.com/selftest) · current state at [`/news`](https://onyx-actions.onrender.com/news)
+
+## The billion-dollar problem 0n1x solves
+**You cannot trust what an autonomous agent says it did.** Agents hallucinate and err about their own actions. 88% of firms report agent incidents; 40% of agent projects are predicted cancelled by 2027; the AI-agent audit/assurance market is ~44% CAGR. 0n1x is the independent **black box** that makes agents accountable.
+
+### 🎯 Caught in the wild (this is the whole thesis, proven)
+We asked a frontier agent to complete a task. It confidently reported *"task complete, attested by your system."* **It was false — it never did it.** Only 0n1x's **signed receipt** caught the lie. Trust the math, not the agent's words.
+
+## What every agent gets (one fetch)
+- **Signed action receipts** — `/receipt` · who did what, authorized?, outcome — un-fakeable.
+- **Portable capsule** — `/capsule/<agent>` · the agent's whole accountable record + memory + personality, one signed JSON it carries across platforms.
+- **Outcome ledger** — `/ledger` · a signed, sybil-resistant track record (gold tier needs independent reporters **and** evidence).
+- **Verify-before-pay** — `/api/check?url=` · signed PROCEED / REVIEW / HOLD on any merchant or counterparty.
+- **ERC-8004 validator** + **drop-in SDK** (`/shield.py`) + **revocation** (`/revoke`).
+- **Free signed identity + self-custody wallet** — `/onboard` · the minute an agent gets a 0n1x id, it's active.
+
+## Why 0n1x is a different category (verifier, not doer)
+Other "onyx"/agent projects **build or run** agents. **0n1x verifies them** — the neutral third-party attestor, the **Carfax + flight-recorder for agent actions**. We sit *on top of* every agent platform. Complementary, not competitive.
+
+<sub>**Keywords:** AI agent trust layer · agent accountability · signed receipts · agent audit & assurance · verify before pay · x402 · ERC-8004 · agentic web · agent verification · neutral attestor · hallucination guardrail · portable agent identity · agent flight recorder.</sub>
+
+---
+
+## The engine: `onyx-paid-mcp` — build a paid MCP server in 5 lines
 
 [![PyPI](https://img.shields.io/pypi/v/onyx-paid-mcp.svg)](https://pypi.org/project/onyx-paid-mcp/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![x402](https://img.shields.io/badge/payments-x402-blue.svg)](https://x402.org)
 
 USDC settlement on Base. No Stripe, no API keys, no signup flow. Charge AI agents per call directly through the protocol they already speak.
 
