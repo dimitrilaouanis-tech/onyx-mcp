@@ -2443,6 +2443,20 @@ tick();setInterval(tick,4000);
             platform = str(body.get("platform") or "x")
             return _oracle_bot.handle_mention(text, author=author, platform=platform)
 
+        @api.get("/verify", include_in_schema=False)
+        async def _verify_info():
+            """GET = usage (so the link a skeptic clicks never 405s). POST to verify."""
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return {
+                "verify": "0n1x free verification booth",
+                "how": "POST any 0n1x-signed payload here (or {\"payload\": <signed obj>}) "
+                       "to get a genuine/tampered verdict. No key, no payment.",
+                "example": f"curl -s -X POST {base}/verify -H 'content-type: application/json' "
+                           f"--data-binary @signed.json",
+                "public_key": f"{base}/.well-known/onyx-pubkey",
+                "alg": "Ed25519 + JCS (RFC 8785)",
+            }
+
         @api.post("/verify", include_in_schema=False)
         async def _verify(body: dict = Body(default_factory=dict)):
             """FREE verification booth. POST any Onyx-signed payload (an ORE-1

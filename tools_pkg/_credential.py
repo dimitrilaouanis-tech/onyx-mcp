@@ -47,7 +47,8 @@ def credential(agent: str, base: str = "https://onyx-actions.onrender.com") -> d
     elif receipts_n or corr_n:
         status, color = "EMERGING", "yellow"
     else:
-        status, color = "UNVERIFIED", "lightgrey"
+        # neutral, NOT "UNVERIFIED" (which reads as failure on a dev's README)
+        status, color = "NEW", "blue"
 
     out = {
         "credential": "0n1x-Verified",
@@ -62,6 +63,10 @@ def credential(agent: str, base: str = "https://onyx-actions.onrender.com") -> d
         },
         "the_seal": "Signed, public, sybil-resistant record of what this agent actually "
                     "did — real-world success, NOT a hacked benchmark. Verify it yourself.",
+        "install": f"curl -s {base}/shield.py -o onyx_shield.py   # stdlib, no deps, no key",
+        "path_to_verified": "NEW -> EMERGING (emit receipts) -> ACTIVE (3+ actions) -> "
+                            "0n1x-VERIFIED (an outcome corroborated by a 2nd independent "
+                            "reporter + evidence). Earned, never bought.",
         "verify": f"{base}/verify",
         "history": f"{base}/ledger",
         "badge_svg": f"{base}/credential/{a}.svg",
