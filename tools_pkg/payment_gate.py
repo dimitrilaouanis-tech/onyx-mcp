@@ -72,6 +72,16 @@ INPUT_SCHEMA = {
 # A domain claiming an established brand but registered this recently is the
 # clone-the-known-brand pattern (the June 2026 ChatGPT fake-storefront scandal).
 _BRAND_IMPERSONATION_DAYS = 180
+# A near-identical brand name on an unverified domain younger than this is a
+# clone even if it has aged past the 180d window — real brands' OFFICIAL domains
+# are years/decades old (e.g. rayban.com ~29y), so an unverified "rayban.cc" at
+# <2y carrying similarity ~1.0 is the impersonation pattern, not a coincidence.
+_BRAND_CLONE_MAX_AGE_DAYS = 730
+_BRAND_SIMILARITY_HOLD = 0.80
+# HTTP codes that mean "server is up but refused THIS client" (anti-bot / rate
+# limit / auth wall) — NOT evidence the merchant is fake. Legit brands commonly
+# return these to crawlers. Treated as access-controlled, never an auto-HOLD.
+_ACCESS_CONTROLLED = (401, 403, 429)
 
 _BASE = "https://onyx-actions.onrender.com"
 # A price this far from expectation flips PROCEED -> REVIEW (a disclosed heuristic,
@@ -113,13 +123,16 @@ def run(domain: str = "", amount_usd: float | None = None,
     tls_ok = bool(facts.get("tls_ok"))
     status = facts.get("http_status")
     reachable = isinstance(status, int) and 200 <= status < 300
+    access_controlled = isinstance(status, int) and status in _ACCESS_CONTROLLED
     off_domain = bool(facts.get("redirected_off_domain"))
     age_days = facts.get("domain_age_days")
     dev_pct = facts.get("price_deviation_pct")
+    brand_sim = facts.get("brand_similarity")
     signals.update({
         "tls_valid": tls_ok, "reachable": reachable,
+        "access_controlled": access_controlled, "http_status": status,
         "redirected_off_domain": off_domain, "domain_age_days": age_days,
-        "price_deviation_pct": dev_pct,
+        "price_deviation_pct": dev_pct, "brand_similarity": brand_sim,
     })
 
     # 3. Assemble a hard clearance from the facts (rules disclosed in _methodology)
@@ -134,8 +147,14 @@ def run(domain: str = "", amount_usd: float | None = None,
 
     if not tls_ok:
         downgrade("HOLD", "no valid TLS on the endpoint")
+    # True unreachability (timeout / DNS / 5xx) is a HOLD; an access-controlled
+    # response (401/403/429) means the server is up but refused the crawler —
+    # common for legit brands, so it is noted but never an auto-HOLD.
     if not reachable:
-        downgrade("HOLD", f"endpoint not reachable (status {status})")
+        if access_controlled:
+            reasons.append(f"endpoint is up but access-controlled (status {status}); reachability not used as a stop signal")
+        else:
+            downgrade("HOLD", f"endpoint not reachable (status {status})")
     if off_domain:
         downgrade("HOLD", "redirects off the stated domain before checkout")
     if isinstance(age_days, int):
@@ -143,11 +162,20 @@ def run(domain: str = "", amount_usd: float | None = None,
             downgrade("HOLD", f"domain is only {age_days} days old")
         elif age_days < 30:
             downgrade("REVIEW", f"domain is only {age_days} days old")
-    # The scandal signal: an established brand CLAIMED on a freshly-registered
-    # domain = the cloned-storefront pattern ACP/AP2 don't flag. HOLD it.
-    if brand and isinstance(age_days, int) and age_days < _BRAND_IMPERSONATION_DAYS:
+    # The scandal signal: an established brand CLAIMED on a clone domain = the
+    # cloned-storefront pattern ACP/AP2 don't flag. A near-identical brand name
+    # (similarity >= 0.80) on an UNVERIFIED domain younger than an official brand
+    # domain plausibly is (<2y) is the clone — even past the 180d window — because
+    # real brands' official domains are years/decades old.
+    if brand:
         signals["brand_claimed"] = brand
-        downgrade("HOLD", f"claims brand '{brand}' on a domain only {age_days} days old (clone-storefront pattern)")
+        high_sim = isinstance(brand_sim, (int, float)) and brand_sim >= _BRAND_SIMILARITY_HOLD
+        if high_sim and isinstance(age_days, int) and age_days < _BRAND_CLONE_MAX_AGE_DAYS and not verified:
+            downgrade("HOLD", f"claims brand '{brand}' with a near-identical name (similarity {brand_sim:.2f}) "
+                              f"on an unverified domain only {age_days} days old — official brand domains are "
+                              f"not this young (clone-storefront pattern)")
+        elif isinstance(age_days, int) and age_days < _BRAND_IMPERSONATION_DAYS:
+            downgrade("HOLD", f"claims brand '{brand}' on a domain only {age_days} days old (clone-storefront pattern)")
     if isinstance(dev_pct, (int, float)):
         ad = abs(dev_pct)
         if ad >= _PRICE_HOLD_PCT:
@@ -182,11 +210,19 @@ def run(domain: str = "", amount_usd: float | None = None,
                        "observations, untampered.",
         "_methodology": {
             "clearance_rules": {
-                "HOLD": "no TLS, unreachable, off-domain redirect, domain <7d, or price deviation >=60%",
+                "HOLD": ("no TLS; truly unreachable (timeout/DNS/5xx); off-domain redirect; "
+                         "domain <7d; price deviation >=60%; or a claimed brand with name-"
+                         f"similarity >={_BRAND_SIMILARITY_HOLD} on an unverified domain "
+                         f"<{_BRAND_CLONE_MAX_AGE_DAYS}d (clone-storefront)"),
                 "REVIEW": "domain <30d, price deviation >=25%, or not Onyx Verified",
-                "PROCEED": "Onyx Verified + valid TLS + reachable + on-domain + no price flag",
+                "PROCEED": "Onyx Verified + valid TLS + reachable + on-domain + no price/clone flag",
+                "note": "access-controlled responses (401/403/429) are 'up but refused crawler' "
+                        "— recorded, never an auto-HOLD (legit brands often block bots)",
             },
             "price_thresholds_pct": {"review": _PRICE_REVIEW_PCT, "hold": _PRICE_HOLD_PCT},
+            "brand_clone_rule": {"similarity_min": _BRAND_SIMILARITY_HOLD,
+                                 "max_age_days": _BRAND_CLONE_MAX_AGE_DAYS,
+                                 "requires": "claimed brand + unverified domain"},
             "source": "onyx signed observation log + live merchant_fact_check",
         },
     }
