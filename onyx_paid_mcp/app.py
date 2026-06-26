@@ -2084,6 +2084,14 @@ tick();setInterval(tick,4000);
             base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
             return _scorecard.scorecard(base)
 
+        @api.get("/rate/{agent}", include_in_schema=False)
+        async def _rate(agent: str):
+            """Un-gameable agent rating from signed outcomes — the anti-benchmark.
+            The day all 8 major benchmarks were reward-hacked, this is the answer."""
+            from tools_pkg import _rate
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _rate.rate(agent, base)
+
         @api.get("/report", include_in_schema=False)
         @api.post("/report", include_in_schema=False)
         async def _report(verdict_id: str = "", outcome: str = "",
