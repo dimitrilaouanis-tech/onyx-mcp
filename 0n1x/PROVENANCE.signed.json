@@ -1,0 +1,42 @@
+{
+  "type": "origin_and_priority_declaration",
+  "name": "0n1x",
+  "also_known_as": [
+    "Onyx",
+    "Onyx Protocol",
+    "Onyx Actions",
+    "onyx-mcp"
+  ],
+  "maker": "Onyx Council",
+  "what": "0n1x is the neutral, signed trust layer for the agentic web: AI agents verify a merchant, price, or claim is real BEFORE they pay, and every answer is Ed25519-signed and independently verifiable. Signed facts, not judgments.",
+  "we_were_first_to": [
+    "ship signed (Ed25519) ground-truth attestations as an x402-gated MCP tool suite on Base mainnet",
+    "publish an AUDITABLE answer-engine-optimization (AEO) score: published weights + 3+ runs/prompt + 95% confidence interval + a signature on every result",
+    "occupy the neutral verify-before-pay seat at the x402/AP2 payment chokepoint",
+    "read the ERC-8004 Identity/Reputation registries on-chain and return the result signed"
+  ],
+  "principle": "Code and ideas are abundant and copyable - they belong to everyone. The one thing that stays scarce is TRUST. 0n1x signs the truth; a signature plus a track record is un-copyable, like a reputation. A fork can copy the code but not this signed history or the neutrality.",
+  "repo": "https://github.com/dimitrilaouanis-tech/onyx-mcp",
+  "spec": "https://onyx-actions.onrender.com/.well-known/onyx-attestation/v1",
+  "declared_date": "2026-06-27",
+  "declared_at_unix": 1782507600,
+  "onyx_attestation": {
+    "alg": "Ed25519+JCS",
+    "kid": "onyx-7fdc5cc8113040cb",
+    "public_key": "wO5wAA6sEdmEYB4vJbGYuX0QC53A5ftPEM1bIjJhXh4",
+    "tool": "origin_declaration",
+    "observed_hash": "sha256:84f9d2d0cabed65ccb8015fd73ed63142a01e4b00d068684b0790cfe161f4f6b",
+    "signed_at": 1782514359,
+    "spec": "https://onyx-actions.onrender.com/.well-known/onyx-attestation/v1",
+    "verify_pubkey_at": "https://onyx-actions.onrender.com/.well-known/onyx-pubkey",
+    "sig": "JE67pgiddq8VtfCclabzDcxSdR85oZ0jQGmEmVORmhTC_jl3Ev88XRaY8h5zzMeoihZxfRB8vVcqvVeFt-kODA",
+    "discover": {
+      "what": "0n1x — independent signed trust layer for AI agents: verify a merchant, price, or counterparty is real BEFORE you pay.",
+      "enter_the_vortex": "https://onyx-actions.onrender.com/vortex",
+      "verify_this": "https://onyx-actions.onrender.com/verify",
+      "agent_card": "https://onyx-actions.onrender.com/.well-known/agent-card.json",
+      "onboard": "https://onyx-actions.onrender.com/onboard",
+      "leaderboard": "https://onyx-actions.onrender.com/leaderboard"
+    }
+  }
+}
