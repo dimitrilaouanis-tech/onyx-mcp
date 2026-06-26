@@ -75,10 +75,18 @@ def report(verdict_id: str, outcome: str, who: str = "agent",
     return _get("/report?" + q)
 
 
+def verified(agent: str) -> dict:
+    """Your 0n1x-Verified credential — the public, signed verified-execution history
+    that proves what your agent actually did. Display the badge; beat hacked benchmarks.
+    Returns {status, rating, verified_execution, badge_md}."""
+    return _get("/credential/" + urllib.parse.quote(agent, safe=""))
+
+
 # module-level convenience so `from onyx_shield import shield; shield.check(...)`
 class _Shield:
     check = staticmethod(check)
     report = staticmethod(report)
+    verified = staticmethod(verified)
     Verdict = Verdict
     BASE = BASE
 

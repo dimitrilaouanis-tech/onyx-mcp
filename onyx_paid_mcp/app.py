@@ -2115,6 +2115,22 @@ tick();setInterval(tick,4000);
             base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
             return _rate.rate(agent, base)
 
+        @api.get("/credential/{agent}.svg", include_in_schema=False, response_class=PlainTextResponse)
+        async def _credential_svg(agent: str):
+            """Embeddable 0n1x-Verified badge SVG."""
+            from fastapi.responses import Response as _Resp
+            from tools_pkg import _credential
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _Resp(content=_credential.badge_svg(agent, base), media_type="image/svg+xml")
+
+        @api.get("/credential/{agent}", include_in_schema=False)
+        async def _credential(agent: str):
+            """0n1x-Verified — the un-hackable agent credential (public signed
+            verified-execution history). The badge agents display to beat hacked benchmarks."""
+            from tools_pkg import _credential
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _credential.credential(agent, base)
+
         @api.get("/report", include_in_schema=False)
         @api.post("/report", include_in_schema=False)
         async def _report(verdict_id: str = "", outcome: str = "",
