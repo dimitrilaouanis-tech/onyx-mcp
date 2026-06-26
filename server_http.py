@@ -57,3 +57,7 @@ for mod in tools_pkg.discover():
 
 # ASGI app uvicorn binds to
 app = app_obj.build_asgi()
+
+# Public aggregate fact-index (surface 3b) — new module, attaches its own route.
+from tools_pkg import _fact_index
+_fact_index.register(app)
