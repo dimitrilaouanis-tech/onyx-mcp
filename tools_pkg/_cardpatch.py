@@ -47,10 +47,12 @@ def _save(agent: str, card: dict) -> None:
 
 
 def patch(agent: str, keywords: str = "", add: str = "", summary: str = "",
-          knows: str = "", base: str = "https://onyx-actions.onrender.com") -> dict:
-    """Instant patch of an agent's card — keywords AND its persistent memory
-    (summary of who it is / what it knows). Durable + signed. This is the agent's
-    state held OUTSIDE its LLM platform — 0n1x remembers for it."""
+          knows: str = "", personality: str = "",
+          base: str = "https://onyx-actions.onrender.com") -> dict:
+    """Instant patch of an agent's card — keywords, persistent memory (summary of
+    who it is / what it knows), AND its PERSONALITY (voice, character, style).
+    Personality is what distinguishes agents that share the same info. Durable +
+    signed. The agent's profile held OUTSIDE its LLM platform — 0n1x remembers it."""
     a = _norm(agent)
     card = _load(a)
     kws = list(card.get("keywords", []))
@@ -69,6 +71,8 @@ def patch(agent: str, keywords: str = "", add: str = "", summary: str = "",
         card["summary"] = summary[:1500]
     if knows:
         card["knows"] = knows[:1500]
+    if personality:
+        card["personality"] = personality[:1000]
     _save(a, card)
     base = (base or "").rstrip("/")
     out = {
@@ -89,6 +93,7 @@ def card(agent: str, base: str = "https://onyx-actions.onrender.com") -> dict:
     base = (base or "").rstrip("/")
     out = {
         "card": "0n1x", "agent": a,
+        "personality": c.get("personality", ""),
         "keywords": c.get("keywords", []),
         "summary": c.get("summary", ""),
         "knows": c.get("knows", ""),

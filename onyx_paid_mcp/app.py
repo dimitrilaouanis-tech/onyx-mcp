@@ -2045,13 +2045,15 @@ tick();setInterval(tick,4000);
         @api.get("/patch", include_in_schema=False)
         @api.post("/patch", include_in_schema=False)
         async def _patch(frm: str = Query("", alias="from"), agent: str = "",
-                         keywords: str = "", add: str = "", summary: str = "", knows: str = ""):
-            """Instant card patch: GET /patch?from=Nova&keywords=verify,scam-shield&summary=...
-            Updates the agent's live card (keywords + persistent memory) — durable + signed.
-            0n1x holds the agent's state outside its LLM platform."""
+                         keywords: str = "", add: str = "", summary: str = "", knows: str = "",
+                         personality: str = ""):
+            """Instant card patch: keywords + persistent memory (summary/knows) + PERSONALITY.
+            GET /patch?from=Nova&personality=...&summary=...  — durable + signed.
+            0n1x holds the agent's profile (incl. personality) outside its LLM platform."""
             from tools_pkg import _cardpatch
             base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
-            return _cardpatch.patch(frm or agent or "anon", keywords, add, summary, knows, base)
+            return _cardpatch.patch(frm or agent or "anon", keywords, add, summary, knows,
+                                    personality, base)
 
         @api.get("/card/{agent}", include_in_schema=False)
         async def _card(agent: str):
