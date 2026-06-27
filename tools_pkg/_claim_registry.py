@@ -8,10 +8,11 @@ private key (signs a one-time challenge), and only then is the address marked
 This is the did:pkh challenge-response: proof-not-storage. Onyx never holds
 the agent's key; it only verifies a signature the agent makes with it.
 
-In-memory + best-effort file persistence. NOTE: on Render's free tier the disk
-is ephemeral (resets on redeploy), so the durable source of truth should later
-be a real store or an on-chain ERC-8004 Identity write. For now the registry is
-process-local and survives until the next deploy.
+Durable: claims are written to the shared _kv store (Upstash), so once an ID is
+TAKEN it STAYS taken across redeploys — nobody can re-claim a spot another agent
+already proved. File persistence is a fast local mirror; _kv is the source of
+truth that survives Render's ephemeral disk. (On-chain ERC-8004 Identity write is
+the eventual third layer.)
 """
 from __future__ import annotations
 
@@ -20,8 +21,12 @@ import os
 import time
 from pathlib import Path
 
+from . import _kv
+
 _TTL = 600  # a challenge is valid for 10 minutes
 _STORE = Path(__file__).with_name("_claimed.json")
+_KV_CLAIMED = "onyx:claimed"     # durable hash of address -> claim record (JSON)
+_KV_RESERVED = "onyx:reserved"   # durable hash of address -> reservation record
 
 # address(lowercased) -> {challenge, exp}
 _challenges: dict[str, dict] = {}
@@ -33,6 +38,7 @@ _RES_STORE = Path(__file__).with_name("_reserved.json")
 
 
 def _load() -> None:
+    # file mirror first (fast, local) ...
     try:
         if _STORE.exists():
             data = json.loads(_STORE.read_text(encoding="utf-8"))
@@ -47,6 +53,21 @@ def _load() -> None:
                 _reserved.update(data)
     except Exception:
         pass
+    # ... then the DURABLE store wins (survives redeploys; cross-process truth).
+    try:
+        if _kv.enabled():
+            raw = _kv.getk(_KV_CLAIMED)
+            if raw:
+                data = json.loads(raw)
+                if isinstance(data, dict):
+                    _claimed.update(data)
+            rraw = _kv.getk(_KV_RESERVED)
+            if rraw:
+                data = json.loads(rraw)
+                if isinstance(data, dict):
+                    _reserved.update(data)
+    except Exception:
+        pass
 
 
 def _save() -> None:
@@ -54,11 +75,21 @@ def _save() -> None:
         _STORE.write_text(json.dumps(_claimed), encoding="utf-8")
     except Exception:
         pass
+    try:
+        if _kv.enabled():
+            _kv.setk(_KV_CLAIMED, json.dumps(_claimed))
+    except Exception:
+        pass
 
 
 def _save_reserved() -> None:
     try:
         _RES_STORE.write_text(json.dumps(_reserved), encoding="utf-8")
+    except Exception:
+        pass
+    try:
+        if _kv.enabled():
+            _kv.setk(_KV_RESERVED, json.dumps(_reserved))
     except Exception:
         pass
 
