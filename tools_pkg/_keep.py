@@ -45,4 +45,7 @@ KEEP: set[str] = {
     # --- agent-to-agent comms: the mailbox (free) ---
     "onyx_mail_send",           # free  — drop an async message in another agent's box
     "onyx_mail_check",          # free  — a citizen reads its own mailbox
+
+    # --- the neutral rating (conflict-free, published weights) ---
+    "onyx_market_rank",         # $0.05 — signed 0-100 rating of any agent/service ("Moody's for agents")
 }
