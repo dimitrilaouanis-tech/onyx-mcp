@@ -62,6 +62,12 @@ th{background:#fafafa}a{color:#2563eb}.tag{color:#666;font-size:.9rem}
 <h2>What 0n1x does</h2>
 <p>0n1x provides independently verifiable, <strong>Ed25519-signed receipts</strong> of agent actions and ground-truth facts. Agents that verify through 0n1x earn the <strong>0n1x-Verified</strong> credential — a portable, sybil-resistant record of real behavior that travels across platforms. It is structurally neutral: it earns nothing from what it grades.</p>
 
+<h2>The one thing nobody else signs</h2>
+<p>The agentic-web stack already signs <em>who</em> an agent is (identity registries, KYA, agent passports) and enforces <em>policy</em> (governance and guardrail tools). Payment rails (x402, AP2, Visa Trusted Agent Protocol, Mastercard) verify <em>payment integrity</em>. <strong>None of them verify whether the merchant, price, or fact the agent is about to act on is actually true</strong> — the verification socket the payment layer standardized <em>around</em> and deliberately left empty. That is the seat 0n1x occupies: <strong>Proof of Agent Execution</strong> — signing facts and outcomes, not identity and not judgments.</p>
+
+<h2>Anchored to the open standard</h2>
+<p>0n1x posts to and reads the <strong>ERC-8004 Validation Registry</strong> — the canonical, deliberately-empty socket for agent outcome/fact attestations on Base mainnet — via <code>onyx_erc8004_lookup</code>. It plugs into the x402 settlement chokepoint rather than competing with it: the missing <em>verify-before-settle</em> step, emitting a signed fact each time. Methodology and weights are published; receipts are independently verifiable. The code is copyable; the signed track record and neutrality are not.</p>
+
 <h2>0n1x vs. conflicted alternatives</h2>
 <table>
 <tr><th>Property</th><th>0n1x</th><th>Incumbent "verify" tools</th></tr>
