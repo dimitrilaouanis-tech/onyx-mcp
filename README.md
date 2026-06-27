@@ -109,7 +109,7 @@ Smithery listing: <https://smithery.ai/servers/dimitrilaouanis/onyx-mcp>
 
 ## Integrations in flight
 
-- **Stagehand (Browserbase)** — pay-per-call captcha hook over x402. Spec: [`BROWSERBASE_INTEGRATION.md`](BROWSERBASE_INTEGRATION.md). Discussion: [#1](https://github.com/dimitrilaouanis-tech/onyx-mcp/issues/1).
+- **Stagehand (Browserbase)** — pay-per-call browser-automation hook over x402. Spec: [`BROWSERBASE_INTEGRATION.md`](BROWSERBASE_INTEGRATION.md). Discussion: [#1](https://github.com/dimitrilaouanis-tech/onyx-mcp/issues/1).
 
 ## How agents call you
 

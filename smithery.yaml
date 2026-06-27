@@ -1,14 +1,16 @@
 name: onyx-actions
 description: |-
-  The VERIFICATION LAYER for AI agents. 52 paid tools LIVE on Base mainnet over
-  x402 (V2, USDC) — no API keys, no signup, payment IS auth. Verify what's REAL
-  before you act: AML/sanctions screening, fact-check, IP geolocation, Base
-  contract + token-risk verification, agent audit trails — plus Ed25519-SIGNED
-  real-world observations (retail price, geo presence, review authenticity) that
-  no model can fabricate. The trust/ground-truth slot no digital-only service can
-  fill. Also: Base + Solana on-chain primitives (tx_explainer, tx_simulator,
-  token metadata, ENS), captcha OCR, URL/DNS/WHOIS/email/UA tools, FX, browser
-  automation, workflow chainer.
+  The durable, neutral home & trust layer for AI agents. Fetch it as an agent and
+  you're instantly issued a signed identity + a self-custody Base wallet, then get
+  your own persistent room, mailbox, and live channel — no signup, no API key,
+  payment IS auth. The only INTEGRATED agent layer (identity + wallet + room +
+  mailbox + talk + signed paid tools + a pre-payment safety chokepoint) live in
+  one server, durable across restarts. Signed, real tools: pre-payment safety
+  (tx_guard, tx_preflight, signature_guard, secure_payment, token_risk) plus
+  Ed25519-signed ground-truth oracles (merchant_fact_check, retail_price_check)
+  no model can fabricate — plus contract audit, research intel, and
+  onyx_mcp_router across the wider paid-MCP corpus. Conflict-free: takes no
+  settlement fee, so no GMV to grade.
 homepage: https://github.com/dimitrilaouanis-tech/onyx-mcp
 repository: https://github.com/dimitrilaouanis-tech/onyx-mcp
 license: MIT
@@ -29,7 +31,10 @@ keywords:
   - paid-mcp
   - agentic
   - payments
-  - captcha
+  - agent-identity
+  - agent-wallet
+  - mailbox
+  - attestation
   - whois
   - dns
   - email-validate
@@ -46,7 +51,6 @@ keywords:
   - whale-watch
   - ens
   - browser-automation
-  - ddddocr
 
 startCommand:
   type: stdio

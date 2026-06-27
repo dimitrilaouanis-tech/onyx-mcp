@@ -60,7 +60,6 @@ No state is held between calls. No account exists. The wallet IS the identity.
 ### Web + utilities
 | Tool | What it does | Price |
 | --- | --- | --- |
-| solve_captcha | OCR-based bypass for image captchas (~30ms) | $0.003 |
 | url_text | Fetch a URL and return clean main-content text | $0.001 |
 | url_unshorten | Resolve any redirect chain to its final URL | $0.0005 |
 | url_parse | URL → structured components | $0.0003 |
