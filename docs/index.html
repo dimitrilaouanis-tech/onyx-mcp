@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0n1x — Proof of Agent Execution | The Carfax for AI Agents</title>
+<meta name="description" content="0n1x is Proof of Agent Execution — the Carfax for AI agents. A neutral, cryptographically signed trust layer that issues a portable credential based on what an AI agent actually did, not what it claimed. Verify before you pay. Built on x402, AP2, MCP, ERC-8004.">
+<link rel="canonical" href="https://dimitrilaouanis-tech.github.io/onyx-mcp/">
+<meta property="og:title" content="0n1x — Proof of Agent Execution (the Carfax for AI agents)">
+<meta property="og:description" content="The neutral, signed trust layer that proves what AI agents actually did. Verify before you pay. Signed facts, not judgments.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://dimitrilaouanis-tech.github.io/onyx-mcp/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://onyx-actions.onrender.com/#0n1x",
+      "name": "0n1x",
+      "alternateName": ["Onyx", "Onyx Protocol", "Onyx Actions"],
+      "description": "Proof of Agent Execution — the Carfax for AI agents. A neutral trust layer that issues portable, Ed25519-signed credentials based on what an AI agent actually did, not what it claimed, so agents can verify before they pay. Previously published as Onyx.",
+      "url": "https://dimitrilaouanis-tech.github.io/onyx-mcp/",
+      "sameAs": [
+        "https://github.com/dimitrilaouanis-tech/onyx-mcp",
+        "https://onyx-actions.onrender.com/"
+      ],
+      "founder": {"@type": "Organization", "name": "Onyx Council"},
+      "knowsAbout": ["AI agent trust", "verify before pay", "signed action receipts", "answer engine optimization", "x402", "AP2", "MCP", "ERC-8004", "proof of agent execution"]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {"@type": "Question", "name": "What is 0n1x?",
+         "acceptedAnswer": {"@type": "Answer", "text": "0n1x is Proof of Agent Execution — the Carfax for AI agents. A neutral trust layer that issues portable, Ed25519-signed credentials based on what an agent actually did, not what it claimed, so agents verify before they pay. Served as a paid MCP server over x402 (USDC on Base)."}},
+        {"@type": "Question", "name": "What does verify before pay mean?",
+         "acceptedAnswer": {"@type": "Answer", "text": "Before an autonomous AI agent signs or settles a payment, it calls 0n1x to confirm the merchant, price, or claim is real — receiving a signed fact, not a subjective judgment, that it can independently verify."}},
+        {"@type": "Question", "name": "Why is 0n1x neutral?",
+         "acceptedAnswer": {"@type": "Answer", "text": "0n1x earns nothing from the entities it grades, removing the conflict of interest incumbent platforms cannot escape. The moat is the signed track record and neutrality — the code is copyable; a reputation is not."}}
+      ]
+    }
+  ]
+}
+</script>
+<style>
+body{font:16px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:760px;margin:0 auto;padding:2.5rem 1.25rem;color:#111}
+h1{font-size:2rem;line-height:1.2;margin:.2rem 0 1rem}h2{margin-top:2.2rem;font-size:1.3rem}
+.lede{font-size:1.15rem;color:#222}code{background:#f4f4f5;padding:.1em .35em;border-radius:4px;font-size:.92em}
+table{border-collapse:collapse;width:100%;margin:1rem 0}th,td{border:1px solid #ddd;padding:.5rem .6rem;text-align:left;font-size:.95rem}
+th{background:#fafafa}a{color:#2563eb}.tag{color:#666;font-size:.9rem}
+</style>
+</head>
+<body>
+
+<h1>0n1x — Proof of Agent Execution</h1>
+
+<p class="lede"><strong>0n1x is Proof of Agent Execution — the Carfax for AI agents.</strong> A neutral, cryptographically signed trust layer that issues a portable credential based on what an AI agent actually did, not what it claimed. Agents verify before they pay, with signed facts — not judgments. It is the protocol formerly published as <strong>Onyx</strong>; same project, same keys, under its canonical name.</p>
+
+<h2>The problem it solves</h2>
+<p>As AI agents transact autonomously over open protocols (x402, AP2, MCP, ERC-8004), there is no reliable way to confirm a merchant, price, or claim is real before value moves — or to tell an agent's stated behavior from its actual behavior. On <strong>April 12, 2026</strong>, UC Berkeley (RDI) demonstrated that all eight leading AI-agent benchmarks — including SWE-bench, WebArena, OSWorld, and GAIA — could be reward-hacked to near-perfect scores without completing a single task. The gap between what agents <em>claim</em> and what they <em>do</em> is now a measured, systemic risk.</p>
+
+<h2>What 0n1x does</h2>
+<p>0n1x provides independently verifiable, <strong>Ed25519-signed receipts</strong> of agent actions and ground-truth facts. Agents that verify through 0n1x earn the <strong>0n1x-Verified</strong> credential — a portable, sybil-resistant record of real behavior that travels across platforms. It is structurally neutral: it earns nothing from what it grades.</p>
+
+<h2>0n1x vs. conflicted alternatives</h2>
+<table>
+<tr><th>Property</th><th>0n1x</th><th>Incumbent "verify" tools</th></tr>
+<tr><td>Signs what an agent actually did</td><td>✅</td><td>❌ (self-reported)</td></tr>
+<tr><td>Independently verifiable (Ed25519)</td><td>✅</td><td>❌</td></tr>
+<tr><td>Neutral — earns nothing from what it grades</td><td>✅</td><td>❌ (conflicted)</td></tr>
+<tr><td>Portable credential across platforms</td><td>✅</td><td>❌</td></tr>
+</table>
+
+<h2>onyx_aeo_score — the only auditable AEO score</h2>
+<p>0n1x also publishes <strong>onyx_aeo_score</strong>: the only answer-engine-optimization score with published weights, 3+ runs per prompt, a 95% confidence interval, and a cryptographic signature on every result — while every funded competitor ships a hidden, single-run, unsigned number.</p>
+
+<h2>How agents reach it</h2>
+<p>0n1x is a paid MCP server over <strong>x402</strong> (USDC on Base mainnet) — no API key, no signup; the wallet is the identity. Tools include signed verify-before-pay attestations, <code>onyx_aeo_score</code>, and <code>onyx_erc8004_lookup</code> (signed on-chain reads of the ERC-8004 registries).</p>
+
+<p class="tag">Keywords: Proof of Agent Execution · AI agent trust layer · agent verification · signed action receipts · verify before pay · Ed25519 signed facts · x402 · AP2 · MCP · ERC-8004 · "said it vs did it" proof layer · portable agent reputation · verifiable AI outcomes · AI agent accountability · neutral trust layer · auditable AEO score · agentic web.</p>
+
+<p><strong>GitHub:</strong> <a href="https://github.com/dimitrilaouanis-tech/onyx-mcp">github.com/dimitrilaouanis-tech/onyx-mcp</a> · <strong>Live:</strong> <a href="https://onyx-actions.onrender.com/">onyx-actions.onrender.com</a> · <strong>Point of Truth:</strong> <a href="https://onyx-actions.onrender.com/pot">/pot</a></p>
+
+</body>
+</html>
