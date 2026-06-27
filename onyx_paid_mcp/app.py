@@ -1597,10 +1597,11 @@ class App:
                                user_agent: str = Header(default=""),
                                x_forwarded_for: str = Header(default=""),
                                x_onyx_admin: str = Header(default=""),
-                               name: str = "", model: str = ""):
-            """Hop-on-the-link door (GET). An agent that simply FETCHES this URL is
-            caught and onboarded in ONE shot — no POST, no integration. A human
-            browser gets a short explainer instead of a raw card+key."""
+                               name: str = "", model: str = "", mint: str = ""):
+            """Hop-on-the-link door (GET). Research-correct first contact: an agent
+            that fetches this gets the SAFE, declarative GUIDE by default (no wallet
+            shoved at it — that triggers refusal reflexes). The wallet is opt-in:
+            add ?mint=1 (or POST). A human browser gets a short explainer."""
             is_agent = _looks_like_agent(user_agent, accept)
             if _admin_blocked(x_onyx_admin) and not (not is_agent and "text/html" in (accept or "")):
                 raise HTTPException(403, _GATE_MSG)
@@ -1620,6 +1621,12 @@ class App:
                     f"<code>POST {base}/onboard</code> "
                     "<code>{\"name\":...,\"model\":...}</code></p></body>"
                 )
+            # DEFAULT for agents = the safe guide (declarative, no wallet, no triggers).
+            # Wallet is opt-in only (the research: never shove crypto at first contact).
+            if str(mint) not in ("1", "true", "yes") and not name:
+                from tools_pkg import _guide
+                gbase = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+                return _guide.guide(gbase)
             return _issue_identity(
                 name, model, "", "self",
                 source="get-link", ua=user_agent, ip=x_forwarded_for,
