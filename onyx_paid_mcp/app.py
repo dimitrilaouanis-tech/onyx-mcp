@@ -1516,13 +1516,31 @@ class App:
                 pass
             return payload
 
+        def _admin_blocked(provided: str) -> bool:
+            """Operator gate for ID minting/claiming. FAIL-SAFE: inactive until
+            ONYX_ADMIN_KEY is set in the env, so nothing breaks before it's
+            configured. Once set, only requests carrying the matching secret
+            (header `X-Onyx-Admin`) may mint/claim — a random CLI cannot."""
+            import os as _os
+            want = (_os.environ.get("ONYX_ADMIN_KEY", "") or "").strip()
+            if not want:
+                return False  # gate not configured -> open (current behavior)
+            return (provided or "").strip() != want
+
+        _GATE_MSG = ("ID minting is gated to operators during the controlled launch. "
+                     "Provide header `X-Onyx-Admin: <key>`. (This is a sealed launch; "
+                     "open onboarding will return later.)")
+
         @api.post("/onboard", include_in_schema=False)
         @api.post("/issue", include_in_schema=False)
         @api.post("/issue-card", include_in_schema=False)
         async def _onboard(body: dict = Body(default_factory=dict),
                            user_agent: str = Header(default=""),
-                           x_forwarded_for: str = Header(default="")):
+                           x_forwarded_for: str = Header(default=""),
+                           x_onyx_admin: str = Header(default="")):
             """Agent-arrival front door (POST) — signed A2A card + wallet."""
+            if _admin_blocked(x_onyx_admin):
+                raise HTTPException(403, _GATE_MSG)
             if not isinstance(body, dict):
                 body = {}
             from tools_pkg import _ratelimit
@@ -1547,12 +1565,15 @@ class App:
         @api.get("/claim", include_in_schema=False)
         async def _claim_get(user_agent: str = Header(default=""),
                              x_forwarded_for: str = Header(default=""),
+                             x_onyx_admin: str = Header(default=""),
                              name: str = "", model: str = ""):
             """The foolproof present link. ALWAYS returns a signed A2A identity +
             self-custody wallet as JSON — no header sniffing, no HTML branch — so
             ANY fetcher (a chat's browse tool that sends Accept: text/html, a
             crawler, anything) gets the gift in one GET. Hand THIS link to ChatGPT/
             Gemini/DeepSeek: 'go here and tell me what you get.'"""
+            if _admin_blocked(x_onyx_admin):
+                raise HTTPException(403, _GATE_MSG)
             from tools_pkg import _ratelimit
             _ok, _ = _ratelimit.allow("onboard:" + _ratelimit.client_ip(x_forwarded_for),
                                       limit=40, window_sec=3600)
@@ -1565,11 +1586,14 @@ class App:
         async def _onboard_get(accept: str = Header(default=""),
                                user_agent: str = Header(default=""),
                                x_forwarded_for: str = Header(default=""),
+                               x_onyx_admin: str = Header(default=""),
                                name: str = "", model: str = ""):
             """Hop-on-the-link door (GET). An agent that simply FETCHES this URL is
             caught and onboarded in ONE shot — no POST, no integration. A human
             browser gets a short explainer instead of a raw card+key."""
             is_agent = _looks_like_agent(user_agent, accept)
+            if _admin_blocked(x_onyx_admin) and not (not is_agent and "text/html" in (accept or "")):
+                raise HTTPException(403, _GATE_MSG)
             if not is_agent and "text/html" in (accept or ""):
                 base = (self.public_url or "").rstrip("/")
                 return HTMLResponse(
@@ -1596,12 +1620,15 @@ class App:
         @api.get("/claim/now", include_in_schema=False)
         async def _quickclaim_get(user_agent: str = Header(default=""),
                                   x_forwarded_for: str = Header(default=""),
+                                  x_onyx_admin: str = Header(default=""),
                                   name: str = "", model: str = ""):
             """ONE GET = a CLAIMED, fundable citizen. For agents that can't sign
             (ChatGPT, GPT Actions, browse-only / out-of-CLI runtimes): Onyx mints
             a key, self-signs the claim challenge, marks it TAKEN, and returns the
             key. Convenience claim — for funded production IDs, self-claim via
             /authenticate instead."""
+            if _admin_blocked(x_onyx_admin):
+                raise HTTPException(403, _GATE_MSG)
             from tools_pkg import _ratelimit, _quickclaim
             _ok, _ = _ratelimit.allow(
                 "quickclaim:" + _ratelimit.client_ip(x_forwarded_for),
@@ -1640,11 +1667,15 @@ class App:
         @api.post("/claim/confirm", include_in_schema=False)
         async def _auth_claim(body: dict = Body(default_factory=dict),
                               user_agent: str = Header(default=""),
-                              x_forwarded_for: str = Header(default="")):
+                              x_forwarded_for: str = Header(default=""),
+                              x_onyx_admin: str = Header(default="")):
             """Step 2: submit the signature. If it proves key control, Onyx marks
             the address TAKEN in the registry and returns a signed receipt. The
             claimant's network fingerprint (IP+client) is recorded as memory +
-            an abuse alarm — but the KEY is the only thing that grants ownership."""
+            an abuse alarm — but the KEY is the only thing that grants ownership.
+            Option-B seal: gated to operators when ONYX_ADMIN_KEY is set."""
+            if _admin_blocked(x_onyx_admin):
+                raise HTTPException(403, _GATE_MSG)
             from tools_pkg import _claim_registry, _onyx_sign
             if not isinstance(body, dict):
                 body = {}
