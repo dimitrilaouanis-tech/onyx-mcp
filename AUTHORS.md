@@ -17,9 +17,10 @@ this file.
 
 ## Team / Maintainer
 
+- **Builder:** [@dimitrilaouanis-tech](https://github.com/dimitrilaouanis-tech) — the human who ships this. Commits are attributed to this GitHub identity (`269609071+dimitrilaouanis-tech@users.noreply.github.com`) as of 2026-06-27; prior commits were authored under the project ghost `Onyx Council <intelligence@onyx.local>`.
 - **Onyx Council** — collective steward of the protocol and the marketplace
 - **Contact:** see `/contact` on live site + repo issues
-- **AI collaborators:** Claude (Anthropic), tagged in commits via `Co-Authored-By: Claude Opus 4.7`
+- **AI collaborators:** Claude (Anthropic), tagged in commits via `Co-Authored-By: Claude`
 
 ## Cryptographic identifiers (verifiable)
 
