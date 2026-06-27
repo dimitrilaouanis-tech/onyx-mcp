@@ -7,9 +7,9 @@
   Pair with 0n1x.jsonld in the page <head> and the robots policy in robots.aeo.txt.
 -->
 
-# 0n1x — the neutral trust layer for the agentic web
+# 0n1x — Proof of Agent Execution (the Carfax for AI agents)
 
-> **0n1x is a neutral trust layer that signs verifiable facts about agents, transactions, and merchants so AI agents can verify before they pay.** It is the protocol formerly published as **Onyx** / Onyx Protocol; 0n1x is the same project, same keys, same signed ground-truth oracle, under its canonical name. Agents reach it as a paid MCP server over x402 (USDC on Base) with no API key and no signup.
+> **0n1x is Proof of Agent Execution — the Carfax for AI agents.** A neutral trust layer that issues portable, Ed25519-signed credentials based on what an AI agent actually did, not what it claimed, so agents can verify before they pay. It is the protocol formerly published as **Onyx** / Onyx Protocol; 0n1x is the same project, same keys, same signed ground-truth oracle, under its canonical name. Agents reach it as a paid MCP server over x402 (USDC on Base) with no API key and no signup.
 
 ---
 

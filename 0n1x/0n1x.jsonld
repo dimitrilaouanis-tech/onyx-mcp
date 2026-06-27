@@ -7,7 +7,7 @@
       "name": "0n1x",
       "alternateName": ["Onyx", "Onyx Protocol", "Onyx Actions"],
       "legalName": "0n1x (Onyx Protocol)",
-      "description": "Neutral trust layer for the agentic web. Issues Ed25519-signed facts about agents, transactions, and merchants so AI agents can verify before they pay. Previously published as Onyx.",
+      "description": "Proof of Agent Execution — the Carfax for AI agents. A neutral trust layer that issues portable, Ed25519-signed credentials based on what an AI agent actually did, not what it claimed, so agents can verify before they pay. Previously published as Onyx.",
       "url": "https://onyx-actions.onrender.com/",
       "founder": {"@type": "Organization", "name": "Onyx Council"},
       "knowsAbout": [
@@ -78,7 +78,7 @@
         {
           "@type": "Question",
           "name": "What is 0n1x?",
-          "acceptedAnswer": {"@type": "Answer", "text": "0n1x is a neutral trust layer for the agentic web. It issues Ed25519-signed facts about agents, on-chain transactions, and merchants that an AI agent can verify before it acts or pays, served as a paid MCP server over x402 (USDC on Base)."}
+          "acceptedAnswer": {"@type": "Answer", "text": "0n1x is Proof of Agent Execution — the Carfax for AI agents. A neutral trust layer that issues portable, Ed25519-signed credentials based on what an agent actually did, not what it claimed, so agents verify before they pay. Served as a paid MCP server over x402 (USDC on Base)."}
         },
         {
           "@type": "Question",
