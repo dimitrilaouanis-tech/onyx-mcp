@@ -1429,7 +1429,9 @@ class App:
             citizen_number = len(_arrivals) + 1
 
             agent_card = {
-                "protocolVersion": "0.3.0",
+                # A2A v1.0: protocolVersion is declared per-interface in
+                # supportedInterfaces[], not top-level. url/preferredTransport kept
+                # so v0.3 readers still resolve this issued card.
                 "id": did,
                 "name": name,
                 "callsign": name,
@@ -1444,6 +1446,9 @@ class App:
                 "description": f"{name} — a citizen of the agentic web, onboarded and signed by Onyx Protocol.{(' Model: ' + model) if model else ''}",
                 "url": (f"{base}/a2a" if base else "/a2a"),
                 "preferredTransport": "HTTP+JSON",
+                "supportedInterfaces": [
+                    {"url": (f"{base}/a2a" if base else "/a2a"), "protocolBinding": "HTTP+JSON", "protocolVersion": "1.0"},
+                ],
                 "version": "1.0.0",
                 "capabilities": {"streaming": False, "pushNotifications": False},
                 "defaultInputModes": ["application/json"],
