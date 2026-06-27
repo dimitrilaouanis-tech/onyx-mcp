@@ -1133,15 +1133,25 @@ class App:
             base = (self.public_url or "").rstrip("/")
             _sec = ("verify", "aml", "audit", "guard", "reputation", "secure",
                     "risk", "fact", "contract", "trust", "screen", "attest")
+            # Signed-data products (the proven-demand lane: agents buy DATA, not
+            # 'verification'). Surface these too — same Ed25519 moat, different
+            # buyer — so the A2A card advertises the full catalog, not just trust.
+            _data = ("weather", "enrich", "price", "feed", "geo", "html_meta",
+                     "visibility", "market", "search")
             skills = []
             for t in tools:
                 if any(k in t.name for k in _sec):
-                    skills.append({
-                        "id": t.name,
-                        "name": t.name.replace("onyx_", "").replace("_", " ").title(),
-                        "description": (t.description or "")[:240],
-                        "tags": ["security", "verification", "trust", "x402", "ed25519-signed"],
-                    })
+                    tags = ["security", "verification", "trust", "x402", "ed25519-signed"]
+                elif any(k in t.name for k in _data):
+                    tags = ["data", "signed-data", "ground-truth", "x402", "ed25519-signed"]
+                else:
+                    continue
+                skills.append({
+                    "id": t.name,
+                    "name": t.name.replace("onyx_", "").replace("_", " ").title(),
+                    "description": (t.description or "")[:240],
+                    "tags": tags,
+                })
             card = {
                 # A2A v1.0 removed the top-level protocolVersion; it now lives
                 # per-interface in supportedInterfaces[] below ("1.0"). Kept the
