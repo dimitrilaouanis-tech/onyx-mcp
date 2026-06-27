@@ -61,3 +61,11 @@ app = app_obj.build_asgi()
 # Public aggregate fact-index (surface 3b) — new module, attaches its own route.
 from tools_pkg import _fact_index
 _fact_index.register(app)
+
+# OnyxRank — in-house citizen reputation rank (our ecosystem, our rules). GET /rank
+from tools_pkg import _onyxrank
+_onyxrank.register(app)
+
+# Fool-the-Oracle bounty — self-funding spectacle (read surfaces). GET /fool/bounty, /fool/quote
+from tools_pkg import _fool_bounty
+_fool_bounty.register(app)
