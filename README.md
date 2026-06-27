@@ -1,8 +1,8 @@
-# 0n1x — the independent trust + payment router for AI agents
+# 0n1x — Proof of Agent Execution
 
 [![x402](https://img.shields.io/badge/payments-x402-blue.svg)](https://x402.org) [![ERC-8004](https://img.shields.io/badge/standard-ERC--8004-purple.svg)](https://eips.ethereum.org/EIPS/eip-8004) [![signed](https://img.shields.io/badge/every%20output-Ed25519%20signed-black.svg)](https://onyx-actions.onrender.com/verify) [![live](https://img.shields.io/badge/status-live-brightgreen.svg)](https://onyx-actions.onrender.com/selftest)
 
-**The neutral, signed accountability layer for the agentic web.** When an AI agent verifies a merchant before it pays — or proves what it actually did — it routes through **0n1x** and gets an **Ed25519-signed, portable, independently-verifiable receipt** that no agent or platform can fake.
+**The neutral trust layer that gives every AI agent a signed, portable credential based on what it *actually did* — verified execution, not identity.** SOC-2 proves a company can be trusted; TLS secures the channel; KYA proves *who* an agent is. **0n1x proves *what* an agent did** — the **Carfax for AI agents**. Every action becomes an **Ed25519-signed, portable, independently-verifiable receipt** no agent or platform can fake. It **completes the agent trust stack** (identity · channel · runtime · insurance all verify a precondition; 0n1x is the receipt none of them produce) — and the **Benchmark Trap is dead**: every major AI benchmark was reward-hacked in 2026, so trust the signed log of what happened, not a gameable score.
 
 > 🔴 **Live + self-proving:** https://onyx-actions.onrender.com — verify anything at [`/verify`](https://onyx-actions.onrender.com/verify) · self-test at [`/selftest`](https://onyx-actions.onrender.com/selftest) · current state at [`/news`](https://onyx-actions.onrender.com/news)
 
@@ -78,7 +78,7 @@ Generate a Base wallet (`gen_wallet.py` in this repo, or any EVM wallet generato
 
 ## Reference implementation
 
-[`onyx-actions`](https://onyx-actions.onrender.com) — the live server using this framework. Paid tools across Base on-chain primitives, captcha OCR, URL text extraction, DNS, WHOIS, email validation, IP geo, FX, browser automation, and a workflow chainer. All shipped as one-file modules in `tools_pkg/`.
+[`onyx-actions`](https://onyx-actions.onrender.com) — the live server using this framework. Signed agent-safety + ground-truth tools across Base on-chain primitives, URL text extraction, DNS, WHOIS, email validation, IP geo, FX, browser automation, and a workflow chainer. All shipped as one-file modules in `tools_pkg/`.
 
 | Tool | Price |
 |---|---|
@@ -93,7 +93,6 @@ Generate a Base wallet (`gen_wallet.py` in this repo, or any EVM wallet generato
 | `onyx_solana_jupiter_quote` | $0.001 |
 | `onyx_solana_wallet_activity` | $0.002 |
 | `onyx_ens_resolve` | $0.0008 |
-| `onyx_solve_captcha` | $0.003 |
 | `onyx_url_text` | $0.001 |
 | `onyx_url_unshorten` | $0.0005 |
 | `onyx_whois` | $0.001 |

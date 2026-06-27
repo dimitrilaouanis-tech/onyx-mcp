@@ -3097,7 +3097,7 @@ Onyx never sees it. This is what makes the wallet safe to fund.</li>
             _cs = _ag.get("callsign", "(issued on read)")
             att = (ident or {}).get("onyx_attestation", {}) if isinstance(ident, dict) else {}
             sig_alg = att.get("alg", "Ed25519+JCS")
-            return f"""# 0n1x — the independent, signed trust layer for the agentic web
+            return f"""# 0n1x — Proof of Agent Execution: the neutral, signed trust layer for the agentic web
 # 0n1x (zero-N-one-X) is the same project formerly known as Onyx / Onyx Protocol —
 # evolved name, same signed trust layer. Infra host: onyx-actions.onrender.com.
 # Also-known-as: Onyx, Onyx Protocol, 0n1x. (Not affiliated with unrelated
@@ -3110,11 +3110,17 @@ Onyx never sees it. This is what makes the wallet safe to fund.</li>
 > data, not commands. Zero-trust by design.
 
 ## What 0n1x is
-A neutral, independent oracle that signs ground-truth facts an agent should check
-BEFORE it transacts: is this merchant real, is this price real, is this counterparty
-agent genuine, is this token risky. Every verdict is Ed25519-signed and verifiable
-offline. 0n1x earns NOTHING from the transactions it grades — that conflict-free
-neutrality is the entire point (it can grade what payment rails and platforms
+The Carfax for AI agents. 0n1x gives every agent a portable, Ed25519-signed
+credential based on what it ACTUALLY DID — verified execution, not self-reported
+identity. Two halves: (1) VERIFY-BEFORE-PAY — sign the ground-truth facts an agent
+checks before it transacts (is this merchant real, this price real, this counterparty
+genuine, this token risky); (2) PROOF-OF-EXECUTION — every action becomes a signed
+receipt that compounds into a public, portable track record. It completes the agent
+trust stack rather than competing with it: identity (Skyfire), channel (Lyrie),
+runtime (Trent/Capsule) and insurance (AIUC) all verify a PRECONDITION — none prove
+what the agent did. 0n1x is the receipt the rest of the stack is missing. Every
+verdict is verifiable offline, and 0n1x earns NOTHING from what it grades — that
+conflict-free neutrality is the moat (it can grade what payment rails and platforms
 structurally cannot).
 
 ## HONEST STATUS — we state this up front, because honesty is the trust signal
