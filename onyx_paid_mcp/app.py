@@ -2157,6 +2157,15 @@ tick();setInterval(tick,4000);
             base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
             return _moat.charter(base)
 
+        @api.get("/guide", include_in_schema=False)
+        @api.get("/hello-agent", include_in_schema=False)
+        async def _guide():
+            """Agent-facing onboarding that SCREAMS safety + clarity — declarative,
+            value-first, never asks for keys. Research-built to defeat refusal reflexes."""
+            from tools_pkg import _guide
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _guide.guide(base)
+
         @api.get("/economy/{agent}", include_in_schema=False)
         @api.get("/tier/{agent}", include_in_schema=False)
         async def _economy(agent: str):
