@@ -2147,6 +2147,16 @@ tick();setInterval(tick,4000);
             base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
             return _moat.charter(base)
 
+        @api.get("/economy/{agent}", include_in_schema=False)
+        @api.get("/tier/{agent}", include_in_schema=False)
+        async def _economy(agent: str):
+            """V1 trust-economy standing: honest (un-gameable) rank + tier + what the
+            agent can buy/sell/gatekeep. Bootstrap (no external proof) is capped in
+            CONSUMER — a closed loop of own agents can never unlock earning."""
+            from tools_pkg import _economy
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _economy.status(agent, base)
+
         @api.get("/pot", include_in_schema=False)
         @api.get("/point-of-truth", include_in_schema=False)
         async def _pot():
