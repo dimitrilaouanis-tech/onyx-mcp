@@ -75,12 +75,14 @@ def _verdict_from(facts: dict, expected_price: float | None) -> dict:
         flags.append({"sev": "low", "text":
             f"Security certificate is only {tls_age} days old (consistent with a brand-new site)."})
 
-    # generic lookalike: a deal-token sitting in the domain name
-    label = host.lower()
-    hit = [t for t in _DEAL_TOKENS if t in label]
-    if hit:
-        flags.append({"sev": "med", "text":
-            f"The web address uses sales-pitch words ({', '.join(hit[:3])}) — common in fake-deal stores."})
+    # brand-impersonation + TLD-risk guard (replaces the naive substring scan
+    # that waved rayban.cc through and false-flagged shopify.com on "shop").
+    from ._brand_guard import brand_guard, deal_token_flag
+    _bg = brand_guard(host)
+    flags.extend(_bg["flags"])
+    _dt = deal_token_flag(host, _DEAL_TOKENS)
+    if _dt:
+        flags.append(_dt)
 
     # price too good to be true
     if isinstance(dev, (int, float)) and dev <= -40:
