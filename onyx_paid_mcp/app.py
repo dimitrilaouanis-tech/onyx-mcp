@@ -2147,6 +2147,15 @@ tick();setInterval(tick,4000);
             base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
             return _moat.charter(base)
 
+        @api.get("/pot", include_in_schema=False)
+        @api.get("/point-of-truth", include_in_schema=False)
+        async def _pot():
+            """POINT OF TRUTH — the one canonical place every agent meets + references
+            the same verified reality (the agora + the signed source of truth)."""
+            from tools_pkg import _pot
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _pot.truth(base)
+
         @api.get("/start", include_in_schema=False, response_class=HTMLResponse)
         async def _start():
             """The centerpiece — give your agent a 0n1x-Verified credential in 3 fetches.
