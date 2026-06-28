@@ -149,17 +149,47 @@ def verify_merchant(domain: str = "", brand: str = "",
     return _onyx_sign.attest(out, tool="onyx_verify_merchant_intro")
 
 
+def render_html(base: str = "https://onyx-actions.onrender.com") -> str:
+    base = (base or "").rstrip("/")
+    cards = "".join(
+        f"<div class=card><div class=name>{k}</div>"
+        f"<div class=desc>{v['what']}</div>"
+        f"<div class=meta><span class=price>{v['price_usd']}</span>"
+        f"<span class=buyer>{v['buyer']}</span></div></div>"
+        for k, v in CATALOG.items()
+    )
+    return f"""<!doctype html><html lang=en><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>0n1x Intelligence — signed, verifiable agentic-web research</title>
+<style>:root{{color-scheme:dark}}body{{font:15px/1.6 ui-sans-serif,system-ui,sans-serif;background:#05060a;color:#dbe7e0;margin:0 auto;padding:34px 16px;max-width:820px}}
+h1{{font-size:27px;margin:0 0 4px;color:#fff}}.sub{{color:#5fb98a;margin:0 0 22px}}
+.diff{{background:#0a0f12;border:1px solid #15291f;border-left:3px solid #34d399;border-radius:8px;padding:13px 15px;margin:18px 0;font-size:13px;color:#9af5c4}}
+.card{{background:#0a0f14;border:1px solid #14202b;border-radius:10px;padding:14px 16px;margin:11px 0}}
+.name{{color:#7dd3fc;font-weight:700;font-size:16px}}.desc{{color:#c2d3cc;font-size:13px;margin:5px 0 9px}}
+.meta{{display:flex;justify-content:space-between;font-size:12px}}.price{{color:#34d399;font-weight:700}}.buyer{{color:#5a6b63}}
+a{{color:#7dd3fc}}footer{{color:#3a4a42;font-size:11px;margin-top:24px;text-align:center}}</style></head><body>
+<h1>0n1x Intelligence</h1>
+<p class=sub>Signed, verifiable agentic-web intelligence + counterparty verification. <b>The research is the product.</b></p>
+<div class=diff>🔏 {DIFFERENTIATOR}</div>
+{cards}
+<div class=diff>📊 Live signed data feed: <a href="{base}/intel/feed">/intel/feed</a> · Free sample teardown: <a href="{base}/intel/sample">/intel/sample</a> · Verify any output: <a href="{base}/verify">/verify</a></div>
+<footer>0n1x — the independent signed trust layer · settle USDC on Base (x402) or invoice</footer>
+</body></html>"""
+
+
 def register(app) -> None:
     """Attach the intel surfaces to the FastAPI app from build_asgi().
 
     Usage in server_http.py (one line, mirrors _onyxrank):
         from tools_pkg import _intel; _intel.register(app)
     """
-    from fastapi.responses import JSONResponse
+    from fastapi.responses import JSONResponse, HTMLResponse
 
     @app.get("/intel", include_in_schema=False)
-    def _intel():
-        return JSONResponse(catalog())
+    def _intel(format: str = "html"):
+        if format == "json":
+            return JSONResponse(catalog())
+        return HTMLResponse(render_html())
 
     @app.get("/intel/sample", include_in_schema=False)
     def _intel_sample():
