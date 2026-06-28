@@ -74,15 +74,18 @@ A Counterparty Attestation is a JSON object, **JCS-canonicalized (RFC 8785)** an
 
 ```jsonc
 {
-  "cap_version": "0.1",
+  "cap_version": "0.2",
   "subject": { "type": "merchant|price|token|contract", "id": "stripe.com" },
+  "observer": "0n1x",                       // WHO made the observation
+  "methodology": "onyx.merchant.v1",        // UNDER WHICH method (named, versioned)
+  "evidence": ["whois", "tls-chain", "brand-similarity-cv"],   // WHAT evidence
+  "confidence": 0.98,                        // AT WHAT confidence (0..1)
   "facts": [
     { "k": "domain_age_days", "v": 5300 },
     { "k": "tls_valid", "v": true },
     { "k": "similarity_to_known_brand", "v": 0.00 },
     { "k": "business_registration_found", "v": true }
   ],
-  "observation": "Established payment processor; no counterfeit signals.",
   "issuer": "0n1x",
   "kid": "onyx-8994a5b5a4266615",
   "issued_at": 1782600000,
@@ -91,9 +94,16 @@ A Counterparty Attestation is a JSON object, **JCS-canonicalized (RFC 8785)** an
 }
 ```
 
-Required: `cap_version`, `subject`, `facts[]`, `issuer`, `kid`, `issued_at`,
-`signature`. The `facts` array carries **observations only** (rule 1). A consuming
-agent applies its OWN risk policy to the facts — the issuer never decides for it.
+Required: `cap_version`, `subject`, `observer`, `methodology`, `confidence`, `facts[]`,
+`issuer`, `kid`, `issued_at`, `signature`. The `facts` array carries **observations
+only** (rule 1).
+
+**Scope (binding):** CAP standardizes the *verifiable attestation* — who observed what,
+how, with what evidence, at what confidence — **NOT a verdict that a counterparty is
+"safe" or "real."** "Safe" is an application a consuming agent builds on top of
+attestations using its own risk policy. CAP issuers attest; they do not guarantee. This
+keeps the standard rigorous and un-overclaimed — the issuer is liable only for the
+honesty of the observation, never for the agent's decision.
 
 ### 4.2 The `counterparty.verify` method
 
