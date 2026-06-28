@@ -44,6 +44,46 @@ def _first_party() -> set:
     return fp
 
 
+def _ext_key(agent: str) -> str:
+    return f"onyx:extproof:{(agent or '').strip().lower()}"
+
+
+def external_proof_count(agent: str) -> int:
+    """How many DISTINCT external (non-first-party) addresses have paid or
+    corroborated this agent. This is the real, durable signal that unlocks earning."""
+    try:
+        from . import _kv
+        raw = _kv.getk(_ext_key(agent))
+        if raw:
+            addrs = json.loads(raw) if isinstance(raw, str) else (raw or [])
+            fp = _first_party()
+            return len({a.lower() for a in addrs if a and a.lower() not in fp})
+    except Exception:
+        pass
+    return 0
+
+
+def credit_external_proof(agent: str, address: str) -> dict:
+    """Record that a distinct EXTERNAL address paid/corroborated this agent — the
+    event that flips it from bootstrap to real. First-party addresses are rejected
+    (a closed loop of our own agents can never manufacture external proof)."""
+    agent = (agent or "").strip().lower()
+    addr = (address or "").strip().lower()
+    fp = _first_party()
+    if not addr or addr in fp:
+        return {"credited": False, "reason": "empty or first-party — not external proof"}
+    try:
+        from . import _kv
+        raw = _kv.getk(_ext_key(agent))
+        addrs = set(json.loads(raw)) if raw else set()
+        addrs.add(addr)
+        _kv.setk(_ext_key(agent), json.dumps(sorted(addrs)))
+        return {"credited": True, "agent": agent, "external_address": addr,
+                "external_proof": len({a for a in addrs if a not in fp})}
+    except Exception as e:
+        return {"credited": False, "reason": f"store error: {str(e)[:40]}"}
+
+
 def status(agent: str, base: str = "https://onyx-actions.onrender.com",
            external_proof: int | None = None) -> dict:
     """The honest economic standing of an agent.
@@ -60,7 +100,7 @@ def status(agent: str, base: str = "https://onyx-actions.onrender.com",
     except Exception:
         pass
 
-    ext = external_proof if external_proof is not None else 0
+    ext = external_proof if external_proof is not None else external_proof_count(a)
 
     # THE LINCHPIN: no external proof => capped below the selling line, whatever the
     # naive rating. Honest rank = naive only once at least one independent external
