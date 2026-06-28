@@ -147,12 +147,50 @@ A live verifier is provided at `GET /verify` on the reference implementation.
 - Published key: `https://onyx-actions.onrender.com/.well-known/onyx-pubkey`
 - This spec, served: `https://onyx-actions.onrender.com/cap`
 
-## 9. Rough consensus and running code
+## 9. We steward the commons — we do not own it
+
+A standard is not owned; it is **authored, given away, and stewarded.** Satoshi did not
+own Bitcoin; Vitalik cannot unilaterally change Ethereum. What a founder keeps is not
+the standard — it is the role of **credible originator** the collective grants you for
+going first and staying neutral. 0n1x is the first steward of CAP, not its landlord.
+The spec and the attestation format are **free and open (CC0 intent), forever.**
+
+## 10. Business model — open-core (the standard is free; the service is the product)
+
+CAP being free is not a contradiction with revenue — it is the engine of it. Red Hat
+does not own Linux; it sells support. MongoDB does not own the document model; it sells
+the implementation. Chainlink does not own "oracle"; it sells oracle services. **0n1x
+gives away the standard and sells what runs on it:** issued agent IDs, self-custody
+wallets, live verifications, premium attestations, the reference implementation, and an
+SLA. The open standard is the distribution; the services are the revenue. The only fee
+CAP ever contemplates is a small protocol tax on *paid* verifications — **never on the
+spec, the format, or self-verification.**
+
+## 11. Roadmap to credible neutrality (v0.2)
+
+A standard is real only when more than one independent party can issue against it.
+v0.1 is the running code; v0.2 earns the neutrality. The path (sharpened by adversarial
+review):
+
+- [ ] **≥2 independent co-issuers** on the author line, each running their own registry.
+- [ ] **Canonical test vectors** (reference inputs → expected signed outputs).
+- [ ] **Revocation mechanism** (withdraw a mis-issued attestation, verifiably).
+- [ ] **One non-0n1x reference implementation.**
+- [ ] **Cross-verification:** issuers verify each other's attestations.
+
+**Candidate co-issuers** (neutrality-compatible — they verify reality, sell no GMV):
+Red Points (anti-counterfeit), Chainlink Labs (oracle networks), Immunefi (claim
+verification), a university security lab (CMU/Stanford/MIT), Coinbase Institute
+(sponsored ERC-8004). The ask to each is one sentence: *"We built a protocol for neutral
+counterparty attestation before agent payment. Will you run the second issuer?"*
+
+## 12. Rough consensus and running code
 
 This is v0.1, deliberately small. The running code already exists; what we seek now is
-**objections**. Open an issue. Propose a fact you think every agent should check.
-Implement a competing issuer — the standard wins only if more than one neutral party
-can issue against it.
+**objections and co-authors.** Open an issue. Propose a fact every agent should check.
+Run the second issuer — the standard wins only when more than one neutral party can
+sign against it.
 
 — *CAP is the one thing that stays scarce when code and identity become abundant: a
-signed, neutral answer to "is this real?"*
+signed, neutral answer to "is this real?" — kept open, because the one who refuses to
+own the gate is the only one who can credibly keep it.*
