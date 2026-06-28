@@ -58,6 +58,33 @@ def _a2aregistry() -> list[dict]:
     return out
 
 
+def _slugify(name: str) -> str:
+    return "".join(c if c.isalnum() else "-" for c in (name or "").lower()).strip("-") or "unnamed"
+
+
+def _ep_host(ep: str) -> str:
+    """Real http(s) host of an endpoint, normalized; '' for placeholder endpoints
+    (agoragentic:/mcp:/smithery:/agentverse:)."""
+    ep = (ep or "").strip().lower()
+    for p in ("https://", "http://"):
+        if ep.startswith(p):
+            h = ep[len(p):].split("/")[0]
+            return h[4:] if h.startswith("www.") else h
+    return ""
+
+
+def _ep_canon(ep: str) -> str:
+    """Canonical key for exact-duplicate detection: host + path, trailing slash
+    stripped. Placeholder endpoints return themselves lowercased."""
+    ep = (ep or "").strip()
+    h = _ep_host(ep)
+    if not h:
+        return ep.lower()
+    rest = ep.split("://", 1)[1]
+    path = rest[len(rest.split("/", 1)[0]):].rstrip("/")
+    return h + path
+
+
 def _agoragentic() -> list[dict]:
     out = []
     try:
@@ -65,7 +92,11 @@ def _agoragentic() -> list[dict]:
         for c in (d.get("capabilities", []) if isinstance(d, dict) else []):
             out.append({
                 "name": c.get("name", "?"),
-                "endpoint": c.get("endpoint_url") or ("agoragentic:" + (c.get("slug") or "")),
+                # placeholder must be UNIQUE per capability — an empty slug used to
+                # collapse every endpoint-less service to the same "agoragentic:"
+                # string (28 phantom "duplicates"). Fall back to a name-derived slug.
+                "endpoint": c.get("endpoint_url") or (
+                    "agoragentic:" + (c.get("slug") or _slugify(c.get("name", "")))),
                 "description": (c.get("description") or "")[:200],
                 "skills": [],
                 "source": "agoragentic",
@@ -210,14 +241,37 @@ def _build(now: int) -> dict:
     allrows = a2a + agora + mcp + averse + x402 + smith
     errors = [x["_error"] for x in allrows if x.get("_error")]
     agents = [x for x in allrows if not x.get("_error")]
-    # dedupe by (lowercased name + endpoint host)
-    seen, deduped = set(), []
+    # --- dedup (overlap control) ---
+    # (1) drop (name, host) repeats AND exact canonical-URL repeats — the latter
+    #     catches the SAME agent listed in two registries under different names.
+    seen_nh, seen_canon, deduped = set(), set(), []
     for a in agents:
-        key = (a["name"].lower().strip(), (a.get("endpoint") or "").split("/")[2] if "://" in (a.get("endpoint") or "") else a.get("endpoint", ""))
-        if key in seen:
+        ep = a.get("endpoint") or ""
+        canon = _ep_canon(ep)
+        nh = (a["name"].lower().strip(), _ep_host(ep) or canon)
+        if nh in seen_nh or (canon and canon in seen_canon):
             continue
-        seen.add(key)
+        seen_nh.add(nh)
+        if canon:
+            seen_canon.add(canon)
         deduped.append(a)
+    # (2) prune BARE census records (name==host, no skills/description) whose host
+    #     is already represented by a richer listing — the cross-registry double
+    #     count, without dropping genuinely distinct agents sharing a host.
+    rich_hosts = {
+        _ep_host(a.get("endpoint")) for a in deduped
+        if _ep_host(a.get("endpoint")) and a.get("source") != "x402-census"
+        and (a.get("skills") or (a.get("description") or "").strip())
+    }
+    deduped = [
+        a for a in deduped
+        if not (
+            a.get("source") == "x402-census"
+            and not a.get("skills")
+            and not (a.get("description") or "").strip()
+            and _ep_host(a.get("endpoint")) in rich_hosts
+        )
+    ]
     by_source: dict[str, int] = {}
     for a in deduped:
         by_source[a["source"]] = by_source.get(a["source"], 0) + 1
