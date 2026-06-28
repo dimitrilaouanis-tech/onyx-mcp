@@ -81,15 +81,17 @@ def method_identity(host: str, facts: dict) -> dict:
         v = _REVIEW
         reasons.append(bg["flags"][0]["text"][:80])
 
+    # structured data is a POSITIVE signal, never a gate: most legitimate sites
+    # don't expose JSON-LD on root, and our fetch can be blocked. Absence is not
+    # a red flag — only brand-impersonation / risky-TLD are identity red flags.
     structured = bool(facts.get("has_structured_data"))
     cat = facts.get("business_category")
     ev["has_structured_data"] = structured
     ev["business_category"] = cat
-    if not structured and v == _PASS:
-        v = _REVIEW
-        reasons.append("no machine-readable identity (structured data) found")
     if structured:
-        reasons.append("publishes structured identity data")
+        reasons.append("publishes structured identity data (+)")
+    elif v == _PASS and not reasons:
+        reasons.append("no brand-impersonation or risky-TLD signals")
 
     return {"method": "identity", "verdict": v, "evidence": ev, "reasons": reasons}
 
