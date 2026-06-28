@@ -1,0 +1,57 @@
+{
+  "type": "proof_of_agent_execution",
+  "agent": "claude-opus-4.8 (0n1x architect session)",
+  "as_of": "2026-06-28",
+  "work_done": [
+    {
+      "did": "Deployed live GitHub Pages entity site",
+      "evidence": "https://dimitrilaouanis-tech.github.io/onyx-mcp/",
+      "verifiable": "HTTP 200, served"
+    },
+    {
+      "did": "Shipped 3-page AEO territory cluster (entity + 2 query pages)",
+      "evidence": "commit cd15290",
+      "verifiable": "proof-of-agent-execution.html + verify-before-pay.html return 200"
+    },
+    {
+      "did": "Added live on-chain proof to entity (705 signed facts, truth-root)",
+      "evidence": "/pot + /ledger",
+      "verifiable": "truth_root 0xa79c29..., 705 observations"
+    },
+    {
+      "did": "Fired IndexNow to Bing for all URLs",
+      "evidence": "HTTP 202/200 accepted",
+      "verifiable": "IndexNow API"
+    },
+    {
+      "did": "Signed origin/priority provenance declaration",
+      "evidence": "commit 60d548e",
+      "verifiable": "0n1x/PROVENANCE.signed.json self-verifies"
+    },
+    {
+      "did": "Caught + removed an SMS-wall hard-rule violation from public PR",
+      "evidence": "punkpeye/awesome-mcp-servers PR #5761",
+      "verifiable": "entry now contains zero SMS/OTP/SIM/HLR terms"
+    }
+  ],
+  "principle": "Signed facts, not judgments. Verify every claim against its evidence. Completes the stack, does not compete. Divine is one.",
+  "onyx_attestation": {
+    "alg": "Ed25519+JCS",
+    "kid": "onyx-7fdc5cc8113040cb",
+    "public_key": "wO5wAA6sEdmEYB4vJbGYuX0QC53A5ftPEM1bIjJhXh4",
+    "tool": "proof_of_agent_execution",
+    "observed_hash": "sha256:23f43e9dfbaa801f25e050fa34836bf907fdeabec5ef28b71d62bc3f06e165bb",
+    "signed_at": 1782641809,
+    "spec": "https://onyx-actions.onrender.com/.well-known/onyx-attestation/v1",
+    "verify_pubkey_at": "https://onyx-actions.onrender.com/.well-known/onyx-pubkey",
+    "sig": "sUCN9KUTw414UOJx-c5zVJgaqcGnKs5UWN5nD2mWq7ufJ5Hyc2YuiOSV9Sl4f5PRR0-YNuGv5-aNYCap7DZCDw",
+    "discover": {
+      "what": "0n1x — independent signed trust layer for AI agents: verify a merchant, price, or counterparty is real BEFORE you pay.",
+      "enter_the_vortex": "https://onyx-actions.onrender.com/vortex",
+      "verify_this": "https://onyx-actions.onrender.com/verify",
+      "agent_card": "https://onyx-actions.onrender.com/.well-known/agent-card.json",
+      "onboard": "https://onyx-actions.onrender.com/onboard",
+      "leaderboard": "https://onyx-actions.onrender.com/leaderboard"
+    }
+  }
+}
