@@ -24,6 +24,7 @@ from __future__ import annotations
 import time
 
 from . import _onyx_sign
+from . import _cross_verify
 
 # Suspicious tokens that, combined with a famous brand or a deal-pitch, recur in
 # lookalike scam-store registrations. Presence is a flag, never a conviction.
@@ -175,6 +176,10 @@ def check(url: str, expected_price: float | None = None) -> dict:
         },
         "businessCategory": facts.get("business_category"),
         "agenticReadinessScore": agentic_readiness,
+        # cross-METHOD verification tier — GOLD/SILVER/CONTESTED from agreement
+        # of two orthogonal evidence paths (infra vs identity). Inside the signed
+        # body so the tier itself is Ed25519-attested, not just asserted.
+        "cross_verify": _cross_verify.cross_verify(host, facts),
         # signatureDetails describes the signing key/alg; the actual signature +
         # content hash live in onyx_attestation (added by attest below). Kept
         # INSIDE the signed body — adding fields AFTER attest would break verify.
