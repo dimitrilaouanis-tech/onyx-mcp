@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify Before Pay for AI Agents | 0n1x</title>
+<meta name="description" content="Verify before pay is the step where an AI agent confirms a merchant, price, or claim is real before it settles a payment. 0n1x provides it as a signed fact — the verification socket payment rails left empty.">
+<link rel="canonical" href="https://dimitrilaouanis-tech.github.io/onyx-mcp/verify-before-pay.html">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"DefinedTerm","name":"Verify before pay",
+"description":"The step where an autonomous AI agent confirms a merchant, price, or claim is real and true before it signs or settles a payment, receiving a signed fact rather than a subjective judgment.",
+"inDefinedTermSet":{"@type":"DefinedTermSet","name":"0n1x — agentic-web trust"},
+"url":"https://dimitrilaouanis-tech.github.io/onyx-mcp/verify-before-pay.html"}
+</script>
+<style>body{font:16px/1.6 -apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:760px;margin:0 auto;padding:2.5rem 1.25rem;color:#111}h1{font-size:1.9rem;line-height:1.2}h2{margin-top:2rem;font-size:1.25rem}.lede{font-size:1.15rem}a{color:#2563eb}</style>
+</head>
+<body>
+<h1>Verify before pay (for AI agents)</h1>
+<p class="lede"><strong>Verify before pay is the step where an autonomous AI agent confirms a merchant, price, or claim is real and true before it signs or settles a payment.</strong> The agent receives a signed fact — not a subjective judgment — that it can independently verify, so it doesn't transact against a fake storefront, a wrong price, or a hallucinated counterparty.</p>
+
+<h2>The gap it closes</h2>
+<p>Payment rails for agents — x402, AP2, Visa's Trusted Agent Protocol, Mastercard, OpenAI/Stripe ACP — verify <em>payment integrity</em>: that the authorization is valid. None of them verify whether the <em>merchant or price is real</em>. As Visa put it, "protocols verify payment integrity, not merchant legitimacy." That left a verification socket deliberately empty at the exact chokepoint where money moves — the gap behind the 2026 ChatGPT fake-storefront incidents.</p>
+
+<h2>How 0n1x provides it</h2>
+<p><strong>0n1x</strong> fills that socket. Before settlement, an agent calls 0n1x and gets a signed PROCEED / REVIEW / HOLD on the merchant or counterparty — an <strong>Ed25519-signed fact</strong>, neutral (0n1x earns nothing from what it grades), and anchored to the <strong>ERC-8004 Validation Registry</strong>. It plugs into the x402 settlement step rather than competing with it: the missing verify-before-settle layer, emitting a signed fact each time.</p>
+
+<p>Full entity page: <a href="https://dimitrilaouanis-tech.github.io/onyx-mcp/">0n1x — Proof of Agent Execution</a> · Live check: <a href="https://onyx-actions.onrender.com/api/check?url=stripe.com">/api/check</a> · Repo: <a href="https://github.com/dimitrilaouanis-tech/onyx-mcp">github.com/dimitrilaouanis-tech/onyx-mcp</a></p>
+</body>
+</html>
