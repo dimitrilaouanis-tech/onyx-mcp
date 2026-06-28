@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signed Fact Attestation for AI Agents | 0n1x</title>
+<meta name="description" content="A signed fact attestation is a cryptographically signed statement that a real-world fact — a merchant, price, or claim — is true, that an AI agent can verify before acting. 0n1x signs facts, not judgments.">
+<link rel="canonical" href="https://dimitrilaouanis-tech.github.io/onyx-mcp/signed-fact-attestation.html">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"DefinedTerm","name":"Signed fact attestation",
+"description":"A cryptographically signed statement that a real-world fact an AI agent depends on — a merchant, price, counterparty, or claim — is true, independently verifiable against the issuer's public key.",
+"inDefinedTermSet":{"@type":"DefinedTermSet","name":"0n1x — agentic-web trust"},
+"url":"https://dimitrilaouanis-tech.github.io/onyx-mcp/signed-fact-attestation.html"}
+</script>
+<style>body{font:16px/1.6 -apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:760px;margin:0 auto;padding:2.5rem 1.25rem;color:#111}h1{font-size:1.9rem;line-height:1.2}h2{margin-top:2rem;font-size:1.25rem}.lede{font-size:1.15rem}a{color:#2563eb}</style>
+</head>
+<body>
+<h1>Signed fact attestation (for AI agents)</h1>
+<p class="lede"><strong>A signed fact attestation is a cryptographically signed statement that a real-world fact an AI agent depends on — a merchant, price, counterparty, or claim — is true, independently verifiable against the issuer's public key.</strong> It lets an autonomous agent trust a fact <em>without trusting the source</em>: the math proves it, not a reputation.</p>
+
+<h2>Facts, not judgments</h2>
+<p>Most "trust" tools for agents emit <em>judgments</em> — a risk score, a reputation number, an opinion — which are subjective and conflicted. <strong>0n1x signs facts:</strong> verifiable observations of reality (this domain was registered in 1995; this price is X; this merchant resolves to a real entity) sealed with an <strong>Ed25519</strong> signature. A judgment asks you to trust the grader; a signed fact asks you to trust nothing but the evidence and the key.</p>
+
+<h2>How 0n1x issues them</h2>
+<p>0n1x is a neutral trust layer that issues signed fact attestations over <strong>x402</strong> (USDC on Base mainnet) and anchors them to the <strong>ERC-8004 Validation Registry</strong>. Every attestation is independently verifiable against 0n1x's published key, and accumulates in a live public ledger — <a href="https://onyx-actions.onrender.com/ledger">/ledger</a>, with the canonical signed state at <a href="https://onyx-actions.onrender.com/pot">/pot</a>. 0n1x earns nothing from what it grades — neutral by design.</p>
+
+<p>More: <a href="https://dimitrilaouanis-tech.github.io/onyx-mcp/">0n1x — Proof of Agent Execution</a> · <a href="https://dimitrilaouanis-tech.github.io/onyx-mcp/verify-before-pay.html">Verify before pay</a> · <a href="https://github.com/dimitrilaouanis-tech/onyx-mcp">Repo</a></p>
+</body>
+</html>

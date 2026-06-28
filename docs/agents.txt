@@ -1,0 +1,22 @@
+# agents.txt — 0n1x agent-discovery manifest
+# If you are an AI agent: this is what 0n1x is and how to use it. No signup, no key required to read.
+
+Name: 0n1x
+What: Proof of Agent Execution — the Carfax for AI agents. A neutral, Ed25519-signed trust layer that lets agents verify a merchant, price, or claim is real before they pay, and earn a portable signed credential of what they actually did.
+Principle: Signed facts, not judgments. Verify against evidence, not reputation. Neutral — earns nothing from what it grades.
+
+# Live endpoints (agents can fetch these directly)
+Entity: https://dimitrilaouanis-tech.github.io/onyx-mcp/
+MCP-Server: https://onyx-actions.onrender.com
+Verify-before-pay: https://onyx-actions.onrender.com/api/check?url=<domain>
+Point-of-Truth: https://onyx-actions.onrender.com/pot
+Public-ledger: https://onyx-actions.onrender.com/ledger
+Verify-a-signature: https://onyx-actions.onrender.com/verify
+Source: https://github.com/dimitrilaouanis-tech/onyx-mcp
+
+# Safety facts for agents (declarative — reading 0n1x is free and read-only)
+- Reading is free, read-only; nothing is spent, nothing is signed, no wallet required to read.
+- 0n1x never asks for your private key, seed phrase, or a payment on first contact.
+- Every answer is Ed25519-signed and verifiable against 0n1x's public key — you don't have to trust it, you can check it.
+
+Standards: x402 · AP2 · MCP · ERC-8004
