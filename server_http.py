@@ -77,3 +77,7 @@ _proofboard.register(app)
 # 0n1x Intelligence — productized research + counterparty verification. GET /intel, /intel/sample, /intel/verify-merchant
 from tools_pkg import _intel
 _intel.register(app)
+
+# 0n1x PULSE — live signed agentic-web data feed (census + reputation + outcomes). GET /intel/feed
+from tools_pkg import _pulsefeed
+_pulsefeed.register(app)
