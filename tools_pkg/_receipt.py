@@ -67,9 +67,12 @@ def record(agent: str, action: str, authorized=None, outcome: str = "",
     else:
         _MEM.setdefault(a, []).append(body)
     base = (base or "").rstrip("/")
+    # capsule/verify live INSIDE the signed body so the receipt self-verifies.
+    # (Previously appended AFTER attest() -> /verify saw extra keys -> hash_mismatch
+    # -> every receipt looked tampered. Now one signature covers the whole object.)
+    body["capsule"] = f"{base}/capsule/{a}"
+    body["verify"] = f"{base}/verify"
     signed = _onyx_sign.attest(body, tool="onyx_receipt")
-    signed["capsule"] = f"{base}/capsule/{a}"
-    signed["verify"] = f"{base}/verify"
     return signed
 
 

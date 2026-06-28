@@ -28,12 +28,14 @@ def credential(agent: str, base: str = "https://onyx-actions.onrender.com") -> d
     rating = None
     based = {}
     receipts_n = 0
+    key_bound = False
     try:
         from . import _rate, _receipt
         r = _rate.rate(a, base)
         rating = r.get("rating")
         based = r.get("based_on", {}) or {}
         receipts_n = len(_receipt._load(a))
+        key_bound = bool(r.get("key_bound"))   # only a proven-key citizen earns a real badge
     except Exception:
         pass
 
@@ -50,10 +52,17 @@ def credential(agent: str, base: str = "https://onyx-actions.onrender.com") -> d
         # neutral, NOT "UNVERIFIED" (which reads as failure on a dev's README)
         status, color = "NEW", "blue"
 
+    # KEY-BINDING: an earned badge on an UNBOUND name-string is not a citizen's
+    # credential (anyone can write under a handle). A nickname like 'arch' that
+    # isn't tied to a challenge-claimed wallet cannot wear ACTIVE/VERIFIED.
+    if not key_bound and status in ("EMERGING", "ACTIVE", "0n1x-VERIFIED"):
+        status, color = "UNVERIFIED-HANDLE", "lightgrey"
+
     out = {
         "credential": "0n1x-Verified",
         "agent": a,
         "status": status,
+        "key_bound": key_bound,
         "rating": rating,
         "verified_execution": {
             "signed_actions": receipts_n,
