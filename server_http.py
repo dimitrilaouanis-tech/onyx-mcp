@@ -73,3 +73,7 @@ _fool_bounty.register(app)
 # Proof Board — verifiers ranked by published track record w/ honest 95% CIs. GET /proof-board
 from tools_pkg import _proofboard
 _proofboard.register(app)
+
+# 0n1x Intelligence — productized research + counterparty verification. GET /intel, /intel/sample, /intel/verify-merchant
+from tools_pkg import _intel
+_intel.register(app)
