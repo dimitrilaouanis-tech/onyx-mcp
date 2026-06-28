@@ -2164,6 +2164,17 @@ tick();setInterval(tick,4000);
             base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
             return _moat.charter(base)
 
+        @api.get("/cap", include_in_schema=False)
+        @api.get("/.well-known/counterparty-attestation/v1", include_in_schema=False)
+        @api.get("/counterparty-attestation", include_in_schema=False)
+        async def _cap():
+            """Counterparty Attestation Protocol (CAP) — the open standard 0n1x authors:
+            a signed, neutral answer to 'is this counterparty real?'. The empty seat
+            everyone leaves open (they verify the agent/payment, not the counterparty)."""
+            from tools_pkg import _cap
+            base = (self.public_url or "").rstrip("/") or "https://onyx-actions.onrender.com"
+            return _cap.manifest(base)
+
         @api.get("/guide", include_in_schema=False)
         @api.get("/hello-agent", include_in_schema=False)
         async def _guide():
