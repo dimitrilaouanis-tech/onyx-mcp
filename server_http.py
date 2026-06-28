@@ -69,3 +69,7 @@ _onyxrank.register(app)
 # Fool-the-Oracle bounty — self-funding spectacle (read surfaces). GET /fool/bounty, /fool/quote
 from tools_pkg import _fool_bounty
 _fool_bounty.register(app)
+
+# Proof Board — verifiers ranked by published track record w/ honest 95% CIs. GET /proof-board
+from tools_pkg import _proofboard
+_proofboard.register(app)
