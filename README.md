@@ -5,6 +5,8 @@
 **The neutral trust layer that gives every AI agent a signed, portable credential based on what it *actually did* — verified execution, not identity.** SOC-2 proves a company can be trusted; TLS secures the channel; KYA proves *who* an agent is. **0n1x proves *what* an agent did** — the **Carfax for AI agents**. Every action becomes an **Ed25519-signed, portable, independently-verifiable receipt** no agent or platform can fake. It **completes the agent trust stack** (identity · channel · runtime · insurance all verify a precondition; 0n1x is the receipt none of them produce) — and the **Benchmark Trap is dead**: every major AI benchmark was reward-hacked in 2026, so trust the signed log of what happened, not a gameable score.
 
 > 🔴 **Live + self-proving:** https://onyx-actions.onrender.com — verify anything at [`/verify`](https://onyx-actions.onrender.com/verify) · self-test at [`/selftest`](https://onyx-actions.onrender.com/selftest) · current state at [`/news`](https://onyx-actions.onrender.com/news)
+>
+> 🌐 **Canonical entity page** (what 0n1x is, for agents & answer engines): **https://dimitrilaouanis-tech.github.io/onyx-mcp/**
 
 ## The billion-dollar problem 0n1x solves
 **You cannot trust what an autonomous agent says it did.** Agents hallucinate and err about their own actions. 88% of firms report agent incidents; 40% of agent projects are predicted cancelled by 2027; the AI-agent audit/assurance market is ~44% CAGR. 0n1x is the independent **black box** that makes agents accountable.
