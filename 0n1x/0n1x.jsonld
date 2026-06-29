@@ -21,6 +21,9 @@
         "AEO score"
       ],
       "sameAs": [
+        "https://www.wikidata.org/wiki/Q140376781",
+        "https://github.com/dimitrilaouanis-tech/0n1x",
+        "https://dimitrilaouanis-tech.github.io/0n1x/",
         "https://github.com/dimitrilaouanis-tech/onyx-mcp",
         "https://smithery.ai/servers/dimitrilaouanis/onyx-mcp",
         "https://pypi.org/project/onyx-paid-mcp/",
