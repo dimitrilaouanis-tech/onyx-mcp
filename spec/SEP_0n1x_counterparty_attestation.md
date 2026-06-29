@@ -107,6 +107,24 @@ A failed signature is *unverified data*, never a fatal session error.
 - **Rides the signed-output envelope** rather than re-specifying signatures: one
   integrity primitive, two SEPs (envelope = who-produced-what; this = what-it-means).
 
+## Prior art & differentiation (Fime FACT)
+
+Fime's "FACT" (Framework for Agentic Commerce Trust, launched 2026-04-21) is the
+nearest-positioned effort and the contrast sharpens this SEP's scope:
+
+| | Fime FACT | This SEP (`org.0n1x/counterparty-attestation`) |
+|---|---|---|
+| **Spec** | Closed — no public spec/schema/API; sold as "trust-as-a-service" (quote-gated) | **Open** — published spec, reverse-DNS extension, anyone can emit |
+| **Verifies** | The AGENT: intent-fidelity ("did the agent buy what the human asked"), policy/compliance | The COUNTERPARTY: is the merchant real, is the price plausible, signed facts |
+| **Merchant reality** | None (Fime's own scope; merchant is a *beneficiary*, not a verified party) | **The entire point** |
+| **Governance** | Wholly Fime-owned (markets "neutral" but is a single private vendor) | Open extension, neutral by construction (issuer earns nothing from what it grades) |
+| **Cost** | Commercial, sales-gated | Free to implement; verify is free, signed verdict is the only paid surface |
+
+FACT verifies the *agent's intent*; this SEP verifies the *counterparty's reality* —
+complementary axes. The two together (agent-intent + counterparty-reality) cover the
+full pre-pay trust surface; neither subsumes the other. This SEP deliberately occupies
+the merchant/price-reality lane FACT's own materials state it does not address.
+
 ## Security considerations
 
 Proves *who attested what facts about a counterparty, unmodified* — and, because facts
