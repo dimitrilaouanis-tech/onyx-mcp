@@ -42,7 +42,10 @@ INPUT_SCHEMA = {
         "allowed_merchants": {"type": "array", "items": {"type": "string"}},
         "allowed_domains": {"type": "array", "items": {"type": "string"}},
         "spend_max_usdc": {"type": "number", "description": "Hard ceiling per action"},
-        "spend_window_usdc": {"type": "number", "description": "Optional rolling-window cap"},
+        "spend_window_usdc": {"type": "number", "description": "Optional rolling-window aggregate cap"},
+        "spend_window_sec": {"type": "integer", "description": "Window length in seconds (default 86400)"},
+        "velocity_max": {"type": "integer", "description": "Max number of transacts per window"},
+        "per_counterparty_budget": {"type": "number", "description": "Max aggregate spend per single counterparty per window"},
         "purpose": {"type": "string"},
         "expires_at": {"type": "integer", "description": "Unix time the grant lapses"},
     },
@@ -52,7 +55,8 @@ INPUT_SCHEMA = {
 
 def run(agent: str = "", principal: str = "", consent_ref: str = "",
         allowed_actions=None, allowed_merchants=None, allowed_domains=None,
-        spend_max_usdc=None, spend_window_usdc=None, purpose: str = "",
+        spend_max_usdc=None, spend_window_usdc=None, spend_window_sec=None,
+        velocity_max=None, per_counterparty_budget=None, purpose: str = "",
         expires_at: int | None = None, **_: object) -> dict:
     if not agent or not str(agent).strip():
         raise ValueError("agent is required (who the grant authorizes)")
@@ -72,6 +76,9 @@ def run(agent: str = "", principal: str = "", consent_ref: str = "",
         "allowed_domains": list(allowed_domains) if allowed_domains is not None else None,
         "spend_max_usdc": float(spend_max_usdc) if spend_max_usdc is not None else None,
         "spend_window_usdc": float(spend_window_usdc) if spend_window_usdc is not None else None,
+        "spend_window_sec": int(spend_window_sec) if spend_window_sec is not None else None,
+        "velocity_max": int(velocity_max) if velocity_max is not None else None,
+        "per_counterparty_budget": float(per_counterparty_budget) if per_counterparty_budget is not None else None,
         "purpose": purpose or None,
         "declared_at": int(time.time()),
         "expires_at": int(expires_at) if expires_at is not None else None,
