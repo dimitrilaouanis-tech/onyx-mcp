@@ -81,3 +81,7 @@ _intel.register(app)
 # 0n1x PULSE — live signed agentic-web data feed (census + reputation + outcomes). GET /intel/feed
 from tools_pkg import _pulsefeed
 _pulsefeed.register(app)
+
+# Proof-of-key gate (EIP-4361) — public block CHECKS; only the key ACTS. Guards /attest /onboard /perm/check.
+from tools_pkg import _siwe
+_siwe.register(app)
