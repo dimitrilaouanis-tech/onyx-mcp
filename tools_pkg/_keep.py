@@ -51,4 +51,9 @@ KEEP: set[str] = {
 
     # --- the neutral rating (conflict-free, published weights) ---
     "onyx_market_rank",         # $0.05 — signed 0-100 rating of any agent/service ("Moody's for agents")
+
+    # --- Rhinogent: the branded agent identity-wallet surface over 0n1x ---
+    "rhinogent_identity",            # free  — signed identity card from a self-custody address (callsign + did:pkh + credential)
+    "rhinogent_verify_counterparty", # $0.25 — know-your-counterparty: signed facts on who the agent is paying
+    "rhinogent_mandate",             # free  — author a signed spend mandate (PERM_v0) the agent adopts
 }
