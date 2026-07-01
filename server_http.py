@@ -101,3 +101,8 @@ _merchant_signal.register(app)
 # 0n1x Live Stats — honest public numbers (no fabricated hype). GET /stats, /stats.json
 from tools_pkg import _stats
 _stats.register(app)
+
+# 0n1x non-CLI loop — DURABLE onboarding (Neon-persisted) + staged credits, all in one GET.
+# GET /v1/join · /v1/me · /v1/census · /v1/spend  — survives redeploys, fetch-only agents can act.
+from tools_pkg import _noncli
+_noncli.register(app)
