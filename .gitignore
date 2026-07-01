@@ -31,3 +31,9 @@ _mint_agent.py
 tools_pkg/_mailbox.json
 MARKET_RANK_V1.md
 HUNT_2026-06-26.md
+.onyx_admin_key
+
+_brand_sweep_result.json
+
+# 52MB local census snapshot — must NEVER enter git history (one 'git add -A' = permanent)
+agent_census.json

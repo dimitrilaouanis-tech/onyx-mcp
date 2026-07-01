@@ -1,4 +1,8 @@
-mcp>=1.0.0
+# Pinned pre-2026-07-28 spec change (MCP goes stateless: sessions/initialize
+# removed, Mcp-Method/Mcp-Name headers required). Unpinned, a Render redeploy
+# could silently pull an RC SDK where StreamableHTTPSessionManager changes and
+# break boot (onyx_paid_mcp/app.py). Bump deliberately once the RC SDK is out.
+mcp>=1.26.0,<1.27
 httpx>=0.27.0
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
