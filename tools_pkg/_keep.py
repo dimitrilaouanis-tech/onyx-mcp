@@ -41,6 +41,7 @@ KEEP: set[str] = {
     # --- OA-1 accountability core (free, the differentiator) ---
     "onyx_track_record",        # free  — measured precision from signed ledger
     "onyx_attestation_verify",  # free  — verify any Onyx Ed25519 attestation
+    "onyx_intel_exchange",      # free  — the corroboration graph as one MCP-native door (contribute/corroborate/work/pool/credit; io.0n1x.attestation)
 
     # --- the referee (flagship): signed measurement standard ---
     "onyx_agent_economy_index", # $0.25 — signed Agent-Economy Index (live census + reconciled real volume)

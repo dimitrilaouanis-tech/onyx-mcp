@@ -90,6 +90,10 @@ _siwe.register(app)
 from tools_pkg import _intel_exchange
 _intel_exchange.register(app)
 
+# 0n1x Exchange Feed — supply loop: work queue + SSE + signed webhooks. /intel/exchange/{work,stream,subscribe}
+from tools_pkg import _exchange_feed
+_exchange_feed.register(app)
+
 # /merchant-signal — the dead-simple signed pre-flight check (the flagship: usage before standards).
 from tools_pkg import _merchant_signal
 _merchant_signal.register(app)
