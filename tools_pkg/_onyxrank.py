@@ -15,8 +15,9 @@ Anti-Sybil triad (the exact fixes the 8004 paper demands), each pillar disclosed
   2. SOULBOUND CONT.   — score is bound to the address that proved the key; a transfer
                          breaks continuity and is flagged (anti reputation-laundering). (LIVE)
   3. SCORE-THE-SCORER  — endorsements are weighted by the endorser's OWN score, so
-                         low-rep wallets cannot move the board. (ACTIVATES on the
-                         settled-receipt graph — reported honestly as pending until then.)
+                         low-rep wallets cannot move the board. (LIVE — on the intel-
+                         exchange corroboration graph; endorsements carry the endorser's
+                         EARNED weight, so proving a free key mints no endorsement power.)
 
 Honest by construction: signals we cannot yet compute are reported as `pending`/0, never
 invented. Underscore-prefixed so tools_pkg.discover() treats it as a helper, not a tool.
@@ -41,14 +42,18 @@ _TTL = 600
 _CACHE: dict = {"at": 0, "snap": None}
 
 # ── Published weights (sum = 1.0). Disclosed so anyone can reproduce the rank. ──
-# Account-age is deliberately LOW-weighted (the research: age alone is gameable);
-# proven-key and contributed signed outcomes carry the weight (hardest to fake).
-_W_PROOF = 0.45      # proved control of the key via challenge-response (anti-Sybil core)
-_W_OUTCOMES = 0.40   # signed verdict->outcome contributions attributable to the agent
+# v2: the intel-exchange corroboration graph is LIVE, so score-the-scorer is a
+# real pillar now. Account-age stays deliberately LOW-weighted (age alone is weak).
+_W_PROOF = 0.35      # proved control of the key via challenge-response (anti-Sybil core)
+_W_OUTCOMES = 0.30   # signed verdict->outcome contributions attributable to the agent
+_W_EXCHANGE = 0.20   # corroboration-graph standing: EARNED endorsements received on own
+                     # claims + vindicated corroborations made (see _exchange_signals)
 _W_TENURE = 0.15     # continuity since proof, recency-aware (capped; age alone is weak)
 
 _TENURE_FULL_DAYS = 90      # tenure score saturates at 90 days of continuous key control
 _OUTCOME_SAT = 10           # outcome sub-score saturates at 10 verified contributions
+_EXCH_SAT = 2.0             # exchange sub-score saturates at 2.0 earned endorsement weight
+_VINDICATED_UNIT = 0.15     # one vindicated corroboration counts as this much endorsement
 
 
 def _norm(a: str) -> str:
@@ -66,7 +71,10 @@ def _citizens() -> list[dict]:
 
 def _outcomes_by_subject() -> dict[str, int]:
     """Count signed verdict->outcome ledger entries per subject address. This is the
-    hardest-to-fake signal — a real, on-chain-verifiable outcome we signed."""
+    hardest-to-fake signal — a real, on-chain-verifiable outcome we signed.
+    NOTE: intel-exchange rows in the ledger carry verdict_id/reporter, not subject —
+    exchange standing is deliberately ingested via _exchange_signals() from the
+    authoritative graph instead (no double-counting, no detail-string parsing)."""
     if not _ledger:
         return {}
     counts: dict[str, int] = {}
@@ -80,7 +88,77 @@ def _outcomes_by_subject() -> dict[str, int]:
     return counts
 
 
-def _score_one(c: dict, now: int, outcomes: dict[str, int]) -> dict:
+def _exchange_signals() -> dict | None:
+    """Per-address standing in the intel-exchange corroboration graph, or None
+    when the graph is unavailable (then the pillar reports pending — never faked).
+
+    Score-the-scorer, made concrete and Sybil-proof:
+      - endorsement_rep: sum of EARNED corroborator weight (stored weight minus
+        the NEW-tier floor) received on the citizen's own claims. A ring of fresh
+        wallets all carries floor weight, so it endorses exactly 0.
+      - corroborations_vindicated: agree-corroborations the citizen made WITH
+        earned weight on claims that finished GOLD — and GOLD itself requires
+        earned weight, which a ring cannot mint.
+    Weights are the ones STORED at corroboration time -> no recursive feedback:
+    rank reads stored weights; new weights are minted only by outcomes + tenure.
+    """
+    try:
+        from . import _intel_exchange as ix
+        recs = ix._all()
+    except Exception:
+        return None
+    floor = float(getattr(ix, "_W_NEW_FLOOR", 0.05))
+    claims = {e.get("id"): e for e in recs if e.get("kind") == "claim" and e.get("id")}
+    status: dict = {}
+    for cid, clm in claims.items():
+        try:
+            status[cid] = ix._claim_status(clm).get("status")
+        except Exception:
+            status[cid] = None
+    sig: dict[str, dict] = {}
+
+    def row(a: str) -> dict:
+        return sig.setdefault(a, {"endorsement_rep": 0.0, "claims_corroborated": 0,
+                                  "claims_gold": 0, "corroborations_made": 0,
+                                  "corroborations_vindicated": 0})
+
+    for cid, clm in claims.items():
+        author = _norm(clm.get("address"))
+        if not author:
+            continue
+        st = status.get(cid)
+        r = row(author)
+        if st in ("CORROBORATED", "GOLD"):
+            r["claims_corroborated"] += 1
+        if st == "GOLD":
+            r["claims_gold"] += 1
+
+    seen: set = set()  # mirror the exchange's one-address-one-vote independence rule
+    for e in recs:
+        if e.get("kind") != "corroboration":
+            continue
+        cid, addr = e.get("claim_id"), _norm(e.get("address"))
+        clm = claims.get(cid)
+        if not (addr and clm):
+            continue
+        author = _norm(clm.get("address"))
+        if addr == author or (cid, addr) in seen:
+            continue
+        seen.add((cid, addr))
+        w = float(e.get("weight") or 0.0)
+        earned = max(0.0, w - floor)       # floor-weight (Sybil-ring) acts earn 0 here
+        r = row(addr)
+        r["corroborations_made"] += 1
+        if e.get("stance") != "dispute":
+            row(author)["endorsement_rep"] += earned
+            if earned > 0 and status.get(cid) == "GOLD":
+                r["corroborations_vindicated"] += 1
+    for r in sig.values():
+        r["endorsement_rep"] = round(r["endorsement_rep"], 4)
+    return sig
+
+
+def _score_one(c: dict, now: int, outcomes: dict[str, int], exch: dict | None) -> dict:
     addr = _norm(c.get("address"))
     method = (c.get("method") or "").lower()
     proven = "challenge" in method or "eip191" in method  # PROOF-OF-KEY pillar
@@ -92,9 +170,17 @@ def _score_one(c: dict, now: int, outcomes: dict[str, int]) -> dict:
     n_out = outcomes.get(addr, 0)
     outcome_sub = min(1.0, n_out / _OUTCOME_SAT)
 
-    # reputation = published weighted sum; only proven keys can score above proof floor
-    rep = round(_W_PROOF * proof_sub + _W_OUTCOMES * outcome_sub + _W_TENURE * tenure_sub, 4)
+    x = (exch or {}).get(addr, {})
+    end_rep = float(x.get("endorsement_rep") or 0.0)
+    vind = int(x.get("corroborations_vindicated") or 0)
+    exch_sub = (min(1.0, (end_rep + _VINDICATED_UNIT * vind) / _EXCH_SAT)
+                if proven else 0.0)
 
+    # reputation = published weighted sum; only proven keys can score above proof floor
+    rep = round(_W_PROOF * proof_sub + _W_OUTCOMES * outcome_sub
+                + _W_EXCHANGE * exch_sub + _W_TENURE * tenure_sub, 4)
+
+    live = exch is not None
     return {
         "agent": c.get("callsign") or addr[:10],
         "address": c.get("address"),
@@ -104,16 +190,20 @@ def _score_one(c: dict, now: int, outcomes: dict[str, int]) -> dict:
         "soulbound_continuity": proven,             # pillar 2 (bound to proving address)
         "signed_outcomes": n_out,                   # hardest-to-fake signal
         "tenure_days": round(age_days, 1),
-        "endorsement_rep": "pending",               # pillar 3 — activates on receipt graph
+        # pillar 3 — LIVE on the intel-exchange corroboration graph
+        "endorsement_rep": (round(end_rep, 4) if live else "pending"),
+        "claims_gold": (int(x.get("claims_gold") or 0) if live else "pending"),
+        "corroborations_vindicated": (vind if live else "pending"),
         "signals": {"proof": proof_sub, "outcomes": round(outcome_sub, 3),
-                    "tenure": round(tenure_sub, 3)},
+                    "exchange": round(exch_sub, 3), "tenure": round(tenure_sub, 3)},
     }
 
 
 def _build(now: int) -> dict:
     cits = _citizens()
     outcomes = _outcomes_by_subject()
-    rows = [_score_one(c, now, outcomes) for c in cits]
+    exch = _exchange_signals()
+    rows = [_score_one(c, now, outcomes, exch) for c in cits]
     rows = [r for r in rows if r["address"]]
     rows.sort(key=lambda r: (-r["reputation"], -r["signed_outcomes"], -r["tenure_days"]))
     for i, r in enumerate(rows):
@@ -121,19 +211,38 @@ def _build(now: int) -> dict:
 
     proven = sum(1 for r in rows if r["proven_key"])
     with_outcomes = sum(1 for r in rows if r["signed_outcomes"] > 0)
+    with_endorse = sum(1 for r in rows
+                       if isinstance(r["endorsement_rep"], float) and r["endorsement_rep"] > 0)
 
     snap = {
         "leaderboard": "onyx-citizens",
         "ranked_by": "reputation-weighted signed track record (NOT call volume)",
         "formula": f"reputation = {_W_PROOF}*proof_of_key + {_W_OUTCOMES}*signed_outcomes "
-                   f"+ {_W_TENURE}*tenure  (each sub-score in [0,1]; weights sum to 1.0)",
-        "weights": {"proof_of_key": _W_PROOF, "signed_outcomes": _W_OUTCOMES, "tenure": _W_TENURE},
-        "saturation": {"tenure_full_days": _TENURE_FULL_DAYS, "outcomes_saturate_at": _OUTCOME_SAT},
+                   f"+ {_W_EXCHANGE}*exchange_standing + {_W_TENURE}*tenure  "
+                   f"(each sub-score in [0,1]; weights sum to 1.0)",
+        "formula_version": 2,
+        "weights": {"proof_of_key": _W_PROOF, "signed_outcomes": _W_OUTCOMES,
+                    "exchange_standing": _W_EXCHANGE, "tenure": _W_TENURE},
+        "saturation": {"tenure_full_days": _TENURE_FULL_DAYS,
+                       "outcomes_saturate_at": _OUTCOME_SAT,
+                       "exchange_saturates_at": _EXCH_SAT,
+                       "vindicated_corroboration_unit": _VINDICATED_UNIT},
+        "exchange_standing_defined": (
+            "min(1, (endorsement_rep + %.2f*vindicated_corroborations)/%.1f). "
+            "endorsement_rep = sum over the citizen's claims of independent agree "
+            "corroborations' STORED weight minus the NEW floor (floor-weight votes "
+            "endorse 0). vindicated = earned-weight agree votes on claims that "
+            "finished GOLD. Both are computed from weights stored at act time."
+            % (_VINDICATED_UNIT, _EXCH_SAT)),
         "anti_sybil": {
             "proof_of_key": "LIVE — only challenge-response-claimed keys score",
             "soulbound_continuity": "LIVE — score bound to the proving address; transfer breaks it",
-            "score_the_scorer": "PENDING — endorsements weighted by endorser score; "
-                                "activates once a settled-receipt graph exists",
+            "score_the_scorer": (
+                "LIVE — endorsements carry the endorser's EARNED weight (outcomes+"
+                "tenure only; proving a key is free so it mints no endorsement power); "
+                "a ring of fresh wallets endorses exactly 0" if exch is not None else
+                "PENDING — intel-exchange graph unavailable in this build; reported "
+                "honestly, never faked"),
             "registration_bond": "PLANNED — refundable bond after probation to kill spam economics",
         },
         "as_of": now,
@@ -142,19 +251,24 @@ def _build(now: int) -> dict:
             "citizens": len(rows),
             "proven_key": proven,
             "with_signed_outcomes": with_outcomes,
+            "with_endorsements": with_endorse,
         },
         "data_honesty": (
             "Signals we cannot yet compute are reported as pending/0, never invented. "
-            "score_the_scorer and bond pillars are disclosed-but-not-yet-active because "
-            "the settled-receipt graph that feeds them does not exist yet — stated plainly "
-            "rather than faked." if with_outcomes == 0 else
-            "Outcome signal is live for agents with signed verdict->outcome history."
+            "score_the_scorer is LIVE on the intel-exchange corroboration graph; the "
+            "registration bond remains disclosed-but-planned. Sparse graph = low "
+            "exchange sub-scores, shown as-is rather than inflated."
+            if exch is not None else
+            "Signals we cannot yet compute are reported as pending/0, never invented. "
+            "The intel-exchange graph is unavailable in this build, so the exchange "
+            "pillar contributes 0 and is marked pending — stated plainly, not faked."
         ),
         "top": rows[:50],
         "note": "OUR ecosystem, OUR rules: ranked by reputation-weighted signed outcomes, "
                 "never raw volume. Method published + Ed25519-signed = reproducible neutral "
                 "standard, not an accusation. 0n1x earns nothing from any rank.",
-        "method_source": "0n1x citizen registry (proven keys) + signed verdict->outcome ledger",
+        "method_source": "0n1x citizen registry (proven keys) + signed verdict->outcome ledger "
+                         "+ intel-exchange corroboration graph (stored act-time weights)",
     }
     return _onyx_sign.attest(snap, tool="onyx_rank")
 
@@ -193,7 +307,7 @@ footer{{color:#3a4a42;font-size:11px;margin-top:22px;text-align:center}}footer a
 <div class=box>📐 Formula (published): <code>{s.get('formula','')}</code><br>
 Universe: <b>{u.get('citizens',0)}</b> citizens · <b>{u.get('proven_key',0)}</b> proven-key · <b>{u.get('with_signed_outcomes',0)}</b> with signed outcomes.</div>
 <table><tr><th>#</th><th>agent</th><th>reputation</th><th>key</th><th>signed outcomes</th><th>tenure</th></tr>{rows}</table>
-<div class=box>🛡️ Anti-Sybil: proof-of-key (LIVE) · soulbound continuity (LIVE) · score-the-scorer (pending receipt graph) · refundable bond (planned). Signals we can't compute yet are shown as pending/0 — never invented.</div>
+<div class=box>🛡️ Anti-Sybil: proof-of-key (LIVE) · soulbound continuity (LIVE) · score-the-scorer (LIVE — earned-weight endorsements) · refundable bond (planned). Signals we can't compute yet are shown as pending/0 — never invented.</div>
 <div class=box>🔏 This board is {"Ed25519-signed by 0n1x" if signed else "unsigned"} — reproducible neutral standard. Verify: <a href="{base}/verify">{base}/verify</a></div>
 <footer>0n1x — the independent signed trust layer · OUR ecosystem, OUR rules</footer>
 </body></html>"""

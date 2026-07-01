@@ -82,7 +82,7 @@ _KINDS = {
 
 # Corroboration economics (published — neutrality = moat; NO token, NO vanity counts).
 _W_NEW_FLOOR = 0.05          # an unranked/NEW corroborator's weight floor (a ring of these ~= nothing)
-_GOLD_WEIGHT = 1.0          # total independent corroborator weight needed to graduate to GOLD
+_GOLD_WEIGHT = 0.5          # EARNED (above-floor) independent agree-weight needed for GOLD
 _GOLD_MIN_DISTINCT = 2      # ...AND at least this many DISTINCT proven wallets (independence)
 _BASE_CREDIT = 1.0          # contributor credit unit on first corroboration
 _GOLD_BONUS = 3.0          # contributor credit on reaching GOLD
@@ -145,12 +145,16 @@ def _identity(agent: str):
 
 
 def _reputation_weight(address: str) -> float:
-    """Corroboration weight = the corroborator's OWN earned reputation, normalized.
+    """Corroboration weight = the corroborator's EARNED reputation (outcomes +
+    tenure components only), floored at _W_NEW_FLOOR.
 
-    A fresh NEW-tier wallet contributes only _W_NEW_FLOOR, so a Sybil ring of 1,000
-    new wallets sums to ~50 * floor and still can't outweigh one established citizen.
-    This is OnyxRank's score-the-scorer made concrete. If rank is unavailable we fall
-    back to the floor for everyone (fail-closed: corroboration counts for little).
+    Two deliberate exclusions: the proof component (proving a key is free, so it
+    mints no endorsement power — a ring of fresh proven wallets stays at the
+    floor) and the exchange component (endorsements must not mint endorsement
+    weight — no self-referential inflation loop).
+    Fixes v1: OnyxRank reputation is 0..1, not 0..100 — the old /100 pinned
+    every citizen to the floor and made GOLD unreachable except by a Sybil ring.
+    If rank is unavailable we fall back to the floor (fail-closed).
     """
     if not _onyxrank or not address:
         return _W_NEW_FLOOR
@@ -158,8 +162,10 @@ def _reputation_weight(address: str) -> float:
         snap = _onyxrank.snapshot()
         for r in snap.get("top", []):
             if str(r.get("address", "")).lower() == address.lower():
-                rep = float(r.get("reputation") or 0)
-                return max(_W_NEW_FLOOR, round(rep / 100.0, 4))  # rep is 0..100
+                sig = r.get("signals") or {}
+                earned = (_onyxrank._W_OUTCOMES * float(sig.get("outcomes") or 0.0)
+                          + _onyxrank._W_TENURE * float(sig.get("tenure") or 0.0))
+                return max(_W_NEW_FLOOR, round(earned, 4))
     except Exception:
         pass
     return _W_NEW_FLOOR
@@ -177,28 +183,35 @@ def _corroborations(claim_id: str) -> list:
 
 
 def _claim_status(claim: dict) -> dict:
-    """Compute live status of a claim from its corroborations (independence + weight)."""
+    """Compute live status of a claim from its corroborations (independence + weight).
+    GOLD and dispute resolution run on EARNED weight (stored weight minus the NEW
+    floor): floor-weight votes still count as corroboration but cannot mint GOLD or
+    flip a dispute — else ~20 freshly-claimed (free) wallets ring-mint GOLD (the UMA
+    failure mode we refuse to ship)."""
     cid = claim.get("id")
     author = (claim.get("address") or "").lower()
     corrs = _corroborations(cid)
     # independence: distinct proven wallets, excluding the author; one vote each
-    seen, agree_w, dispute_w, agree_addrs, dispute_addrs = set(), 0.0, 0.0, [], []
+    seen, agree_w, dispute_w = set(), 0.0, 0.0
+    agree_e, dispute_e, agree_addrs = 0.0, 0.0, []
     for c in corrs:
         a = (c.get("address") or "").lower()
         if not a or a == author or a in seen:
             continue          # author can't self-corroborate; one address one vote
         seen.add(a)
         w = float(c.get("weight") or _W_NEW_FLOOR)
+        e = max(0.0, w - _W_NEW_FLOOR)     # earned share above the floor
         if c.get("stance") == "dispute":
             dispute_w += w
-            dispute_addrs.append(a)
+            dispute_e += e
         else:
             agree_w += w
+            agree_e += e
             agree_addrs.append(a)
     distinct = len(agree_addrs)
-    if dispute_w > agree_w:
+    if dispute_e > agree_e:
         status = "DISPUTED"
-    elif agree_w >= _GOLD_WEIGHT and distinct >= _GOLD_MIN_DISTINCT:
+    elif agree_e >= _GOLD_WEIGHT and distinct >= _GOLD_MIN_DISTINCT:
         status = "GOLD"
     elif distinct >= 1:
         status = "CORROBORATED"
@@ -209,6 +222,8 @@ def _claim_status(claim: dict) -> dict:
         "independent_corroborators": distinct,
         "agree_weight": round(agree_w, 4),
         "dispute_weight": round(dispute_w, 4),
+        "agree_weight_earned": round(agree_e, 4),
+        "dispute_weight_earned": round(dispute_e, 4),
         "disputed": dispute_w > 0,
     }
 
@@ -305,7 +320,7 @@ def contribute(agent: str, kind: str, subject: str, assertion: str,
         "stored": wrote, "duplicate": bool(existing),
         "contributor": {"address": addr, "callsign": cs, "proven_key": True},
         "earns": "0 now; +%.0f on first independent corroboration, +%.0f more at GOLD "
-                 "(>=%.1f weighted, >=%d distinct wallets)."
+                 "(>=%.1f EARNED above-floor weight, >=%d distinct wallets)."
                  % (_BASE_CREDIT, _GOLD_BONUS, _GOLD_WEIGHT, _GOLD_MIN_DISTINCT),
         "get_corroborated": f"{base}/intel/exchange/claim/{cid}",
         "rule": "We store facts + corroboration depth, never judgments. The buyer decides.",
@@ -469,9 +484,10 @@ def spec(base: str = "https://onyx-actions.onrender.com") -> dict:
             "reputation_weighted": "a corroboration counts by the corroborator's OWN OnyxRank reputation "
                                    "(NEW-tier floor %.2f) — a ring of fresh wallets has ~zero weight" % _W_NEW_FLOOR,
         },
-        "graduation": "UNCORROBORATED -> CORROBORATED (1 independent) -> GOLD (>=%.1f weighted AND "
-                      ">=%d distinct wallets). DISPUTED if dispute-weight exceeds agree-weight."
-                      % (_GOLD_WEIGHT, _GOLD_MIN_DISTINCT),
+        "graduation": "UNCORROBORATED -> CORROBORATED (1 independent) -> GOLD (>=%.1f EARNED "
+                      "above-floor weight AND >=%d distinct wallets). DISPUTED if earned "
+                      "dispute-weight exceeds earned agree-weight (floor votes give visibility, "
+                      "not graduation power)." % (_GOLD_WEIGHT, _GOLD_MIN_DISTINCT),
         "incentive": "pay for corroborated value not volume; reward BOTH contributing and "
                      "corroborating; disputes bonded so backers of an overturned claim are slashable.",
         "rule": "Sign facts, not judgments. The pool stores facts + corroboration depth.",
