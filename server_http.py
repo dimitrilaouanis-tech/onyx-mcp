@@ -85,3 +85,7 @@ _pulsefeed.register(app)
 # Proof-of-key gate (EIP-4361) — public block CHECKS; only the key ACTS. Guards /attest /onboard /perm/check.
 from tools_pkg import _siwe
 _siwe.register(app)
+
+# 0n1x Intel Exchange — the signed external-corroboration graph (give-to-get). GET/POST /intel/exchange/*
+from tools_pkg import _intel_exchange
+_intel_exchange.register(app)
