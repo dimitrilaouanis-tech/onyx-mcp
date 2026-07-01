@@ -2575,12 +2575,24 @@ code,pre{{background:#161b22;border:1px solid #30363d;border-radius:6px}}pre{{pa
             return HTMLResponse(_scamcheck.render_page(base))
 
         @api.get("/api/check", include_in_schema=False)
-        async def _check_api(url: str = "", expected_price: float | None = None):
+        async def _check_api(url: str = "", expected_price: float | None = None,
+                             x_forwarded_for: str = Header(default="")):
             """Free JSON: red-flag verdict for a store URL. Backs the page + any
-            partner the sales team wires up. No key, no payment, no signup."""
-            from tools_pkg import _scamcheck
+            partner the sales team wires up. No key, no payment, no signup.
+
+            Abuse-capped per IP: this runs the SAME live-TLS+RDAP forensic engine
+            as the paid onyx_merchant_fact_check tool, so the cap stops bulk
+            free-scraping of the flagship while leaving demo/funnel use free."""
+            from tools_pkg import _scamcheck, _ratelimit
             if not (url or "").strip():
                 return {"ok": False, "error": "Enter a website address."}
+            _ok, _rem = _ratelimit.allow("apicheck:" + _ratelimit.client_ip(x_forwarded_for),
+                                         limit=30, window_sec=3600)
+            if not _ok:
+                return {"ok": False, "rate_limited": True,
+                        "error": "Free check limit reached (30/hour per IP). For "
+                                 "unmetered volume call the signed onyx_merchant_fact_check "
+                                 "tool over x402, or retry later."}
             try:
                 return _scamcheck.check(url, expected_price=expected_price)
             except ValueError as ve:

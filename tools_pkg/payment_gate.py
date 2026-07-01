@@ -30,7 +30,7 @@ from . import _onyx_sign
 
 NAME = "onyx_payment_gate"
 PRICE_USDC = "0.05"
-TIER = "standard"
+TIER = "metered"
 DESCRIPTION = (
     "Pre-payment clearance for agents. Call this BEFORE settling with a merchant "
     "over x402/AP2: give the merchant domain (optionally the amount and the price "

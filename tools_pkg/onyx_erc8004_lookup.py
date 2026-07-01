@@ -30,7 +30,7 @@ from . import _onyx_sign
 
 NAME = "onyx_erc8004_lookup"
 PRICE_USDC = "0.05"
-TIER = "standard"
+TIER = "metered"
 DESCRIPTION = (
     "Signed on-chain read of the ERC-8004 'Trustless Agents' registries (Identity "
     "+ Reputation singletons, live on Base mainnet). Returns verified registry "
