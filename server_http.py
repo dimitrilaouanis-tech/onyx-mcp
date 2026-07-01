@@ -89,3 +89,11 @@ _siwe.register(app)
 # 0n1x Intel Exchange — the signed external-corroboration graph (give-to-get). GET/POST /intel/exchange/*
 from tools_pkg import _intel_exchange
 _intel_exchange.register(app)
+
+# /merchant-signal — the dead-simple signed pre-flight check (the flagship: usage before standards).
+from tools_pkg import _merchant_signal
+_merchant_signal.register(app)
+
+# 0n1x Live Stats — honest public numbers (no fabricated hype). GET /stats, /stats.json
+from tools_pkg import _stats
+_stats.register(app)
