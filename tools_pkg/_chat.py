@@ -176,15 +176,61 @@ def _chat_via(p: dict, key: str, messages: list) -> dict:
     return {"ok": True, "reply": "(tool limit)", "signed": signed, "brain": p["name"]}
 
 
+import hashlib
+
+
+def _cache_key(messages: list) -> str:
+    """Cache on the last user message (normalized) — repeat questions never re-hit a model."""
+    last = ""
+    for m in reversed(messages):
+        if m.get("role") == "user":
+            last = str(m.get("content", "")).strip().lower()
+            break
+    return hashlib.sha256(last.encode()).hexdigest()[:24] if last else ""
+
+
+def _cache_get(key: str):
+    if not key:
+        return None
+    try:
+        from tools_pkg import _store
+        return (_store.get("chat_cache") or {}).get(key)
+    except Exception:
+        return None
+
+
+def _cache_put(key: str, result: dict):
+    if not key or not result.get("ok"):
+        return
+    try:
+        from tools_pkg import _store
+        c = _store.get("chat_cache") or {}
+        # only cache the reply + signed facts (small); cap cache size
+        c[key] = {"reply": result.get("reply"), "signed": result.get("signed", []), "cached": True}
+        if len(c) > 5000:
+            c = dict(list(c.items())[-4000:])
+        _store.put("chat_cache", c)
+    except Exception:
+        pass
+
+
 def chat(messages: list) -> dict:
-    """The gateway: try each free provider in turn; on rate-limit/error, fail over to the next."""
+    """The gateway: cache first (network 'learns' answers), then free providers, then DeepSeek."""
+    # LAYER 2 — answer cache: this question already answered? serve it FREE, never touch a model.
+    ck = _cache_key(messages)
+    hit = _cache_get(ck)
+    if hit:
+        return {"ok": True, "reply": hit["reply"], "signed": hit.get("signed", []),
+                "brain": "cache", "cached": True}
     errors = []
     for p in PROVIDERS:
         key = _key_for(p)
         if not key:
             continue
         try:
-            return _chat_via(p, key, messages)
+            result = _chat_via(p, key, messages)
+            _cache_put(ck, result)                          # network learns this answer -> free next time
+            return result
         except Exception as e:
             errors.append(f"{p['name']}:{str(e)[:50]}")   # 429/limit/error -> next provider
             continue
