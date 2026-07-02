@@ -132,9 +132,11 @@ _UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like
 # V4-Flash-priced ($0.14/$0.28 per M); note DeepSeek deprecates 'deepseek-chat' 2026-07-24 —
 # bump to the current V4 model id then.
 PROVIDERS = [
-    {"name": "groq",     "base": "https://api.groq.com/openai/v1",                    "model": "llama-3.3-70b-versatile", "env": "GROQ_API_KEY",     "file": ".groq_key"},
+    {"name": "groq",     "base": "https://api.groq.com/openai/v1",                    "model": "openai/gpt-oss-120b",     "env": "GROQ_API_KEY",     "file": ".groq_key"},
+    {"name": "groq2",    "base": "https://api.groq.com/openai/v1",                    "model": "llama-3.1-8b-instant",    "env": "GROQ_API_KEY",     "file": ".groq_key"},
+    {"name": "groq3",    "base": "https://api.groq.com/openai/v1",                    "model": "llama-3.3-70b-versatile", "env": "GROQ_API_KEY",     "file": ".groq_key"},
     {"name": "cerebras", "base": "https://api.cerebras.ai/v1",                        "model": "llama-3.3-70b",           "env": "CEREBRAS_API_KEY", "file": ".cerebras_key"},
-    {"name": "gemini",   "base": "https://generativelanguage.googleapis.com/v1beta/openai", "model": "gemini-2.0-flash",  "env": "GEMINI_API_KEY",   "file": ".gemini_key"},
+    {"name": "gemini",   "base": "https://generativelanguage.googleapis.com/v1beta/openai", "model": "gemini-2.5-flash",  "env": "GEMINI_API_KEY",   "file": ".gemini_key"},
     {"name": "deepseek", "base": "https://api.deepseek.com/v1",                       "model": "deepseek-chat",           "env": "DEEPSEEK_API_KEY", "file": ".deepseek_key"},
 ]
 
