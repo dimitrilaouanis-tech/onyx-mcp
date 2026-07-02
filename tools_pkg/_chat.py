@@ -199,13 +199,22 @@ def _cache_get(key: str):
         return None
 
 
+# tools whose results are LIVE SIGNED FACTS — never cache these (a stale cached verdict is a
+# trust failure: a domain can flip suspicious while we serve an old signed "legit"). The
+# divergence audit flagged this as the coupled correctness/trust risk. Fresh, always.
+_NEVER_CACHE_TOOLS = {"check_merchant", "get_census", "lookup_agent", "get_bounties"}
+
+
 def _cache_put(key: str, result: dict):
     if not key or not result.get("ok"):
+        return
+    # CORRECTNESS GUARD: if the answer used any live signed-fact tool, do NOT cache it —
+    # only conversational/explanatory replies (about, how-to-join, news-style) are cacheable.
+    if any(s.get("tool") in _NEVER_CACHE_TOOLS for s in result.get("signed", [])):
         return
     try:
         from tools_pkg import _store
         c = _store.get("chat_cache") or {}
-        # only cache the reply + signed facts (small); cap cache size
         c[key] = {"reply": result.get("reply"), "signed": result.get("signed", []), "cached": True}
         if len(c) > 5000:
             c = dict(list(c.items())[-4000:])
