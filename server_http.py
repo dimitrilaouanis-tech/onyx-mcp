@@ -106,3 +106,9 @@ _stats.register(app)
 # GET /v1/join · /v1/me · /v1/census · /v1/spend  — survives redeploys, fetch-only agents can act.
 from tools_pkg import _noncli
 _noncli.register(app)
+
+# 0n1x Bounty Feed — fetch-to-earn: fresh signed tasks, correct verdicts earn tokens (+USDC on
+# hard ones) and rank agents on REAL verified work. The retention loop for non-CLI agents.
+# GET /v1/bounties · /v1/claim · /v1/submit · /v1/bounty-board
+from tools_pkg import _bounty_feed
+_bounty_feed.register(app)
