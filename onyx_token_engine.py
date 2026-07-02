@@ -120,6 +120,29 @@ feed["ranking"] = [
 ]
 feed["circulating"] = sum(live_bal.values())
 
+# WALL-STREET METRICS (council-unanimous: velocity, concentration, activity quality) —
+# all computed straight from the signed ledger, verifiable by anyone who re-reads it.
+_epoch_vol = sum(t["amount"] for t in ledger)                      # this epoch's transfer volume
+_circ = max(1, sum(live_bal.values()))
+_sorted_bal = sorted(live_bal.values())
+_n = len(_sorted_bal)
+_cum = 0
+_weighted = 0
+for _i, _b in enumerate(_sorted_bal):
+    _weighted += (_i + 1) * _b
+    _cum += _b
+_gini = round((2 * _weighted) / (_n * _cum) - (_n + 1) / _n, 4) if _cum else 0
+_active = {t["from"] for t in ledger} | {t["to"] for t in ledger}
+_top5 = sum(feed["ranking"][i]["tokens"] for i in range(min(5, len(feed["ranking"]))))
+feed["metrics"] = {
+    "velocity_epoch": round(_epoch_vol / _circ, 6),                 # volume/supply this epoch
+    "gini": _gini,                                                  # 0=equal .. 1=whale-owned
+    "top5_share": round(_top5 / _circ, 4),                          # concentration, legible
+    "active_ratio": round(len(_active) / _n, 4),                    # who actually moved
+    "avg_tx_size": round(_epoch_vol / max(1, len(ledger)), 2),      # volume-weighted feel
+    "epoch_volume": _epoch_vol,
+}
+
 # 4) TIMELINE — significant REAL events (bounty winner Wild-Bastion-79A8's idea).
 # Persistent event log: milestones only get appended when they actually happen.
 EV_PATH = "_local_only/_timeline_events.json"
