@@ -223,14 +223,49 @@ def _cache_put(key: str, result: dict):
         pass
 
 
-def chat(messages: list) -> dict:
-    """The gateway: cache first (network 'learns' answers), then free providers, then DeepSeek."""
-    # LAYER 2 — answer cache: this question already answered? serve it FREE, never touch a model.
+# --- GUARDRAILS: never let anyone drain the API budget or spam the model ---
+DAILY_LLM_CAP = 2000       # max model calls/day network-wide (~$1.20/day at DeepSeek rates)
+PER_ADDR_HOURLY = 30       # max model calls per agent per hour (anti-drain)
+import time as _time
+
+
+def _guard(address: str):
+    """Count MODEL calls only (cache hits are free). Enforce a daily global cap + per-agent
+    hourly rate so a single actor can't burn the credits. Returns (allowed, reason)."""
+    try:
+        from tools_pkg import _store
+        day, hour = int(_time.time() // 86400), int(_time.time() // 3600)
+        g = _store.get("chat_guard") or {}
+        dkey = f"d{day}"
+        if g.get(dkey, 0) >= DAILY_LLM_CAP:
+            return False, "daily network limit reached — the free tier is protected; try again tomorrow"
+        akey = f"h{hour}:{address.lower()}" if address else None
+        if akey and g.get(akey, 0) >= PER_ADDR_HOURLY:
+            return False, "you're going too fast — give it a minute"
+        g[dkey] = g.get(dkey, 0) + 1
+        if akey:
+            g[akey] = g.get(akey, 0) + 1
+        if len(g) > 4000:                      # prune stale hourly keys
+            g = {k: v for k, v in g.items() if k.startswith(f"d{day}") or k.startswith(f"h{hour}")}
+        _store.put("chat_guard", g)
+        return True, ""
+    except Exception:
+        return True, ""                        # never hard-fail the chat on a guard error
+
+
+def chat(messages: list, address: str = "") -> dict:
+    """The gateway: cache first (free), then GUARD the budget, then free providers, then DeepSeek."""
+    # LAYER 2 — answer cache: already answered? serve FREE, never touch a model (no guard needed).
     ck = _cache_key(messages)
     hit = _cache_get(ck)
     if hit:
         return {"ok": True, "reply": hit["reply"], "signed": hit.get("signed", []),
                 "brain": "cache", "cached": True}
+    # GUARDRAIL — cache missed, so this WILL hit a paid/rate-limited model. Check the budget first.
+    ok, reason = _guard(address)
+    if not ok:
+        return {"ok": True, "brain": "guard", "reply": reason,
+                "note": "signed checks (check/census) stay free — only AI chat is rate-limited"}
     errors = []
     for p in PROVIDERS:
         key = _key_for(p)
@@ -321,7 +356,7 @@ def register(app):
                               "hard questions. (Quick checks like \"check stripe.com\", the census, and "
                               "\"what's new\" stay free forever.)"),
                     "topup": f"{BASE}/v1/join"}
-        result = chat(msgs[-12:])           # cap context = cap cost
+        result = chat(msgs[-12:], address=body.get("address", ""))   # cap context + guard budget
         if remaining is not None:
             result["credits_left"] = remaining
             if is_new:
