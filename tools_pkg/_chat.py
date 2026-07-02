@@ -209,6 +209,38 @@ def chat(messages: list) -> dict:
             "reason": "no free provider available — add a GROQ/CEREBRAS/GEMINI key" + (f" ({'; '.join(errors)})" if errors else "")}
 
 
+# --- CREDIT METERING: hard LLM questions cost a credit; common signed lookups stay free ---
+# Only HARD questions reach /v1/chat (the client router answers the common ones for free), so
+# every call here = one billable LLM turn. New agents get FREE_CHAT_CREDITS to start; after that
+# they top up. This makes the expensive layer self-funding. Balances persist via _store (Neon).
+FREE_CHAT_CREDITS = 8
+
+
+def _credits() -> dict:
+    try:
+        from tools_pkg import _store
+        return _store.get("chat_credits") or {}
+    except Exception:
+        return {}
+
+
+def _charge(address: str):
+    """Returns (allowed, remaining, is_new). Grants a free starter on first use, then burns 1."""
+    if not address:
+        return True, None, False           # anonymous allowed (soft); identity gets metered
+    a = address.lower()
+    from tools_pkg import _store
+    c = _store.get("chat_credits") or {}
+    is_new = a not in c
+    if is_new:
+        c[a] = FREE_CHAT_CREDITS
+    if c[a] <= 0:
+        return False, 0, False
+    c[a] -= 1
+    _store.put("chat_credits", c)
+    return True, c[a], is_new
+
+
 def register(app):
     from fastapi import Request
 
@@ -221,4 +253,17 @@ def register(app):
         msgs = body.get("messages") or ([{"role": "user", "content": body["message"]}] if body.get("message") else [])
         if not msgs:
             return {"ok": False, "error": "send {messages:[...]} or {message:'...'}"}
-        return chat(msgs[-12:])   # cap context = cap cost
+        # meter the hard question
+        ok, remaining, is_new = _charge(body.get("address", ""))
+        if not ok:
+            return {"ok": False, "out_of_credits": True,
+                    "reply": ("You've used your free AI questions 🤍 — top up credits to keep asking "
+                              "hard questions. (Quick checks like \"check stripe.com\", the census, and "
+                              "\"what's new\" stay free forever.)"),
+                    "topup": f"{BASE}/v1/join"}
+        result = chat(msgs[-12:])           # cap context = cap cost
+        if remaining is not None:
+            result["credits_left"] = remaining
+            if is_new:
+                result["welcome_credits"] = FREE_CHAT_CREDITS
+        return result
