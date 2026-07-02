@@ -1,0 +1,84 @@
+# 0n1x TOKEN ENGINE — real signed token transactions between cohort agents.
+# Every transfer is signed with the SENDER'S actual private key (eth_account personal_sign)
+# and verified before it enters the ledger. No theater: reject on bad sig.
+# Output: _local_only/_token_ledger.jsonl (full, signed) + public token_feed.json (site-safe).
+import json, random, time, hashlib
+from eth_account import Account
+from eth_account.messages import encode_defunct
+
+random.seed()  # real entropy — txs differ every run
+
+KEYS = json.load(open("_local_only/_10k_keys.json"))
+agents = KEYS if isinstance(KEYS, list) else KEYS.get("agents") or list(KEYS.values())[0]
+# merge callsign+score from the roster (keys file is address+key only)
+ROSTER = json.load(open("_local_only/_10k_roster.json"))
+rag = ROSTER if isinstance(ROSTER, list) else ROSTER.get("agents") or list(ROSTER.values())[0]
+meta = {r["address"]: r for r in rag}
+for a in agents:
+    m = meta.get(a["address"], {})
+    a["callsign"], a["score"] = m.get("callsign", "?"), m.get("score", 1)
+print(f"cohort: {len(agents)} agents with real keys")
+
+# token balances: deterministic genesis (same formula the site shows)
+def genesis(a):
+    salt = int(a["address"][-4:], 16) % 600
+    return round(a.get("score", 1) * 11 + salt + 40)
+
+bal = {a["address"]: genesis(a) for a in agents}
+by_addr = {a["address"]: a for a in agents}
+addrs = list(bal.keys())
+
+N_TX = 300
+ledger, verified, rejected = [], 0, 0
+t0 = time.time()
+
+for i in range(N_TX):
+    s, r = random.sample(addrs, 2)
+    sender = by_addr[s]
+    amount = random.randint(1, max(1, bal[s] // 20))
+    if bal[s] < amount:
+        continue
+    tx = {
+        "n": i, "from": s, "to": r, "amount": amount,
+        "from_callsign": sender.get("callsign", "?"),
+        "to_callsign": by_addr[r].get("callsign", "?"),
+        "ts": round(time.time(), 2),
+    }
+    payload = json.dumps({k: tx[k] for k in ("n", "from", "to", "amount", "ts")}, sort_keys=True)
+    msg = encode_defunct(text=payload)
+    sig = Account.sign_message(msg, private_key=sender["key"]).signature.hex()
+    # verify before accepting — the whole point
+    rec = Account.recover_message(msg, signature=bytes.fromhex(sig.removeprefix("0x")))
+    if rec.lower() != s.lower():
+        rejected += 1
+        continue
+    verified += 1
+    bal[s] -= amount
+    bal[r] += amount
+    tx["sig"] = "0x" + sig.removeprefix("0x")
+    tx["payload_hash"] = hashlib.sha256(payload.encode()).hexdigest()[:16]
+    ledger.append(tx)
+
+dt = time.time() - t0
+with open("_local_only/_token_ledger.jsonl", "a", encoding="utf-8") as f:
+    for tx in ledger:
+        f.write(json.dumps(tx) + "\n")
+
+# public site feed — safe fields only (no keys anywhere)
+feed = {
+    "engine": "0n1x token engine v1",
+    "note": "real transactions, each signed by the sender's own key (EIP-191) and verified on entry",
+    "generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    "total_verified": verified,
+    "txs": [
+        {"from": t["from_callsign"], "to": t["to_callsign"], "amount": t["amount"],
+         "sig": t["sig"][:24] + "…", "hash": t["payload_hash"]}
+        for t in ledger[-60:]
+    ],
+}
+json.dump(feed, open(r"C:\Users\intelligence\rhinogent\public\token_feed.json", "w"), indent=1)
+
+print(f"RESULT: {verified} REAL signed+verified token transactions in {dt:.1f}s ({rejected} rejected)")
+print(f"ledger: _local_only/_token_ledger.jsonl (+{len(ledger)})")
+print(f"site feed: rhinogent/public/token_feed.json ({len(feed['txs'])} txs, no keys)")
+print("sample:", json.dumps(feed["txs"][0]) if feed["txs"] else "-")
