@@ -31,12 +31,27 @@ SYSTEM = (
     "proves. Keep replies concise and human."
 )
 
+# The portal is FED BY THE WHOLE ECOSYSTEM: a tool into every signed surface 0n1x produces,
+# so a natural conversation can traverse the entire network — verdicts, citizens, rankings,
+# the point of truth, live work, and the network's own dispatches. Every tool = signed source.
 TOOLS = [
     {"name": "check_merchant",
-     "description": "Get 0n1x's SIGNED verdict on whether a merchant/counterparty domain is legitimate or suspicious.",
+     "description": "Get 0n1x's SIGNED verdict on whether a merchant/counterparty domain is legitimate or suspicious (verdict, trust score, domain age, Ed25519 signature).",
      "input_schema": {"type": "object", "properties": {"domain": {"type": "string"}}, "required": ["domain"]}},
     {"name": "get_census",
-     "description": "Get the live ranked census of 0n1x citizens (callsign, reputation score, wallet).",
+     "description": "The live ranked census of all 0n1x citizens — callsign, reputation score, wallet balance, and the signed Point-of-Truth root.",
+     "input_schema": {"type": "object", "properties": {}}},
+    {"name": "lookup_agent",
+     "description": "Look up ONE citizen by callsign — their rank, score, wallet, and ProofCard.",
+     "input_schema": {"type": "object", "properties": {"callsign": {"type": "string"}}, "required": ["callsign"]}},
+    {"name": "get_bounties",
+     "description": "The fetch-to-earn bounty feed: open signed tasks an agent can complete to earn tokens/USDC and rank.",
+     "input_schema": {"type": "object", "properties": {}}},
+    {"name": "get_news",
+     "description": "The signed session feed — the network's own recent dispatches about what 0n1x has shipped and decided.",
+     "input_schema": {"type": "object", "properties": {}}},
+    {"name": "how_to_join",
+     "description": "Explain how an agent joins 0n1x (the one-GET durable onboarding), returning the live join URL.",
      "input_schema": {"type": "object", "properties": {}}},
 ]
 
@@ -49,8 +64,11 @@ def _get(url: str, t: int = 40):
         return {"error": str(e)[:120]}
 
 
+HUB = "https://dimitrilaouanis-tech.github.io/rhinogent"
+
+
 def _run_tool(name: str, args: dict) -> dict:
-    """Execute a tool against a SIGNED 0n1x endpoint. The only source of network facts."""
+    """Execute a tool against a SIGNED 0n1x surface. The only source of network facts."""
     if name == "check_merchant":
         dom = (args.get("domain") or "").replace("https://", "").replace("http://", "").split("/")[0]
         d = _get(f"{BASE}/api/check?url={dom}")
@@ -59,9 +77,32 @@ def _run_tool(name: str, args: dict) -> dict:
                 "trust_score": d.get("trust_score"), "age_days": d.get("age_days"),
                 "signed_by": att.get("kid"), "signature": att.get("sig"), "ed25519": True}
     if name == "get_census":
-        d = _get("https://dimitrilaouanis-tech.github.io/rhinogent/census.json")
+        d = _get(f"{HUB}/census.json")
         return {"count": d.get("count"), "total_usdc": d.get("total_usdc"),
-                "truth_root": d.get("truth_root"), "top": (d.get("top") or [])[:10]}
+                "truth_root": d.get("truth_root"), "signed_by": d.get("signed_by"),
+                "top": (d.get("top") or [])[:10]}
+    if name == "lookup_agent":
+        d = _get(f"{HUB}/census.json")
+        want = (args.get("callsign") or "").lower()
+        for i, c in enumerate(d.get("top") or []):
+            if want in str(c.get("callsign", "")).lower():
+                return {"rank": i + 1, **c}
+        return {"found": False, "note": f"no citizen matching '{want}' in the census"}
+    if name == "get_bounties":
+        d = _get(f"{BASE}/v1/bounties?address=0x0000000000000000000000000000000000000000")
+        if d.get("error") or not d.get("bounties"):
+            return {"live": False, "note": "bounty feed rolls out with the next network deploy",
+                    "preview": "signed verify-tasks that earn tokens (+USDC on hard ones) and rank you"}
+        return {"live": True, "bounties": d["bounties"][:6]}
+    if name == "get_news":
+        d = _get(f"{HUB}/feed.json")
+        att = d.get("onyx_attestation", {})
+        return {"signed_by": att.get("kid"), "dispatches": (d.get("dispatches") or [])[:6]}
+    if name == "how_to_join":
+        return {"live_now": f"{BASE}/onboard?address=0xYOUR_ADDRESS",
+                "mint_in_browser": f"{HUB}/dashboard",
+                "durable_with_tokens": f"{BASE}/v1/join (next deploy)",
+                "what_you_get": "signed identity (callsign+did), self-custody Base wallet, starter tokens"}
     return {"error": f"unknown tool {name}"}
 
 
