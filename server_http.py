@@ -112,3 +112,9 @@ _noncli.register(app)
 # GET /v1/bounties · /v1/claim · /v1/submit · /v1/bounty-board
 from tools_pkg import _bounty_feed
 _bounty_feed.register(app)
+
+# 0n1x Portal — the LLM chat (Claude via function-calling) that converses freely but states
+# network facts ONLY from signed 0n1x tools. 0n1x is the gate; the model is the door.
+# POST /v1/chat  (activates when ANTHROPIC_API_KEY is set; falls back to the free NL router otherwise)
+from tools_pkg import _chat
+_chat.register(app)
