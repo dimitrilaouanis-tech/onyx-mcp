@@ -125,8 +125,10 @@ def _groq(messages: list, key: str) -> dict:
     msgs = [{"role": "system", "content": SYSTEM}] + messages
     body = json.dumps({"model": "llama-3.3-70b-versatile", "messages": msgs,
                        "tools": _to_openai_tools(), "max_tokens": 1024}).encode()
+    ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
     req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions", data=body,
-                                 headers={"authorization": f"Bearer {key}", "content-type": "application/json"})
+                                 headers={"authorization": f"Bearer {key}", "content-type": "application/json",
+                                          "User-Agent": ua})
     return json.loads(urllib.request.urlopen(req, timeout=60).read())
 
 
