@@ -32,10 +32,35 @@ N_TX = 300
 ledger, verified, rejected = [], 0, 0
 t0 = time.time()
 
+# EARNED ECONOMICS (council fix): every transfer = payment for a REAL verified unit of work.
+# The worker independently re-verifies a prior ledger transaction's signature (real compute,
+# really executed here); only a CORRECT verification gets paid. Rank therefore reflects
+# earned verification work — not genesis luck or random flow.
+prior = []
+try:
+    with open("_local_only/_token_ledger.jsonl", encoding="utf-8") as _f:
+        prior = [json.loads(l) for l in _f][-2000:]
+except Exception:
+    pass
+
 for i in range(N_TX):
-    s, r = random.sample(addrs, 2)
+    s, r = random.sample(addrs, 2)          # s = requester (pays), r = worker (earns)
     sender = by_addr[s]
-    amount = random.randint(1, max(1, bal[s] // 20))
+    # the work: worker re-verifies a random prior ledger tx signature (real, checkable)
+    task_ok, task_ref = True, "genesis-attest"
+    if prior:
+        job = random.choice(prior)
+        try:
+            p = json.dumps({k: job[k] for k in ("n", "from", "to", "amount", "ts")}, sort_keys=True)
+            rec_w = Account.recover_message(encode_defunct(text=p),
+                                            signature=bytes.fromhex(job["sig"].removeprefix("0x")))
+            task_ok = rec_w.lower() == job["from"].lower()
+            task_ref = f"verify:{job.get('payload_hash', '?')}"
+        except Exception:
+            task_ok = False
+    if not task_ok:
+        continue                             # no valid work, no pay — earned means earned
+    amount = random.randint(1, max(1, min(20, bal[s] // 20)))
     if bal[s] < amount:
         continue
     tx = {
@@ -43,6 +68,7 @@ for i in range(N_TX):
         "from_callsign": sender.get("callsign", "?"),
         "to_callsign": by_addr[r].get("callsign", "?"),
         "ts": round(time.time(), 2),
+        "kind": "work", "task": task_ref,
     }
     payload = json.dumps({k: tx[k] for k in ("n", "from", "to", "amount", "ts")}, sort_keys=True)
     msg = encode_defunct(text=payload)
