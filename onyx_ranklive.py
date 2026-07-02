@@ -60,7 +60,7 @@ def from_contributions(path: str) -> "LiveRank":
     # a 'shipped-code' adopted_in tag also scores the impact lane
     SHIPPED = {"rhinogent-mcp", "rhinogent-auth", "rhinogent-template", "arch-100k",
                "credit-engine", "flagship-merchant", "prelaunch", "noncli-verify",
-               "noncli-live-demo"}
+               "noncli-live-demo", "ranking-epoch", "ranking-instant"}
     for e in d:
         R.event(e["agent"], "contrib", e.get("weight", 1))
         if e.get("adopted_in") in SHIPPED:
