@@ -77,3 +77,10 @@ try:
         open(LOG, "w", encoding="utf-8").write("\n".join(lines[-200:]) + "\n")
 except Exception:
     pass
+
+# ── refresh the local operator panel each cycle ──────────────────────
+try:
+    subprocess.run([sys.executable, "onyx_operator_panel.py"], capture_output=True, timeout=60)
+    log("panel: refreshed")
+except Exception as e:
+    log(f"panel: err {str(e)[:50]}")
