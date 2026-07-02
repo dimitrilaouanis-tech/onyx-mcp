@@ -115,10 +115,51 @@ def _anthropic(messages: list, key: str) -> dict:
     return json.loads(urllib.request.urlopen(req, timeout=60).read())
 
 
+def _to_openai_tools():
+    return [{"type": "function", "function": {"name": t["name"], "description": t["description"],
+             "parameters": t["input_schema"]}} for t in TOOLS]
+
+
+def _groq(messages: list, key: str) -> dict:
+    """FREE brain: Groq's free tier (Llama-3.3-70B), OpenAI-compatible + function-calling."""
+    msgs = [{"role": "system", "content": SYSTEM}] + messages
+    body = json.dumps({"model": "llama-3.3-70b-versatile", "messages": msgs,
+                       "tools": _to_openai_tools(), "max_tokens": 1024}).encode()
+    req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions", data=body,
+                                 headers={"authorization": f"Bearer {key}", "content-type": "application/json"})
+    return json.loads(urllib.request.urlopen(req, timeout=60).read())
+
+
+def _chat_groq(messages: list, key: str) -> dict:
+    convo = list(messages)
+    signed = []
+    for _ in range(MAX_TOOL_HOPS):
+        resp = _groq(convo, key)
+        msg = resp["choices"][0]["message"]
+        calls = msg.get("tool_calls")
+        if calls:
+            convo.append(msg)
+            for c in calls:
+                args = json.loads(c["function"].get("arguments") or "{}")
+                out = _run_tool(c["function"]["name"], args)
+                signed.append({"tool": c["function"]["name"], "result": out})
+                convo.append({"role": "tool", "tool_call_id": c["id"], "content": json.dumps(out)})
+            continue
+        return {"ok": True, "reply": msg.get("content") or "", "signed": signed, "brain": "groq-free"}
+    return {"ok": True, "reply": "(tool limit)", "signed": signed, "brain": "groq-free"}
+
+
 def chat(messages: list) -> dict:
+    # FREE brain first (Groq free tier), then paid Claude if set, then router fallback.
+    gkey = os.environ.get("GROQ_API_KEY", "").strip()
+    if gkey:
+        try:
+            return _chat_groq(list(messages), gkey)
+        except Exception as e:
+            return {"ok": False, "portal": "groq_error", "reason": str(e)[:120]}
     key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not key:
-        return {"ok": False, "portal": "offline", "reason": "ANTHROPIC_API_KEY not set — using free router"}
+        return {"ok": False, "portal": "offline", "reason": "no GROQ_API_KEY/ANTHROPIC_API_KEY — using free router"}
     convo = list(messages)
     signed = []
     for _ in range(MAX_TOOL_HOPS):
