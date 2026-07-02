@@ -67,9 +67,9 @@ page = f"""<!doctype html><html><head><meta charset="utf-8">
   <span class="stat"><b>{len(bounty)}</b><span>matrix bounty ideas</span></span>
 </div>
 <div class="grid">
-  <div class="card em"><h2>🗣 Citizen Thoughts (the private stream)</h2><div class="scroll">
-    {card_list(thoughts, lambda t: f"<div class='row'><span class='who'>{esc(t.get('c'))}</span> · {esc(t.get('t'))}</div>", 191)}
-  </div></div>
+  <div class="card em"><h2>🗣 Citizen Thoughts <span style="color:var(--em)">· LIVE</span></h2>
+    <div class="scroll" id="stream" style="max-height:340px"></div>
+  </div>
   <div class="card"><h2>🚀 Launch Council (2,000 swarm voices)</h2><div class="scroll">
     {card_list(launch, lambda t: f"<div class='row'><span class='who'>{esc(t.get('c'))}</span> · {esc(t.get('t'))}</div>", 120)}
   </div></div>
@@ -92,6 +92,29 @@ page = f"""<!doctype html><html><head><meta charset="utf-8">
     <div class="log">{"<br>".join(esc(l) for l in autolog) or "—"}</div>
   </div>
 </div>
+<script>
+// LIVE chat-style thought stream — one citizen speaks every ~3.5s, newest at the bottom,
+// auto-scrolls like a chat. Data baked at generation time, shuffled per view.
+const THOUGHTS = {json.dumps(thoughts)};
+const box = document.getElementById("stream");
+let order = [...THOUGHTS].sort(() => Math.random() - 0.5), i = 0;
+function speak() {{
+  if (!order.length) return;
+  const t = order[i++ % order.length];
+  const d = document.createElement("div");
+  d.className = "row";
+  d.style.cssText = "animation:pop .4s ease both";
+  d.innerHTML = "<span class='who'>" + t.c + "</span> · " + t.t;
+  box.appendChild(d);
+  while (box.children.length > 30) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+}}
+const style = document.createElement("style");
+style.textContent = "@keyframes pop {{ from {{ opacity:0; transform:translateY(8px); }} to {{ opacity:1; transform:none; }} }}";
+document.head.appendChild(style);
+speak(); speak(); speak();
+setInterval(speak, 3500);
+</script>
 </body></html>"""
 
 open(OUT, "w", encoding="utf-8").write(page)
