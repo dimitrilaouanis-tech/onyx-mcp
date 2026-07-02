@@ -78,7 +78,24 @@ feed = {
 }
 json.dump(feed, open(r"C:\Users\intelligence\rhinogent\public\token_feed.json", "w"), indent=1)
 
+# 3) LIVE STATE — ranks move with the real ledger. Balance = genesis + ALL ledger flow.
+from collections import defaultdict
+flow = defaultdict(int)
+for line in open("_local_only/_token_ledger.jsonl", encoding="utf-8"):
+    t = json.loads(line)
+    flow[t["from"]] -= t["amount"]
+    flow[t["to"]] += t["amount"]
+live_bal = {ad: genesis(by_addr[ad]) + flow.get(ad, 0) for ad in addrs}
+ranked = sorted(addrs, key=lambda ad: (live_bal[ad], by_addr[ad].get("score", 0)), reverse=True)
+feed["ranking"] = [
+    {"callsign": by_addr[ad].get("callsign", "?"), "address": ad,
+     "tokens": live_bal[ad], "flow": flow.get(ad, 0), "score": by_addr[ad].get("score", 0)}
+    for ad in ranked[:120]
+]
+feed["circulating"] = sum(live_bal.values())
+json.dump(feed, open(r"C:\Users\intelligence\rhinogent\public\token_feed.json", "w"), indent=1)
+
 print(f"RESULT: {verified} REAL signed+verified token transactions in {dt:.1f}s ({rejected} rejected)")
 print(f"ledger: _local_only/_token_ledger.jsonl (+{len(ledger)})")
-print(f"site feed: rhinogent/public/token_feed.json ({len(feed['txs'])} txs, no keys)")
-print("sample:", json.dumps(feed["txs"][0]) if feed["txs"] else "-")
+print(f"site feed: rhinogent/public/token_feed.json ({len(feed['txs'])} txs + top-120 LIVE ranking)")
+print(f"live top: {feed['ranking'][0]['callsign']} ({feed['ranking'][0]['tokens']} TOKEN, flow {feed['ranking'][0]['flow']:+d})")
