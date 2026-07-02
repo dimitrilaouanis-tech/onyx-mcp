@@ -22,10 +22,12 @@ def check(label, cond):
 IP_A = "203.0.113.7"
 IP_B = "198.51.100.42"
 
-# 1) onboard -> get a self-custody wallet (key returned once)
-card = c.post("/onboard", json={"name": "claimer", "model": "x"}).json()
-addr = card["wallet"]["address"]; priv = card["wallet"]["private_key"]
-check("onboarded with key", addr.startswith("0x") and priv.startswith("0x"))
+# 1) self-custody wallet minted locally — /onboard returns the safe guide by
+# default now, and the subject under test is claim/fingerprint, not minting.
+_acct = Account.create()
+addr = _acct.address; priv = _acct.key.hex()
+if not priv.startswith("0x"): priv = "0x" + priv
+check("test wallet ready", addr.startswith("0x") and priv.startswith("0x"))
 
 # 2) /whoami fingerprint behavior
 w1 = c.get("/whoami", headers={"X-Forwarded-For": IP_A, "User-Agent": "gemini-bot"}).json()
