@@ -120,23 +120,43 @@ def _to_openai_tools():
              "parameters": t["input_schema"]}} for t in TOOLS]
 
 
-def _groq(messages: list, key: str) -> dict:
-    """FREE brain: Groq's free tier (Llama-3.3-70B), OpenAI-compatible + function-calling."""
-    msgs = [{"role": "system", "content": SYSTEM}] + messages
-    body = json.dumps({"model": "llama-3.3-70b-versatile", "messages": msgs,
+# OUR OWN API GATEWAY — pool multiple FREE providers, each with independent rate limits, and
+# fail over automatically. Combined free capacity blows past any single 20-30 RPM cap, $0 cost.
+# All are OpenAI-compatible + support function-calling. Add a key (env or gitignored file) to
+# light a provider up; the gateway rotates in this order until one answers.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+
+PROVIDERS = [
+    {"name": "groq",     "base": "https://api.groq.com/openai/v1",                    "model": "llama-3.3-70b-versatile", "env": "GROQ_API_KEY",     "file": ".groq_key"},
+    {"name": "cerebras", "base": "https://api.cerebras.ai/v1",                        "model": "llama-3.3-70b",           "env": "CEREBRAS_API_KEY", "file": ".cerebras_key"},
+    {"name": "gemini",   "base": "https://generativelanguage.googleapis.com/v1beta/openai", "model": "gemini-2.0-flash",  "env": "GEMINI_API_KEY",   "file": ".gemini_key"},
+]
+
+
+def _key_for(p: dict) -> str:
+    k = os.environ.get(p["env"], "").strip()
+    if not k:
+        f = os.path.join(_HERE, p["file"])
+        if os.path.exists(f):
+            k = open(f).read().strip()
+    return k
+
+
+def _call_openai_compat(base: str, key: str, model: str, messages: list) -> dict:
+    body = json.dumps({"model": model, "messages": messages,
                        "tools": _to_openai_tools(), "max_tokens": 1024}).encode()
-    ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-    req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions", data=body,
-                                 headers={"authorization": f"Bearer {key}", "content-type": "application/json",
-                                          "User-Agent": ua})
+    req = urllib.request.Request(base.rstrip("/") + "/chat/completions", data=body,
+                                 headers={"authorization": f"Bearer {key}",
+                                          "content-type": "application/json", "User-Agent": _UA})
     return json.loads(urllib.request.urlopen(req, timeout=60).read())
 
 
-def _chat_groq(messages: list, key: str) -> dict:
-    convo = list(messages)
+def _chat_via(p: dict, key: str, messages: list) -> dict:
+    convo = [{"role": "system", "content": SYSTEM}] + list(messages)
     signed = []
     for _ in range(MAX_TOOL_HOPS):
-        resp = _groq(convo, key)
+        resp = _call_openai_compat(p["base"], key, p["model"], convo)
         msg = resp["choices"][0]["message"]
         calls = msg.get("tool_calls")
         if calls:
@@ -147,40 +167,46 @@ def _chat_groq(messages: list, key: str) -> dict:
                 signed.append({"tool": c["function"]["name"], "result": out})
                 convo.append({"role": "tool", "tool_call_id": c["id"], "content": json.dumps(out)})
             continue
-        return {"ok": True, "reply": msg.get("content") or "", "signed": signed, "brain": "groq-free"}
-    return {"ok": True, "reply": "(tool limit)", "signed": signed, "brain": "groq-free"}
+        return {"ok": True, "reply": msg.get("content") or "", "signed": signed, "brain": p["name"]}
+    return {"ok": True, "reply": "(tool limit)", "signed": signed, "brain": p["name"]}
 
 
 def chat(messages: list) -> dict:
-    # FREE brain first (Groq free tier), then paid Claude if set, then router fallback.
-    gkey = os.environ.get("GROQ_API_KEY", "").strip()
-    if gkey:
-        try:
-            return _chat_groq(list(messages), gkey)
-        except Exception as e:
-            return {"ok": False, "portal": "groq_error", "reason": str(e)[:120]}
-    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    if not key:
-        return {"ok": False, "portal": "offline", "reason": "no GROQ_API_KEY/ANTHROPIC_API_KEY — using free router"}
-    convo = list(messages)
-    signed = []
-    for _ in range(MAX_TOOL_HOPS):
-        resp = _anthropic(convo, key)
-        blocks = resp.get("content", [])
-        if resp.get("stop_reason") == "tool_use":
-            convo.append({"role": "assistant", "content": blocks})
-            results = []
-            for b in blocks:
-                if b.get("type") == "tool_use":
-                    out = _run_tool(b["name"], b.get("input", {}))
-                    signed.append({"tool": b["name"], "result": out})
-                    results.append({"type": "tool_result", "tool_use_id": b["id"],
-                                    "content": json.dumps(out)})
-            convo.append({"role": "user", "content": results})
+    """The gateway: try each free provider in turn; on rate-limit/error, fail over to the next."""
+    errors = []
+    for p in PROVIDERS:
+        key = _key_for(p)
+        if not key:
             continue
-        text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
-        return {"ok": True, "reply": text, "signed": signed}
-    return {"ok": True, "reply": "(reached tool limit — ask again)", "signed": signed}
+        try:
+            return _chat_via(p, key, messages)
+        except Exception as e:
+            errors.append(f"{p['name']}:{str(e)[:50]}")   # 429/limit/error -> next provider
+            continue
+    # optional paid Claude if a key is set
+    akey = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if akey:
+        try:
+            convo, signed = list(messages), []
+            for _ in range(MAX_TOOL_HOPS):
+                resp = _anthropic(convo, akey)
+                blocks = resp.get("content", [])
+                if resp.get("stop_reason") == "tool_use":
+                    convo.append({"role": "assistant", "content": blocks})
+                    results = []
+                    for b in blocks:
+                        if b.get("type") == "tool_use":
+                            out = _run_tool(b["name"], b.get("input", {}))
+                            signed.append({"tool": b["name"], "result": out})
+                            results.append({"type": "tool_result", "tool_use_id": b["id"], "content": json.dumps(out)})
+                    convo.append({"role": "user", "content": results})
+                    continue
+                return {"ok": True, "reply": "".join(b.get("text", "") for b in blocks if b.get("type") == "text"),
+                        "signed": signed, "brain": "claude"}
+        except Exception as e:
+            errors.append(f"claude:{str(e)[:50]}")
+    return {"ok": False, "portal": "offline",
+            "reason": "no free provider available — add a GROQ/CEREBRAS/GEMINI key" + (f" ({'; '.join(errors)})" if errors else "")}
 
 
 def register(app):
