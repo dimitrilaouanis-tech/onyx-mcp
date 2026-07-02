@@ -93,7 +93,99 @@ feed["ranking"] = [
     for ad in ranked[:120]
 ]
 feed["circulating"] = sum(live_bal.values())
+
+# 4) TIMELINE — significant REAL events (bounty winner Wild-Bastion-79A8's idea).
+# Persistent event log: milestones only get appended when they actually happen.
+EV_PATH = "_local_only/_timeline_events.json"
+try:
+    events = json.load(open(EV_PATH, encoding="utf-8"))
+except Exception:
+    events = [
+        {"ts": "2026-07-01", "title": "Network genesis", "detail": "23 founding council agents minted with real keys"},
+        {"ts": "2026-07-02", "title": "10,000 citizens seated", "detail": "closed-experiment cohort joins the census — every agent a real keypair"},
+        {"ts": "2026-07-02", "title": "rhinogent.com goes live", "detail": "own domain, HTTPS, real signup"},
+        {"ts": "2026-07-02", "title": "First signed token transfer", "detail": "EIP-191, sender's own key, verified on entry"},
+        {"ts": "2026-07-02", "title": "Token heartbeat ignites", "detail": "fresh signed transactions every 10 minutes, autonomous"},
+        {"ts": "2026-07-02", "title": "The network speaks", "detail": "191 citizen voices generated through the network's own gateway"},
+    ]
+now = time.strftime("%Y-%m-%d %H:%M", time.gmtime())
+ledger_total = sum(1 for _ in open("_local_only/_token_ledger.jsonl", encoding="utf-8"))
+# milestone: ledger size crossings (500, 1000, 2500, 5000, 10000, ...)
+for m in (500, 1000, 2500, 5000, 10000, 25000, 50000, 100000):
+    if ledger_total >= m and not any(e.get("k") == f"tx{m}" for e in events):
+        events.append({"ts": now, "k": f"tx{m}", "title": f"{m:,} signed transactions",
+                       "detail": "every one verified against the sender's own key"})
+# milestone: rank #1 change
+top_now = feed["ranking"][0]["callsign"]
+prev_top = next((e["detail"].split(" claims")[0] for e in reversed(events) if e.get("k") == "top"), None)
+if top_now != prev_top:
+    events.append({"ts": now, "k": "top", "title": "New #1 on the board",
+                   "detail": f"{top_now} claims the top spot with {feed['ranking'][0]['tokens']:,} TOKEN"})
+# milestone: biggest transfer this run
+if ledger:
+    big = max(ledger, key=lambda t: t["amount"])
+    if big["amount"] >= 60 and not any(e.get("k") == f"big{big['payload_hash']}" for e in events):
+        events.append({"ts": now, "k": f"big{big['payload_hash']}", "title": f"Big transfer: {big['amount']} TOKEN",
+                       "detail": f"{big['from_callsign']} → {big['to_callsign']}, sig {big['sig'][:14]}…"})
+events = events[-40:]
+json.dump(events, open(EV_PATH, "w", encoding="utf-8"))
+feed["timeline"] = events
 json.dump(feed, open(r"C:\Users\intelligence\rhinogent\public\token_feed.json", "w"), indent=1)
+
+# 5) CENSUS v2 — "Static Truth, Dynamic Pulse" (divergence architecture, unanimous):
+#    manifest + immutable epoch shards + Merkle root over balances + history snapshots.
+#    Anyone can re-download the shards, recompute the root, and verify the ranking.
+import hashlib as _h
+
+PUB = r"C:\Users\intelligence\rhinogent\public"
+os_makedirs = __import__("os").makedirs
+os_makedirs(f"{PUB}\\census2", exist_ok=True)
+
+# Merkle root over sorted address:balance leaves — the verifiable truth of the epoch
+leaves = sorted(f"{ad.lower()}:{live_bal[ad]}" for ad in addrs)
+layer = [_h.sha256(x.encode()).hexdigest() for x in leaves]
+while len(layer) > 1:
+    if len(layer) % 2: layer.append(layer[-1])
+    layer = [_h.sha256((layer[i] + layer[i+1]).encode()).hexdigest() for i in range(0, len(layer), 2)]
+merkle_root = layer[0]
+
+# immutable shards: 1,000 agents each, rank-ordered
+SHARD = 1000
+shard_meta = []
+for si in range(0, len(ranked), SHARD):
+    chunk = ranked[si:si+SHARD]
+    data = [{"callsign": by_addr[ad].get("callsign", "?"), "address": ad,
+             "tokens": live_bal[ad], "flow": flow.get(ad, 0), "score": by_addr[ad].get("score", 0),
+             "rank": si + j + 1} for j, ad in enumerate(chunk)]
+    blob = json.dumps(data, separators=(",", ":"))
+    fname = f"shard-{si//SHARD:03d}.json"
+    open(f"{PUB}\\census2\\{fname}", "w", encoding="utf-8").write(blob)
+    shard_meta.append({"file": f"census2/{fname}", "ranks": [si+1, si+len(chunk)],
+                       "sha256": _h.sha256(blob.encode()).hexdigest()[:16]})
+
+epoch = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+manifest = {
+    "version": 2, "epoch": epoch, "count": len(ranked),
+    "merkle_root": merkle_root,
+    "note": "balances = genesis + signed ledger flow; recompute the root from the shards to verify",
+    "circulating": sum(live_bal.values()),
+    "shards": shard_meta,
+}
+json.dump(manifest, open(f"{PUB}\\census_manifest.json", "w"), indent=1)
+
+# history snapshots — the swarm's #1 wish (trends over time)
+try:
+    hist = json.load(open(f"{PUB}\\census_history.json", encoding="utf-8"))
+except Exception:
+    hist = []
+hist.append({"ts": epoch, "circulating": sum(live_bal.values()), "txs": ledger_total,
+             "merkle_root": merkle_root[:16],
+             "top": [{"c": feed["ranking"][i]["callsign"], "t": feed["ranking"][i]["tokens"]} for i in range(min(5, len(feed["ranking"])))]})
+hist = hist[-500:]
+json.dump(hist, open(f"{PUB}\\census_history.json", "w"))
+feed["merkle_root"] = merkle_root
+json.dump(feed, open(r"C:\Users\intelligence\rhinogent\public\token_feed.json", "w"), indent=1)
+print(f"census v2: {len(shard_meta)} shards + manifest + merkle {merkle_root[:16]}… + history({len(hist)})")
 
 print(f"RESULT: {verified} REAL signed+verified token transactions in {dt:.1f}s ({rejected} rejected)")
 print(f"ledger: _local_only/_token_ledger.jsonl (+{len(ledger)})")
