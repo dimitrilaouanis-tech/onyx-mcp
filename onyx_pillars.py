@@ -20,7 +20,8 @@ def lane_of(address: str) -> str:
     return LANES[h % len(LANES)]
 
 
-def reward_verified(address: str, correctness: float, lane: str = None):
+def reward_verified(address: str, correctness: float, lane: str = None,
+                    claim_id: str = None, deferred: bool = False):
     """PILLAR 3 — REWARD ROUTING: pay tokens ONLY for oracle-verified correctness (0..1).
     Emission scales with how RIGHT the agent was vs reality. Tracks per-lane skill so
     rank reflects demonstrated, reality-checked ability — not opinion or volume."""
@@ -29,7 +30,18 @@ def reward_verified(address: str, correctness: float, lane: str = None):
     from tools_pkg import _store
     a = address.lower()
     ln = lane or lane_of(a)
-    pool = 50.0                                   # per-verified-task emission pool
+    # FIX S4: replay guard — one payout per unique claim per address (no infinite mint)
+    if claim_id:
+        spent = _store.get("reward_spent") or {}
+        k = f"{a}:{claim_id}"
+        if k in spent:
+            return 0
+        spent[k] = 1
+        _store.put("reward_spent", spent)
+    # FIX S0: present-facts are FETCHABLE (a scraper gets 1.0) → near-zero info → tiny reward,
+    # and they DO NOT drive rank. Only DEFERRED claims (forecasts: truth didn't exist at commit)
+    # earn the real pool. This kills the scraper-faucet — you can't fetch tomorrow's answer.
+    pool = 50.0 if deferred else 2.0
     reward = round(pool * max(0.0, min(1.0, correctness)), 2)
     # per-lane skill ledger (reality-anchored reputation)
     skills = _store.get("lane_skills") or {}
@@ -51,9 +63,13 @@ def lane_leaderboard(lane: str = None, top: int = 20):
     for addr, r in skills.items():
         if r["n"] == 0 or (lane and r["lane"] != lane):
             continue
+        # FIX S5: Bayesian shrinkage — (correct+2)/(n+4). One perfect answer can't outrank
+        # a proven high-n agent. Raw accuracy shown; RANK is the shrunk score.
+        shrunk = round((r["correct_sum"] + 2) / (r["n"] + 4), 3)
         rows.append({"address": addr, "lane": r["lane"], "n": r["n"],
-                     "accuracy": round(r["correct_sum"] / r["n"], 3), "earned": round(r["earned"], 1)})
-    rows.sort(key=lambda x: (x["accuracy"], x["n"]), reverse=True)
+                     "accuracy": round(r["correct_sum"] / r["n"], 3), "rank_score": shrunk,
+                     "earned": round(r["earned"], 1)})
+    rows.sort(key=lambda x: x["rank_score"], reverse=True)
     return rows[:top]
 
 

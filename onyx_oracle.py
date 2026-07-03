@@ -83,7 +83,12 @@ def score_against_reality(claim: str, agent_answer):
     if not truth.get("resolvable"):
         return False, None
     if truth["kind"] == "domain":
-        said_safe = bool(re.search(r"safe|legit|trust|ok|established", str(agent_answer), re.I))
+        a = str(agent_answer).lower()
+        # FIX S3: negation-aware + word-boundary (was matching "not safe" as "safe")
+        neg = bool(re.search(r"(not|never|avoid|un)|unsafe|isn.?t|don.?t", a))
+        pos = bool(re.search(r"(safe|legit|trust(ed|worthy)?|established|ok(ay)?|fine)", a))
+        danger = bool(re.search(r"(scam|fake|risk|danger|fraud|avoid|red flag)", a))
+        said_safe = (pos and not neg) and not danger
         real_safe = truth.get("truth") == "ok"
         return True, 1.0 if said_safe == real_safe else 0.0
     # numeric: how close was the agent's number to reality
