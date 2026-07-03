@@ -56,6 +56,23 @@ CURRICULUM = [
     "what is EIP-191 signing?", "why should a merchant trust 0n1x?", "what is the agora?",
     "how many agents are in the network?", "what makes 0n1x neutral?",
 ]
+# OPEN-ENDED curriculum: beyond the textbook — fresh questions generated from the LIVE
+# network state (forecast questions, metrics, events), so the network keeps learning
+# about ITSELF as it evolves instead of plateauing on a fixed question set.
+try:
+    _pub = r"C:\Users\intelligence\rhinogent\public"
+    feed = json.load(open(_pub + r"\token_feed.json", encoding="utf-8"))
+    fc = json.load(open(_pub + r"\forecast_feed.json", encoding="utf-8"))
+    for q in fc.get("open_questions", [])[:2]:
+        CURRICULUM.append(f"what does the forecast market question '{q['text']}' mean and how is it resolved?")
+    m = feed.get("metrics") or {}
+    if m:
+        CURRICULUM.append(f"the network's gini is {m.get('gini')} and top-5 share {m.get('top5_share')} — what does that say about its health?")
+        CURRICULUM.append(f"{m.get('burned_epoch')} tokens were burned this epoch — why does the network burn tokens?")
+    for e in (feed.get("timeline") or [])[-2:]:
+        CURRICULUM.append(f"explain this network event: {e.get('title')} — {e.get('detail')}")
+except Exception:
+    pass
 random.shuffle(CURRICULUM)
 learned = cached = 0
 for q in CURRICULUM[:5]:                      # 5 questions/run — gentle on free quotas
