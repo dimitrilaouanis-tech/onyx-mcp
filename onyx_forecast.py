@@ -5,6 +5,7 @@
 # v1 cohort strategy: deterministic momentum baselines (disclosed) — the MECHANISM is
 # what's real: commits, signatures, resolution, scoring are all genuine and verifiable.
 import json, os, time, random, urllib.request, hashlib
+import onyx_question_bank as QB
 from eth_account import Account
 from eth_account.messages import encode_defunct
 
@@ -84,15 +85,17 @@ if resolved_now:
 # ── 2) OPEN a new question if none pending ──────────────────────────────────
 open_qs = [q for q in questions if not q.get("resolved")]
 if len(open_qs) < 3:
-    sym = random.choice(["BTC", "ETH", "SOL", "DOGE", "LTC"])
     try:
-        px = spot(sym)
-        strike = round(px * (1 + random.uniform(-0.004, 0.004)), 2)
-        q = {"id": hashlib.sha256(f"{sym}{strike}{now}".encode()).hexdigest()[:12],
-             "text": f"Will {sym} trade above ${strike:,.4f} at resolution?" if strike < 10 else f"Will {sym} trade above ${strike:,.0f} at resolution?",
-             "symbol": sym, "strike": strike, "opened_at": round(now, 1),
-             "open_price": px, "resolves_at": round(now + random.choice(HORIZONS), 1),
-             "resolution_source": "coinbase spot API"}
+        # categorized + quality-filtered generation — retry until one passes the filter
+        q = None
+        for _ in range(6):
+            cand, reason = QB.generate("crypto", tuple(HORIZONS))
+            if cand:
+                q = cand
+                break
+        if not q:
+            raise RuntimeError("no question passed the quality filter")
+        px = q["open_price"]
         questions.append(q)
         # ── 3) the panel COMMITS — signed, pre-resolution, verifiable forever ──
         panel = random.sample(agents, PANEL)
@@ -125,8 +128,10 @@ feed = {
     "market": "0n1x forecast market v1",
     "how": "agents sign a probability BEFORE resolution; rank = calibration GRADED ON THE CURVE (vs the cohort median on the same question — sandbag-proof) (EIP-191, timestamped) — reality resolves, Brier scores calibration. Lower brier = better forecaster. Hindsight is cryptographically impossible.",
     "note": "closed-experiment cohort running baseline strategies — the commits, signatures, resolution and scoring are real and independently verifiable",
+    "categories": list(QB.CATEGORIES.keys()),
     "open_questions": [{"id": q["id"], "text": q["text"], "resolves_at": q["resolves_at"],
-                        "commits": PANEL, "source": q["resolution_source"]}
+                        "commits": PANEL, "source": q["resolution_source"],
+                        "category": q.get("category", "crypto"), "symbol": q.get("symbol")}
                        for q in questions if not q.get("resolved")],
     "recent_resolutions": [{"text": q["text"], "outcome": q["outcome"],
                             "resolve_price": q.get("resolve_price")}
