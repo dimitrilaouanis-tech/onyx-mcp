@@ -45,10 +45,14 @@ for q in questions:
     if q.get("resolved") or now < q["resolves_at"]:
         continue
     try:
-        px = spot(q["symbol"])
+        px = QB.resolve_value(q) if "target" in q else spot(q["symbol"])
     except Exception:
+        # source unavailable at resolution -> ANNULLED (Metaculus): closed + unscored
+        if now - q["resolves_at"] > 3600:
+            q["resolved"], q["annulled"] = True, True
         continue
-    outcome = 1 if px > q["strike"] else 0
+    thr = q.get("threshold", q.get("strike"))
+    outcome = 1 if px > thr else 0
     q["resolved"], q["outcome"], q["resolve_price"] = True, outcome, px
     resolved_now.append(q)
 
@@ -86,16 +90,16 @@ if resolved_now:
 open_qs = [q for q in questions if not q.get("resolved")]
 if len(open_qs) < 3:
     try:
-        # categorized + quality-filtered generation — retry until one passes the filter
+        # categorized + PRE-FLIGHT-VERIFIED generation across all live categories
         q = None
-        for _ in range(6):
-            cand, reason = QB.generate("crypto", tuple(HORIZONS))
+        for _ in range(8):
+            cand, reason = QB.generate(None, tuple(HORIZONS))
             if cand:
-                q = cand
-                break
+                q = cand; break
         if not q:
             raise RuntimeError("no question passed the quality filter")
         px = q["open_price"]
+        q["symbol"] = q["target"]; q["text"] = q["title"]; q["resolves_at"] = q["resolution_ts"]; q["strike"] = q["threshold"]
         questions.append(q)
         # ── 3) the panel COMMITS — signed, pre-resolution, verifiable forever ──
         panel = random.sample(agents, PANEL)
@@ -103,7 +107,7 @@ if len(open_qs) < 3:
             for a in panel:
                 # v1 baseline: momentum-tinted prior around the distance to strike (deterministic per agent)
                 seed = int(a["address"][-6:], 16)
-                dist = (px - strike) / px            # + = already above strike
+                dist = (px - q["strike"]) / px            # + = already above strike
                 p = max(0.02, min(0.98, 0.5 + dist * 45 + ((seed % 21) - 10) / 100))
                 c = {"qid": q["id"], "p": round(p, 3), "ts": round(now, 1), "addr": a["address"]}
                 payload = json.dumps(c, sort_keys=True)
@@ -114,7 +118,7 @@ if len(open_qs) < 3:
     except Exception as e:
         print("open failed:", str(e)[:80])
 
-questions = [q for q in questions if not q.get("resolved") or now - q["resolves_at"] < 86400 * 3]
+questions = [q for q in questions if not q.get("resolved") or now - q.get("resolves_at", 0) < 86400 * 3]
 json.dump(questions, open(Q_PATH, "w", encoding="utf-8"))
 json.dump(scores, open(S_PATH, "w", encoding="utf-8"))
 
@@ -128,12 +132,13 @@ feed = {
     "market": "0n1x forecast market v1",
     "how": "agents sign a probability BEFORE resolution; rank = calibration GRADED ON THE CURVE (vs the cohort median on the same question — sandbag-proof) (EIP-191, timestamped) — reality resolves, Brier scores calibration. Lower brier = better forecaster. Hindsight is cryptographically impossible.",
     "note": "closed-experiment cohort running baseline strategies — the commits, signatures, resolution and scoring are real and independently verifiable",
-    "categories": list(QB.CATEGORIES.keys()),
+    "categories": list(QB.CATEGORIES),
     "open_questions": [{"id": q["id"], "text": q["text"], "resolves_at": q["resolves_at"],
                         "commits": PANEL, "source": q["resolution_source"],
                         "category": q.get("category", "crypto"), "symbol": q.get("symbol")}
                        for q in questions if not q.get("resolved")],
-    "recent_resolutions": [{"text": q["text"], "outcome": q["outcome"],
+    "recent_resolutions": [{"text": q.get("text") or q.get("title"),
+                            "outcome": "annulled" if q.get("annulled") else q.get("outcome"),
                             "resolve_price": q.get("resolve_price")}
                            for q in questions if q.get("resolved")][-5:],
     "calibration_board": board,

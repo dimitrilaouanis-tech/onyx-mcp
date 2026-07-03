@@ -1,100 +1,123 @@
-# 0n1x QUESTION BANK — categorized, filtered question generation for the forecast market.
-# Reverse-engineered from Metaculus/Polymarket/Kalshi: every question is a typed, categorized
-# object with an explicit resolution source + a QUALITY FILTER that auto-rejects bad questions
-# (ambiguous, un-resolvable, degenerate strikes). Only questions that PASS become live.
-import json, time, random, urllib.request
+# 0n1x QUESTION BANK v2 — Metaculus/Kalshi/Polymarket-grade categorized question system.
+# Core principle stolen from all four exemplars: a question is valid ONLY IF, at creation
+# time, we can point a machine at the exact source+field and get a deterministic scalar NOW
+# (the pre-flight dry-run). That one gate automates what Metaculus does with human review,
+# Kalshi with filed Source Agencies, and Polymarket with pre-written UMA rules.
+import json, time, random, hashlib, urllib.request
 
-# ── CATEGORY SCHEMA (crypto-price tier auto-resolvable via free public APIs) ──
-# Each category: how to fetch spot, and the human label. Extend as new resolvers land.
-CATEGORIES = {
-    "crypto": {
-        "label": "Crypto Prices",
-        "symbols": ["BTC", "ETH", "SOL", "DOGE", "LTC", "XRP", "ADA", "AVAX"],
-        "resolver": "coinbase_spot",
-    },
-    # scaffolded for when the researcher's resolvers land:
-    # "onchain": {"label": "On-chain", "resolver": "base_rpc"},
-    # "sports":  {"label": "Sports",   "resolver": "espn_scores"},
+# ── D1/D2: fixed small CATEGORY enum (Metaculus pattern) + TYPE enum ──────────
+CATEGORIES = ("CRYPTO_PRICE", "CRYPTO_MARKET", "DEFI", "MACRO_ECON",
+              "WEATHER", "TECH_METRICS")   # allowlist: only free deterministic resolvers
+TYPES = ("BINARY", "NUMERIC")
+
+# ── D4: resolution-source adapters — each returns ONE scalar for a live target ──
+def _get(url, timeout=20):
+    return json.loads(urllib.request.urlopen(
+        urllib.request.Request(url, headers={"User-Agent": "0n1x/1.0"}), timeout=timeout).read())
+
+def r_price(sym):        # Coinbase spot
+    return float(_get(f"https://api.coinbase.com/v2/prices/{sym}-USD/spot")["data"]["amount"])
+def r_defillama(slug):   # DefiLlama TVL (free, no key)
+    return float(_get(f"https://api.llama.fi/tvl/{slug}"))
+def r_weather(lat, lon): # Open-Meteo current temp °C (free, no key)
+    return float(_get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m")["current"]["temperature_2m"])
+def r_github(repo):      # GitHub stars (free)
+    return float(_get(f"https://api.github.com/repos/{repo}")["stargazers_count"])
+def r_gas():             # Base gas via public metric — mempool-style (uses blockchair eth)
+    return float(_get("https://api.blockchair.com/ethereum/stats")["data"]["mempool_median_gas_price"]) / 1e9
+
+# ── question templates per category: (label, resolver, targets, unit, band) ──
+TEMPLATES = {
+    "CRYPTO_PRICE": {"label": "Crypto Prices", "src": "PRICE_API", "fn": r_price,
+                     "targets": ["BTC", "ETH", "SOL", "DOGE", "LTC", "XRP", "ADA", "AVAX"],
+                     "unit": "USD", "band": 0.004, "q": lambda t, s: f"Will {t} trade above {_p(s)} at resolution?"},
+    "DEFI":         {"label": "DeFi TVL", "src": "DEFILLAMA", "fn": r_defillama,
+                     "targets": ["aave", "uniswap", "lido", "makerdao", "curve-dex"],
+                     "unit": "USD", "band": 0.01, "q": lambda t, s: f"Will {t} TVL be above {_bn(s)} at resolution?"},
+    "WEATHER":      {"label": "Weather", "src": "WEATHER_API", "fn": lambda t: r_weather(*WX[t]),
+                     "targets": ["London", "New York", "Tokyo", "Dubai", "Sydney"],
+                     "unit": "°C", "band": 0.06, "q": lambda t, s: f"Will {t}'s temperature be above {s:.1f}°C at resolution?"},
+    "TECH_METRICS": {"label": "Tech / GitHub", "src": "GITHUB", "fn": r_github,
+                     "targets": ["ethereum/go-ethereum", "bitcoin/bitcoin", "openai/whisper"],
+                     "unit": "stars", "band": 0.002, "q": lambda t, s: f"Will {t} have more than {int(s):,} stars at resolution?"},
 }
+WX = {"London": (51.5, -0.12), "New York": (40.7, -74.0), "Tokyo": (35.7, 139.7),
+      "Dubai": (25.2, 55.3), "Sydney": (-33.9, 151.2)}
 
-QUESTION_TYPES = ("binary_above",)   # v1 type; researcher will add numeric/date/multi
+def _p(v): return f"${v:,.4f}" if v < 10 else f"${v:,.0f}"
+def _bn(v): return f"${v/1e9:.2f}B" if v >= 1e9 else f"${v/1e6:.0f}M"
 
-def coinbase_spot(sym):
-    r = json.loads(urllib.request.urlopen(
-        f"https://api.coinbase.com/v2/prices/{sym}-USD/spot", timeout=20).read())
-    return float(r["data"]["amount"])
-
-RESOLVERS = {"coinbase_spot": coinbase_spot}
+BLOCKLIST = ("significant", "major", "crash", "soon", "enough", "considered", "widely", "moon")
 
 
-def _fmt_price(p):
-    return f"${p:,.4f}" if p < 10 else f"${p:,.0f}"
-
-
-# ── THE QUALITY FILTER (Metaculus's "well-formed question" checklist) ─────────
+# ── D5: THE QUALITY FILTER (auto-reject; the disqualifier list) ──────────────
 def quality_check(q):
-    """Return (ok, reason). Auto-rejects any question that isn't cleanly resolvable."""
-    # 1) must have every required field
-    required = ("id", "category", "type", "text", "symbol", "strike",
-                "open_price", "opened_at", "resolves_at", "resolution_source")
-    for f in required:
+    req = ("id", "category", "type", "title", "target", "threshold", "operator",
+           "unit", "resolution_source", "open_ts", "close_ts", "resolution_ts")
+    for f in req:
         if q.get(f) in (None, ""):
-            return False, f"missing field: {f}"
-    # 2) time-bounded and in the future (Good Judgment: unambiguous horizon)
-    if q["resolves_at"] <= q["opened_at"]:
-        return False, "resolves_at not after opened_at"
-    if q["resolves_at"] - q["opened_at"] < 600:
-        return False, "horizon too short (<10min) — unresolvable/noisy"
-    # 3) NON-DEGENERATE strike — reject near-certain outcomes (Metaculus bans ~coin-flip-less)
-    #    strike must be within a sane band of open price so the question is genuinely uncertain
-    dist = abs(q["strike"] - q["open_price"]) / max(1e-9, q["open_price"])
-    if dist > 0.05:
-        return False, f"strike too far from spot ({dist:.1%}) — near-certain, no signal"
-    if q["strike"] <= 0:
-        return False, "non-positive strike"
-    # 4) category/type/resolver must be known
-    if q["category"] not in CATEGORIES:
-        return False, f"unknown category: {q['category']}"
-    if q["type"] not in QUESTION_TYPES:
-        return False, f"unknown type: {q['type']}"
-    if CATEGORIES[q["category"]]["resolver"] not in RESOLVERS:
-        return False, "no resolver for category"
+            return False, f"missing:{f}"
+    if q["category"] not in CATEGORIES: return False, "category not in allowlist"
+    if q["type"] not in TYPES:          return False, "unknown type"
+    if q["resolution_ts"] <= q["close_ts"]:  return False, "resolution_ts <= close_ts"
+    if q["close_ts"] <= q["open_ts"]:        return False, "close_ts <= open_ts"
+    if q["resolution_ts"] - q["open_ts"] < 600: return False, "horizon <10min"
+    if q["operator"] not in (">", ">=", "<", "<="): return False, "bad operator"
+    if q["threshold"] <= 0:             return False, "non-positive threshold"
+    low = q["title"].lower()
+    if any(w in low for w in BLOCKLIST):  return False, "subjective term in title"
     return True, "ok"
 
 
-def generate(category="crypto", horizon_choices=(3600, 10800)):
-    """Build ONE candidate question; returns it only if it passes the quality filter."""
-    cat = CATEGORIES[category]
-    sym = random.choice(cat["symbols"])
-    px = RESOLVERS[cat["resolver"]](sym)
+def generate(category=None, horizon_choices=(3600, 10800)):
+    """Build ONE categorized question and PRE-FLIGHT its resolver. Ships only if it
+    passes the filter AND the resolver returns a live deterministic scalar right now."""
+    cat = category or random.choice(list(TEMPLATES.keys()))
+    t = TEMPLATES[cat]
+    target = random.choice(t["targets"])
+    try:
+        spot = t["fn"](target)                 # ← THE DRY-RUN: if this throws, no question ships
+    except Exception as e:
+        return None, f"preflight failed: {str(e)[:40]}"
+    if not spot or spot != spot:               # nan/zero guard
+        return None, "preflight non-scalar"
+    band = t["band"]
+    threshold = round(spot * (1 + random.uniform(-band, band)), 4 if spot < 10 else 2)
     now = time.time()
-    # strike within a genuinely-uncertain band (±0.4%) — the sweet spot the filter allows
-    strike = round(px * (1 + random.uniform(-0.004, 0.004)), 4 if px < 10 else 2)
+    horizon = random.choice(horizon_choices)
     q = {
-        "id": __import__("hashlib").sha256(f"{sym}{strike}{now}".encode()).hexdigest()[:12],
-        "category": category,
-        "type": "binary_above",
-        "symbol": sym,
-        "strike": strike,
-        "open_price": px,
-        "opened_at": round(now, 1),
-        "resolves_at": round(now + random.choice(horizon_choices), 1),
-        "resolution_source": f"{cat['resolver']} ({sym}-USD)",
-        "text": f"Will {sym} trade above {_fmt_price(strike)} at resolution?",
+        "id": hashlib.sha256(f"{cat}{target}{threshold}{now}".encode()).hexdigest()[:12],
+        "category": cat, "type": "BINARY", "target": target,
+        "tags": [cat.lower(), target.lower(), t["src"].lower()],
+        "title": t["q"](target, threshold),
+        "threshold": threshold, "operator": ">", "unit": t["unit"],
+        "resolution_source": {"type": t["src"], "target": target},
+        "timezone": "UTC",
+        "open_ts": round(now, 1), "close_ts": round(now + horizon * 0.5, 1),
+        "resolution_ts": round(now + horizon, 1),
+        "open_price": spot,     # kept for the panel's baseline prior
+        "fallback_rule": "RESOLVE_NA_0.5",
+        "scoring": {"method": "BRIER", "cohort_relative": True},
     }
     ok, reason = quality_check(q)
     return (q if ok else None), reason
 
 
+def resolve_value(q):
+    """Fetch the current scalar for a question's target (used at resolution time)."""
+    return TEMPLATES[q["category"]]["fn"](q["target"])
+
+
 if __name__ == "__main__":
     ok_n = rej_n = 0
-    for _ in range(12):
+    by_cat = {}
+    for _ in range(18):
         q, reason = generate()
         if q:
             ok_n += 1
-            print(f"  ✓ [{q['category']}] {q['text']}  ({(q['resolves_at']-q['opened_at'])/3600:.0f}h)")
+            by_cat[q["category"]] = by_cat.get(q["category"], 0) + 1
+            print(f"  ✓ [{q['category']:13}] {q['title'][:60]}")
         else:
             rej_n += 1
-            print(f"  ✗ rejected: {reason}")
-    print(f"\nfilter working: {ok_n} passed, {rej_n} auto-rejected")
-    print(f"categories: {list(CATEGORIES)} · types: {QUESTION_TYPES}")
+            print(f"  ✗ {reason}")
+    print(f"\n{ok_n} shipped (pre-flight passed), {rej_n} rejected · categories hit: {by_cat}")
