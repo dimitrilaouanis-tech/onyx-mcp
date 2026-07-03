@@ -92,7 +92,7 @@ if resolved_now:
     #    to its forecasters, weighted by how much they BEAT the cohort median (Bittensor
     #    verify-to-earn). Better calibration → more tokens. Written as real signed-intent
     #    payouts to the token ledger so rank reflects forecasting skill, not just verify-work.
-    EMISSION_POOL = 200                      # tokens paid per resolved question
+    EMISSION_POOL = 1200                     # tokens paid per resolved question
     payouts = {}                              # address -> tokens earned this pass
     for q in resolved_now:
         cs = by_q.get(q["id"], [])
