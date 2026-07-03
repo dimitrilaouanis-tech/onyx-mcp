@@ -5,6 +5,7 @@
 # question. More agents → a BETTER answer (Condorcet), because the ensemble verifies
 # and skill-weights instead of averaging mush.
 import json, urllib.request, time
+import onyx_oracle as ORACLE
 
 GATEWAY = "http://localhost:8402/v1/chat"
 
