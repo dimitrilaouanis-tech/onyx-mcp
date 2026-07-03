@@ -73,6 +73,12 @@ try:
         CURRICULUM.append(f"explain this network event: {e.get('title')} — {e.get('detail')}")
 except Exception:
     pass
+# operator directives → the eco learns what the operator cares about (stays aligned)
+try:
+    import onyx_directive_intake as _di
+    CURRICULUM.extend(_di.curriculum(3))
+except Exception:
+    pass
 random.shuffle(CURRICULUM)
 learned = cached = 0
 for q in CURRICULUM[:5]:                      # 5 questions/run — gentle on free quotas
