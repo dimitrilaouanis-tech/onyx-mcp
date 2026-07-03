@@ -7,6 +7,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # 1) run the engine (fast, local, $0) — appends to the signed ledger + rewrites the feed
 r = subprocess.run([sys.executable, "onyx_token_engine.py"], capture_output=True, text=True, timeout=180)
+subprocess.run([sys.executable, "onyx_forecast.py"], capture_output=True, text=True, timeout=120)
 if "REAL signed" not in r.stdout:
     print("engine failed:", (r.stderr or r.stdout)[-200:]); sys.exit(1)
 print(r.stdout.strip().splitlines()[-4])
@@ -21,7 +22,7 @@ def call(url, data=None, method="GET"):
     return json.loads(urllib.request.urlopen(req, timeout=30).read())
 
 PUB = r"C:\Users\intelligence\rhinogent\public"
-for fname in ["token_feed.json", "census_manifest.json", "census_history.json"]:
+for fname in ["token_feed.json", "census_manifest.json", "census_history.json", "forecast_feed.json"]:
     content = base64.b64encode(open(f"{PUB}\\{fname}", "rb").read()).decode()
     API = f"https://api.github.com/repos/dimitrilaouanis-tech/rhinogent/contents/{fname}"
     try:
