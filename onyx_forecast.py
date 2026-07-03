@@ -6,6 +6,7 @@
 # what's real: commits, signatures, resolution, scoring are all genuine and verifiable.
 import json, os, time, random, urllib.request, hashlib
 import onyx_question_bank as QB
+import onyx_pillars as PILLARS   # the intelligence layer
 from eth_account import Account
 from eth_account.messages import encode_defunct
 
@@ -86,6 +87,14 @@ if resolved_now:
             s["n"] += 1
             s["brier_sum"] += brier
             s["rel_sum"] = s.get("rel_sum", 0.0) + (brier - q_median)   # graded on the curve
+            # THE PINNACLE LOOP: a DEFERRED forecast (truth didn't exist at commit) verified by
+            # reality → the hardened pillars pay real tokens for accuracy (1-brier), deduped per
+            # (question, agent). Intelligence → economy → rank, one reality-anchored loop.
+            try:
+                PILLARS.reward_verified(c["addr"], correctness=max(0.0, 1.0 - brier),
+                                        lane="forecasting", claim_id=q["id"], deferred=True)
+            except Exception:
+                pass
     print(f"resolved {len(resolved_now)} questions")
 
     # ── EMISSIONS: skill EARNS tokens. Each resolved question pays an emission pool
