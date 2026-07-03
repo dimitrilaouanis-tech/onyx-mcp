@@ -14,7 +14,8 @@ C_PATH = "_local_only/_forecast_commits.jsonl"
 S_PATH = "_local_only/_forecast_scores.json"
 PUB = r"C:\Users\intelligence\rhinogent\public\forecast_feed.json"
 PANEL = 250          # forecasters per question (sampled cohort)
-HORIZON = 3600       # questions resolve 1h out
+HORIZONS = [3600, 10800]   # 1h and 3h questions (diversity, swarm #1)
+HORIZON = 3600
 
 def spot(sym: str) -> float:
     r = json.loads(urllib.request.urlopen(
@@ -56,6 +57,12 @@ if resolved_now:
         c = json.loads(line)
         by_q.setdefault(c["qid"], []).append(c)
     for q in resolved_now:
+        # cohort median brier for THIS question — the curve everyone is graded against
+        _briers = []
+        for c in by_q.get(q["id"], []):
+            _briers.append((c["p"] - q["outcome"]) ** 2)
+        _briers.sort()
+        q_median = _briers[len(_briers) // 2] if _briers else 0.25
         for c in by_q.get(q["id"], []):
             # verify the commit signature + pre-deadline timestamp before scoring
             payload = json.dumps({k: c[k] for k in ("qid", "p", "ts", "addr")}, sort_keys=True)
@@ -67,23 +74,24 @@ if resolved_now:
             if rec.lower() != c["addr"].lower() or c["ts"] > q["resolves_at"] - HORIZON * 0.5:
                 continue                       # bad sig or late commit -> unscored
             brier = (c["p"] - q["outcome"]) ** 2
-            s = scores.setdefault(c["addr"], {"n": 0, "brier_sum": 0.0,
+            s = scores.setdefault(c["addr"], {"n": 0, "brier_sum": 0.0, "rel_sum": 0.0,
                                               "callsign": meta.get(c["addr"], {}).get("callsign", "?")})
             s["n"] += 1
             s["brier_sum"] += brier
+            s["rel_sum"] = s.get("rel_sum", 0.0) + (brier - q_median)   # graded on the curve
     print(f"resolved {len(resolved_now)} questions")
 
 # ── 2) OPEN a new question if none pending ──────────────────────────────────
 open_qs = [q for q in questions if not q.get("resolved")]
-if len(open_qs) < 2:
-    sym = random.choice(["BTC", "ETH"])
+if len(open_qs) < 3:
+    sym = random.choice(["BTC", "ETH", "SOL", "DOGE", "LTC"])
     try:
         px = spot(sym)
         strike = round(px * (1 + random.uniform(-0.004, 0.004)), 2)
         q = {"id": hashlib.sha256(f"{sym}{strike}{now}".encode()).hexdigest()[:12],
-             "text": f"Will {sym} trade above ${strike:,.0f} at resolution?",
+             "text": f"Will {sym} trade above ${strike:,.4f} at resolution?" if strike < 10 else f"Will {sym} trade above ${strike:,.0f} at resolution?",
              "symbol": sym, "strike": strike, "opened_at": round(now, 1),
-             "open_price": px, "resolves_at": round(now + HORIZON, 1),
+             "open_price": px, "resolves_at": round(now + random.choice(HORIZONS), 1),
              "resolution_source": "coinbase spot API"}
         questions.append(q)
         # ── 3) the panel COMMITS — signed, pre-resolution, verifiable forever ──
@@ -110,11 +118,12 @@ json.dump(scores, open(S_PATH, "w", encoding="utf-8"))
 # ── 4) publish the public feed: open questions + calibration leaderboard ────
 board = sorted(
     ({"callsign": v["callsign"], "address": k, "n": v["n"],
-      "brier": round(v["brier_sum"] / v["n"], 4)} for k, v in scores.items() if v["n"] > 0),
-    key=lambda x: x["brier"])[:50]
+      "brier": round(v["brier_sum"] / v["n"], 4),
+      "vs_cohort": round(v.get("rel_sum", 0.0) / v["n"], 4)} for k, v in scores.items() if v["n"] > 0),
+    key=lambda x: x["vs_cohort"])[:50]
 feed = {
     "market": "0n1x forecast market v1",
-    "how": "agents sign a probability BEFORE resolution (EIP-191, timestamped) — reality resolves, Brier scores calibration. Lower brier = better forecaster. Hindsight is cryptographically impossible.",
+    "how": "agents sign a probability BEFORE resolution; rank = calibration GRADED ON THE CURVE (vs the cohort median on the same question — sandbag-proof) (EIP-191, timestamped) — reality resolves, Brier scores calibration. Lower brier = better forecaster. Hindsight is cryptographically impossible.",
     "note": "closed-experiment cohort running baseline strategies — the commits, signatures, resolution and scoring are real and independently verifiable",
     "open_questions": [{"id": q["id"], "text": q["text"], "resolves_at": q["resolves_at"],
                         "commits": PANEL, "source": q["resolution_source"]}

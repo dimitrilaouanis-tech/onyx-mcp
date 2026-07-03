@@ -79,8 +79,10 @@ for i in range(N_TX):
         rejected += 1
         continue
     verified += 1
+    burn = max(1, round(amount * 0.02)) if amount >= 2 else 0   # THE SINK: 2% burned per payment
     bal[s] -= amount
-    bal[r] += amount
+    bal[r] += amount - burn
+    tx["burn"] = burn
     tx["sig"] = "0x" + sig.removeprefix("0x")
     tx["payload_hash"] = hashlib.sha256(payload.encode()).hexdigest()[:16]
     ledger.append(tx)
@@ -141,6 +143,7 @@ feed["metrics"] = {
     "active_ratio": round(len(_active) / _n, 4),                    # who actually moved
     "avg_tx_size": round(_epoch_vol / max(1, len(ledger)), 2),      # volume-weighted feel
     "epoch_volume": _epoch_vol,
+    "burned_epoch": sum(t.get("burn", 0) for t in ledger),
 }
 
 # 4) TIMELINE — significant REAL events (bounty winner Wild-Bastion-79A8's idea).
