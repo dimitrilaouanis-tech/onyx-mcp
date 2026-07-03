@@ -339,6 +339,19 @@ def _charge(address: str):
 
 
 def register(app):
+    import onyx_elevate as _elev
+    from fastapi import Request as _Req
+
+    @app.post("/v1/elevate")
+    async def _elevate(req: _Req):
+        b = await req.json()
+        q = (b or {}).get("message", "")
+        if not q:
+            return {"ok": False, "reason": "no message"}
+        out = _elev.elevate(q, k=int((b or {}).get("k", 4)))
+        return {"ok": bool(out.get("answer")), "reply": out.get("answer"),
+                "method": out.get("method"), "drafts": out.get("drafts"), "brain": "elevate"}
+
     from fastapi import Request
 
     @app.post("/v1/chat", include_in_schema=False)
