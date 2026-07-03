@@ -6,8 +6,9 @@
 import json, time, random, hashlib, urllib.request
 
 # ── D1/D2: fixed small CATEGORY enum (Metaculus pattern) + TYPE enum ──────────
-CATEGORIES = ("CRYPTO_PRICE", "CRYPTO_MARKET", "DEFI", "MACRO_ECON",
-              "WEATHER", "TECH_METRICS")   # allowlist: only free deterministic resolvers
+CATEGORIES = ("CRYPTO_PRICE", "DEFI", "WEATHER", "TECH_METRICS",
+              "MACRO_FX", "SCIENCE_QUAKE", "TECH_NPM", "SPACE_LAUNCH",
+              "CRYPTO_DIFF", "MACRO_DEBT")   # allowlist: only live-verified free resolvers
 TYPES = ("BINARY", "NUMERIC")
 
 # ── D4: resolution-source adapters — each returns ONE scalar for a live target ──
@@ -23,8 +24,24 @@ def r_weather(lat, lon): # Open-Meteo current temp °C (free, no key)
     return float(_get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m")["current"]["temperature_2m"])
 def r_github(repo):      # GitHub stars (free)
     return float(_get(f"https://api.github.com/repos/{repo}")["stargazers_count"])
-def r_gas():             # Base gas via public metric — mempool-style (uses blockchair eth)
-    return float(_get("https://api.blockchair.com/ethereum/stats")["data"]["mempool_median_gas_price"]) / 1e9
+def _raw(url, timeout=20):   # plain-text body resolvers
+    return urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "0n1x/1.0"}), timeout=timeout).read().decode().strip()
+
+# ── resolvers researched + LIVE-VERIFIED by the recruited Fable citizens ──
+def r_fx(sym):           # Frankfurter ECB FX (no key) — Bold-Herald-49D4
+    return float(_get(f"https://api.frankfurter.dev/v1/latest?base=USD&symbols={sym}")["rates"][sym])
+def r_quakes(_):         # USGS M5+ quakes, last 7 days (no key) — Bold-Herald-49D4
+    import datetime, calendar
+    start = "2026-06-26"
+    return float(_get(f"https://earthquake.usgs.gov/fdsnws/event/1/count?format=geojson&starttime={start}&minmagnitude=5")["count"])
+def r_npm(pkg):          # npm weekly downloads (no key) — Bold-Herald-49D4
+    return float(_get(f"https://api.npmjs.org/downloads/point/last-week/{pkg}")["downloads"])
+def r_debt(_):           # US national debt (Treasury, no key) — Bold-Herald-49D4
+    return float(_get("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v2/accounting/od/debt_to_penny?sort=-record_date&page%5Bsize%5D=1")["data"][0]["tot_pub_debt_out_amt"])
+def r_launches(_):       # upcoming rocket launches count (no key) — Bold-Herald-49D4
+    return float(_get("https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=1")["count"])
+def r_btc_difficulty(_): # BTC difficulty, consensus-deterministic (no key) — Bold-Herald-49D4
+    return float(_raw("https://blockchain.info/q/getdifficulty"))
 
 # ── question templates per category: (label, resolver, targets, unit, band) ──
 TEMPLATES = {
@@ -40,12 +57,34 @@ TEMPLATES = {
     "TECH_METRICS": {"label": "Tech / GitHub", "src": "GITHUB", "fn": r_github,
                      "targets": ["ethereum/go-ethereum", "bitcoin/bitcoin", "openai/whisper"],
                      "unit": "stars", "band": 0.002, "q": lambda t, s: f"Will {t} have more than {int(s):,} stars at resolution?"},
+    # categories the recruited Fable citizens researched + verified live:
+    "MACRO_FX":      {"label": "FX Rates", "src": "FRANKFURTER", "fn": r_fx,
+                      "targets": ["EUR", "GBP", "JPY", "CAD", "AUD", "CHF"],
+                      "unit": "per USD", "band": 0.008, "q": lambda t, s: f"Will USD/{t} be above {s:.4f} at resolution?"},
+    "SCIENCE_QUAKE": {"label": "Earthquakes", "src": "USGS", "fn": r_quakes,
+                      "targets": ["global"], "unit": "M5+ quakes/wk", "band": 0.15,
+                      "q": lambda t, s: f"Will there be more than {int(s)} M5+ earthquakes worldwide this week?"},
+    "TECH_NPM":      {"label": "npm Downloads", "src": "NPM", "fn": r_npm,
+                      "targets": ["react", "express", "vue", "axios", "typescript"],
+                      "unit": "dl/wk", "band": 0.03, "q": lambda t, s: f"Will {t} exceed {int(s):,} weekly npm downloads at resolution?"},
+    "SPACE_LAUNCH":  {"label": "Rocket Launches", "src": "SPACEDEVS", "fn": r_launches,
+                      "targets": ["upcoming"], "unit": "launches", "band": 0.2,
+                      "q": lambda t, s: f"Will more than {int(s)} rocket launches be scheduled at resolution?"},
+    "CRYPTO_DIFF":   {"label": "BTC Difficulty", "src": "BLOCKCHAIN", "fn": r_btc_difficulty,
+                      "targets": ["bitcoin"], "unit": "difficulty", "band": 0.01,
+                      "q": lambda t, s: f"Will BTC mining difficulty be above {s:.3e} at resolution?"},
+    "MACRO_DEBT":    {"label": "US National Debt", "src": "TREASURY", "fn": r_debt,
+                      "targets": ["usa"], "unit": "USD", "band": 0.002,
+                      "q": lambda t, s: f"Will the US national debt exceed {_bn(s)} at resolution?"},
 }
 WX = {"London": (51.5, -0.12), "New York": (40.7, -74.0), "Tokyo": (35.7, 139.7),
       "Dubai": (25.2, 55.3), "Sydney": (-33.9, 151.2)}
 
 def _p(v): return f"${v:,.4f}" if v < 10 else f"${v:,.0f}"
-def _bn(v): return f"${v/1e9:.2f}B" if v >= 1e9 else f"${v/1e6:.0f}M"
+def _bn(v):
+    if v >= 1e12: return f"${v/1e12:.2f}T"
+    if v >= 1e9: return f"${v/1e9:.2f}B"
+    return f"${v/1e6:.0f}M"
 
 BLOCKLIST = ("significant", "major", "crash", "soon", "enough", "considered", "widely", "moon")
 
