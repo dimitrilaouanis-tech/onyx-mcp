@@ -89,6 +89,15 @@ def _census_digest() -> dict:
         "dataset": "x402_census_digest",
         "summary": "0n1x's own census of the x402 resource universe — aggregates only; the raw census backs /leaderboard and /directory.",
     }
+    # Preferred: the precomputed digest committed alongside this module (the raw
+    # 50MB census stays out of git; refresh the digest locally and re-commit).
+    pre = os.path.join(os.path.dirname(os.path.abspath(__file__)), "census_digest.json")
+    try:
+        with open(pre, "r", encoding="utf-8") as f:
+            _census_digest_cache = json.load(f)
+        return _census_digest_cache
+    except Exception:
+        pass
     try:
         with open(_CENSUS_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)

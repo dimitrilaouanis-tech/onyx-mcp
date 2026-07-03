@@ -1,0 +1,71 @@
+{
+ "dataset": "x402_census_digest",
+ "summary": "0n1x's own census of the x402 resource universe — aggregates only; the raw census backs /leaderboard and /directory.",
+ "total_resources": 28224,
+ "unique_hosts": 1035,
+ "top_hosts": [
+  [
+   "lowpaymentfee.com",
+   10028
+  ],
+  [
+   "orbisapi.com",
+   9149
+  ],
+  [
+   "api.tcgapi.dev",
+   1227
+  ],
+  [
+   "proxy.suverse.io",
+   457
+  ],
+  [
+   "api.x402node.dev",
+   325
+  ],
+  [
+   "2s.io",
+   300
+  ],
+  [
+   "api.strale.io",
+   270
+  ],
+  [
+   "httpay.xyz",
+   250
+  ],
+  [
+   "the-stall.intuitek.ai",
+   199
+  ],
+  [
+   "simple-x-api.com",
+   185
+  ],
+  [
+   "api.myceliasignal.com",
+   175
+  ],
+  [
+   "www.stratalize.com",
+   155
+  ],
+  [
+   "api-dev.intra-tls2.dctx.link",
+   145
+  ],
+  [
+   "blockrun.ai",
+   133
+  ],
+  [
+   "x402-deployer.x402-deployer.workers.dev",
+   114
+  ]
+ ],
+ "census_generated": null,
+ "computed_at": 1783084884,
+ "computed_from": "local agent_census.json (50MB, kept out of git); refresh by re-running this precompute"
+}
