@@ -102,6 +102,11 @@ _merchant_signal.register(app)
 from tools_pkg import _stats
 _stats.register(app)
 
+# 0n1x NETWORK MATRIX — Bloomberg-terminal live ops dashboard composed over /stats,
+# /rank, /ecosystem-intel, and the outcome ledger. GET /matrix, /matrix.json
+from tools_pkg import _network_matrix
+_network_matrix.register(app)
+
 # onyx_preflight — free rate-limited teaser of the paid x402-endpoint preflight check. GET /preflight?url=
 from tools_pkg import preflight_check
 preflight_check.register(app)
