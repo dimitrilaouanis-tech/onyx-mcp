@@ -118,3 +118,7 @@ _bounty_feed.register(app)
 # POST /v1/chat  (activates when ANTHROPIC_API_KEY is set; falls back to the free NL router otherwise)
 from tools_pkg import _chat
 _chat.register(app)
+
+# /version — the exact commit/branch/repo the live process was built from (Render env).
+from tools_pkg import _version
+_version.register(app)
