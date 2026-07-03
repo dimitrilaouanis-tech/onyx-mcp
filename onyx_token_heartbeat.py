@@ -35,3 +35,9 @@ for fname in ["token_feed.json", "census_manifest.json", "census_history.json", 
         body["sha"] = sha
     res = call(API, body, "PUT")
     print(f"pushed {fname}:", res.get("commit", {}).get("sha", "?")[:10])
+
+# real activity stream (no cosmetics)
+try:
+    import onyx_live_thoughts; onyx_live_thoughts.build()
+except Exception as e:
+    print("live_thoughts:", e)
