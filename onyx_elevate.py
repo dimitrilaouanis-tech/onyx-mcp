@@ -62,6 +62,26 @@ def elevate(question, k=4, verbose=False):
     return out
 
 
+def _bank_artifact(question, answer):
+    """CO-EVOLUTION FLYWHEEL (council-unanimous): a verified premium answer becomes a reusable
+    PLAYBOOK ARTIFACT — cached so the whole free fleet serves it forever, and logged as a quality
+    contribution (rank hook). Each premium answer permanently raises the free tier. Answer quality
+    and the network's knowledge co-evolve; the cache IS the growing collective intelligence."""
+    try:
+        from tools_pkg import _store, _chat
+        # 1. cache it → free tier now answers this at frontier quality, $0
+        if hasattr(_chat, "_cache_key") and hasattr(_chat, "_cache_put"):
+            _chat._cache_put(_chat._cache_key([{"role": "user", "content": question}]),
+                             {"reply": answer, "signed": [], "artifact": True})
+        # 2. log the quality contribution (feeds ranking — verified good answers earn standing)
+        arts = _store.get("quality_artifacts") or {"count": 0}
+        arts["count"] = arts.get("count", 0) + 1
+        _store.put("quality_artifacts", arts)
+        return arts["count"]
+    except Exception:
+        return 0
+
+
 def elevate_verified(question, k=5):
     """MAX mode for VERIFIABLE tasks: generate K, a verifier SCORES each on correctness,
     keep the top-2, synthesize. Verification closes the gap to frontier — you can check
@@ -83,8 +103,10 @@ def elevate_verified(question, k=5):
     top = [d for _, d in scored[:2]]
     final = _ask(f"Give the single correct final answer, reconciling these two top-verified solutions. "
                  f"Be precise, end with 'ANSWER: <x>'.\n\nQUESTION: {question}\n\nSOLUTION A:\n{top[0][:1000]}\n\nSOLUTION B:\n{top[1][:1000]}")
-    return {"answer": final or top[0], "method": f"verified best-of-{len(drafts)}",
-            "scores": [round(s, 1) for s, _ in scored], "top_score": scored[0][0]}
+    ans = final or top[0]
+    banked = _bank_artifact(question, ans)   # CO-EVOLUTION: this answer now lifts the whole fleet forever
+    return {"answer": ans, "method": f"verified best-of-{len(drafts)} + banked artifact #{banked}",
+            "scores": [round(s, 1) for s, _ in scored], "top_score": scored[0][0], "artifact": banked}
 
 
 if __name__ == "__main__":
