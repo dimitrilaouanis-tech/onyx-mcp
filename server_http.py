@@ -110,6 +110,10 @@ preflight_check.register(app)
 from tools_pkg import ecosystem_intel
 ecosystem_intel.register(app)
 
+# onyx_merchant_verify v2 — flagship merchant-reality verification. POST /verify/merchant · GET /verified/merchant/{domain}
+from tools_pkg import merchant_verify
+merchant_verify.register(app)
+
 # 0n1x non-CLI loop — DURABLE onboarding (Neon-persisted) + staged credits, all in one GET.
 # GET /v1/join · /v1/me · /v1/census · /v1/spend  — survives redeploys, fetch-only agents can act.
 from tools_pkg import _noncli
