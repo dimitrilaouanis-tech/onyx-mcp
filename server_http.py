@@ -122,3 +122,8 @@ _chat.register(app)
 # /version — the exact commit/branch/repo the live process was built from (Render env).
 from tools_pkg import _version
 _version.register(app)
+
+# 0n1x Intel Library — the research corpus we already paid for, served FREE and signed.
+# GET /intel/library · /intel/library/{dataset}. Give-to-get starts with give.
+from tools_pkg import _intel_library
+_intel_library.register(app)
