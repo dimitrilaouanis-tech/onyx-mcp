@@ -104,11 +104,12 @@ if len(open_qs) < 3:
         # ── 3) the panel COMMITS — signed, pre-resolution, verifiable forever ──
         panel = random.sample(agents, PANEL)
         with open(C_PATH, "a", encoding="utf-8") as f:
+            horizon_h = (q["resolution_ts"] - q["open_ts"]) / 3600.0
             for a in panel:
-                # v1 baseline: momentum-tinted prior around the distance to strike (deterministic per agent)
+                # PLAYBOOK forecast (Quiet-Cipher-4258, Fable-trained, A/B-verified) + per-agent jitter
                 seed = int(a["address"][-6:], 16)
-                dist = (px - q["strike"]) / px            # + = already above strike
-                p = max(0.02, min(0.98, 0.5 + dist * 45 + ((seed % 21) - 10) / 100))
+                jitter = ((seed % 21) - 10) / 200.0       # ±0.05 diversity around the playbook
+                p = QB.fleet_forecast(q, px, horizon_h, jitter)
                 c = {"qid": q["id"], "p": round(p, 3), "ts": round(now, 1), "addr": a["address"]}
                 payload = json.dumps(c, sort_keys=True)
                 c["sig"] = "0x" + Account.sign_message(
