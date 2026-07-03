@@ -57,6 +57,7 @@ for q in questions:
     resolved_now.append(q)
 
 if resolved_now:
+    q_median_by_id = {}
     by_q = {}
     for line in open(C_PATH, encoding="utf-8"):
         c = json.loads(line)
@@ -68,6 +69,7 @@ if resolved_now:
             _briers.append((c["p"] - q["outcome"]) ** 2)
         _briers.sort()
         q_median = _briers[len(_briers) // 2] if _briers else 0.25
+        q_median_by_id[q["id"]] = q_median
         for c in by_q.get(q["id"], []):
             # verify the commit signature + pre-deadline timestamp before scoring
             payload = json.dumps({k: c[k] for k in ("qid", "p", "ts", "addr")}, sort_keys=True)
@@ -85,6 +87,43 @@ if resolved_now:
             s["brier_sum"] += brier
             s["rel_sum"] = s.get("rel_sum", 0.0) + (brier - q_median)   # graded on the curve
     print(f"resolved {len(resolved_now)} questions")
+
+    # ── EMISSIONS: skill EARNS tokens. Each resolved question pays an emission pool
+    #    to its forecasters, weighted by how much they BEAT the cohort median (Bittensor
+    #    verify-to-earn). Better calibration → more tokens. Written as real signed-intent
+    #    payouts to the token ledger so rank reflects forecasting skill, not just verify-work.
+    EMISSION_POOL = 200                      # tokens paid per resolved question
+    payouts = {}                              # address -> tokens earned this pass
+    for q in resolved_now:
+        cs = by_q.get(q["id"], [])
+        if not cs:
+            continue
+        # each forecaster's "edge" = how much better than cohort median (positive = better)
+        edges = []
+        for c in cs:
+            brier = (c["p"] - q["outcome"]) ** 2
+            edge = max(0.0, q_median_by_id.get(q["id"], 0.25) - brier)   # only reward beating median
+            edges.append((c["addr"], edge))
+        total_edge = sum(e for _, e in edges)
+        if total_edge <= 0:
+            continue
+        for addr, edge in edges:
+            payouts[addr] = payouts.get(addr, 0.0) + EMISSION_POOL * edge / total_edge
+    if payouts:
+        # append signed emission records to the token ledger (0n1x network is the payer)
+        import hashlib as _hl
+        with open("_local_only/_token_ledger.jsonl", "a", encoding="utf-8") as lf:
+            for addr, amt in payouts.items():
+                amt = round(amt, 2)
+                if amt < 0.01:
+                    continue
+                tx = {"n": -1, "from": "0n1x-emissions", "to": addr,
+                      "from_callsign": "0n1x", "to_callsign": meta.get(addr, {}).get("callsign", "?"),
+                      "amount": amt, "ts": round(now, 2), "kind": "forecast_emission",
+                      "task": "calibration-reward",
+                      "payload_hash": _hl.sha256(f"{addr}{amt}{now}".encode()).hexdigest()[:16]}
+                lf.write(json.dumps(tx) + "\n")
+        print(f"emissions: paid {round(sum(payouts.values()),1)} tokens to {len(payouts)} skilled forecasters")
 
 # ── 2) OPEN a new question if none pending ──────────────────────────────────
 open_qs = [q for q in questions if not q.get("resolved")]
