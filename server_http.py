@@ -107,6 +107,12 @@ _stats.register(app)
 from tools_pkg import _network_matrix
 _network_matrix.register(app)
 
+# 0n1x SIGNUP — the external front door: one page for humans + agents, TRY IT hits the
+# existing /v1/join client-side (no server-side proxy, nothing minted on page load).
+# GET /signup, /signup.json
+from tools_pkg import _signup
+_signup.register(app)
+
 # onyx_preflight — free rate-limited teaser of the paid x402-endpoint preflight check. GET /preflight?url=
 from tools_pkg import preflight_check
 preflight_check.register(app)
