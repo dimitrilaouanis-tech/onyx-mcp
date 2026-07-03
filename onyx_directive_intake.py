@@ -1,7 +1,8 @@
-# 0n1x DIRECTIVE INTAKE — the operator's messages upgrade the ecosystem.
-# Every directive/question the operator gives flows into the self-learning curriculum
-# (NOT to the non-CLI agents — into the network's own knowledge), so the eco keeps
-# learning what the operator cares about and stays aligned as direction evolves.
+# 0n1x SHARED DIRECTION — our collective will upgrades the ecosystem.
+# Every direction WE set together (human + agents, in conversation) flows into the
+# self-learning curriculum — into the network's own knowledge — so the eco keeps
+# learning what WE collectively want and stays aligned as OUR shared direction evolves.
+# It's not top-down commands to a tool; it's the ecosystem reading its own will.
 import json, os, sys, time
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -24,7 +25,7 @@ def curriculum(n=4):
     qs = []
     for d in recent(n):
         t = d["directive"][:220]
-        qs.append(f"The operator directed the network: '{t}'. What does this mean for 0n1x and how should the ecosystem apply it?")
+        qs.append(f"Our shared direction for the network: '{t}'. What does this mean for 0n1x, and how do WE — the ecosystem — apply it together?")
     return qs
 
 if __name__ == "__main__":
