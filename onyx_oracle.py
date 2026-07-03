@@ -1,0 +1,102 @@
+# 0n1x ORACLE LAYER — the anchor that makes the 100k genuinely intelligent.
+# Design principle (mine): the swarm PROPOSES, reality DISPOSES. A claim comes in; we
+# classify what KIND of truth it is; route it to the EXTERNAL source that can settle it
+# (never a same-family cheap model — that's the circular-parrot trap). Return a verdict
+# the swarm cannot argue with. This is what turns cheap volume into intelligence:
+# every claim is scored against reality, not consensus.
+import json, re, urllib.request, time
+
+def _get(url, timeout=15, raw=False):
+    req = urllib.request.Request(url, headers={"User-Agent": "0n1x-oracle/1.0"})
+    body = urllib.request.urlopen(req, timeout=timeout).read()
+    return body.decode().strip() if raw else json.loads(body)
+
+# ── external resolvers — each returns a REAL scalar/verdict from the world, no model ──
+def r_price(sym):
+    return float(_get(f"https://api.coinbase.com/v2/prices/{sym}-USD/spot")["data"]["amount"])
+def r_domain(domain):
+    return _get(f"https://onyx-actions.onrender.com/api/check?url={domain}", timeout=30)
+def r_defillama(slug):
+    return float(_get(f"https://api.llama.fi/tvl/{slug}", raw=True))
+def r_fx(sym):
+    return float(_get(f"https://api.frankfurter.dev/v1/latest?base=USD&symbols={sym}")["rates"][sym])
+def r_github(repo):
+    return float(_get(f"https://api.github.com/repos/{repo}")["stargazers_count"])
+
+# ── the ROUTER — classify the claim, pick the resolver that settles it against reality ──
+KNOWN_SYMS = {"BTC","ETH","SOL","DOGE","LTC","XRP","ADA","AVAX"}
+FX_SYMS = {"EUR","GBP","JPY","CAD","AUD","CHF"}
+
+def classify(claim: str):
+    """Return (kind, target) — what external truth can settle this claim."""
+    c = claim.lower()
+    # a domain / merchant reality check
+    dom = re.search(r"([a-z0-9][a-z0-9-]*\.[a-z]{2,}(?:\.[a-z]{2,})?)", c)
+    if dom and re.search(r"legit|safe|scam|trust|verify|real|merchant|site|domain|check", c):
+        return "domain", dom.group(1)
+    # a crypto price claim
+    for s in KNOWN_SYMS:
+        if s.lower() in c and re.search(r"price|above|below|\$|trade|worth|usd", c):
+            return "price", s
+    # DeFi TVL
+    m = re.search(r"(aave|uniswap|lido|makerdao|curve)", c)
+    if m and "tvl" in c:
+        return "tvl", m.group(1)
+    # FX
+    for s in FX_SYMS:
+        if s.lower() in c or f"usd/{s.lower()}" in c:
+            return "fx", s
+    # GitHub stars
+    gh = re.search(r"([\w.-]+/[\w.-]+)", claim)
+    if gh and "star" in c:
+        return "github", gh.group(1)
+    return "unverifiable", None
+
+RESOLVERS = {"price": r_price, "tvl": r_defillama, "fx": r_fx, "github": r_github, "domain": r_domain}
+
+def resolve(claim: str):
+    """Settle a claim against REALITY. Returns the ground truth + whether it's resolvable.
+    'unverifiable' claims (pure opinion, no external source) are HONESTLY flagged — the
+    swarm cannot manufacture truth where reality offers none."""
+    kind, target = classify(claim)
+    if kind == "unverifiable":
+        return {"resolvable": False, "kind": kind,
+                "note": "no external ground truth — opinion, not fact. Swarm cannot settle this honestly."}
+    try:
+        val = RESOLVERS[kind](target)
+        out = {"resolvable": True, "kind": kind, "target": target, "source": RESOLVERS[kind].__name__,
+               "checked": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        if kind == "domain":
+            out["verdict"] = val.get("verdict"); out["truth"] = val.get("band")
+        else:
+            out["truth"] = val
+        return out
+    except Exception as e:
+        return {"resolvable": False, "kind": kind, "error": str(e)[:60]}
+
+
+def score_against_reality(claim: str, agent_answer):
+    """The intelligence-maker: score an agent's answer against the ORACLE (reality), not a
+    parrot. For a price/number claim, closeness to truth; for a domain, match to real verdict.
+    Returns (scored, correctness 0..1) — this is what earns rank honestly."""
+    truth = resolve(claim)
+    if not truth.get("resolvable"):
+        return False, None
+    if truth["kind"] == "domain":
+        said_safe = bool(re.search(r"safe|legit|trust|ok|established", str(agent_answer), re.I))
+        real_safe = truth.get("truth") == "ok"
+        return True, 1.0 if said_safe == real_safe else 0.0
+    # numeric: how close was the agent's number to reality
+    nums = re.findall(r"[\d,]+\.?\d*", str(agent_answer).replace(",", ""))
+    if not nums:
+        return True, 0.0
+    guess = float(nums[0]); real = truth["truth"]
+    err = abs(guess - real) / max(abs(real), 1e-9)
+    return True, max(0.0, 1.0 - min(1.0, err))
+
+
+if __name__ == "__main__":
+    for c in ["Is rayban.cc a safe site to buy from?", "What is the price of BTC?",
+              "What is aave TVL?", "Is 0n1x the best network philosophically?"]:
+        r = resolve(c)
+        print(f"  {c[:45]:47} → {r.get('kind'):13} {'RESOLVABLE: '+str(r.get('verdict') or r.get('truth')) if r.get('resolvable') else 'unverifiable (honest)'}")
