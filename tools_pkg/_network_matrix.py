@@ -224,134 +224,422 @@ _HTML_HEAD = """<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>0n1x :: NETWORK MATRIX</title>
 <style>
-:root{color-scheme:dark}
+:root{color-scheme:dark;
+  --bg:#0a0a0a;--panel:#141516;--raised:#18191a;--border:#232426;
+  --txt:#eaeaea;--mut:#8a8f98;--pos:#22c55e;--neg:#ef4444;--amb:#f5a623}
 *{box-sizing:border-box}
-body{margin:0;background:#040504;color:#9be79b;font:12px/1.4 "SF Mono",Consolas,"Courier New",monospace;
-     background-image:radial-gradient(circle at 50% 0%,#0a1208 0%,#040504 70%)}
-.topbar{display:flex;align-items:center;gap:14px;padding:8px 16px;border-bottom:1px solid #1c3d1c;
-        background:#070a07;position:sticky;top:0;z-index:5}
-.topbar .brand{color:#ffd166;font-weight:700;letter-spacing:.12em}
-.dot{width:8px;height:8px;border-radius:50%;background:#34ff5a;box-shadow:0 0 6px #34ff5a;
-     animation:blink 1.4s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
-.clock{color:#7dd3fc;margin-left:auto}
-.stale{color:#ff5f5f;display:none}
-.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px;padding:10px}
-.panel{grid-column:span 6;background:#070a07;border:1px solid #163516;border-radius:4px;
-       padding:10px 12px;min-height:120px;overflow:auto}
-.panel.wide{grid-column:span 12}
-.panel h2{margin:0 0 8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
-          color:#ffd166;border-bottom:1px dashed #1c3d1c;padding-bottom:6px}
-table{width:100%;border-collapse:collapse;font-size:11px}
-td,th{padding:3px 6px;border-bottom:1px solid #0e1a0e;text-align:left;white-space:nowrap}
-th{color:#5fb98a;text-transform:uppercase;font-size:9px;letter-spacing:.08em}
-.n{text-align:right;font-variant-numeric:tabular-nums}
-.up{color:#34ff5a}.down{color:#ff5f5f}.flat{color:#5a6b5a}.new{color:#7dd3fc}
-.big{font-size:22px;color:#fff;font-weight:700}
-.kv{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px dotted #10220f}
-.kv span:first-child{color:#5fb98a}
-.badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700}
-.ok{background:#0d2f14;color:#34ff5a}.warn{background:#332608;color:#ffd166}.down-b{background:#330b0b;color:#ff5f5f}
-.tape{white-space:nowrap;overflow:hidden;position:relative;height:20px;border-top:1px solid #163516;
-      border-bottom:1px solid #163516;background:#050705}
-.tape span.item{display:inline-block;padding:2px 18px;color:#9be79b}
-.tape span.item b{color:#ffd166}
-footer{color:#3a4a3a;font-size:10px;text-align:center;padding:10px}
-a{color:#7dd3fc}
+html,body{margin:0}
+body{background:var(--bg);color:var(--txt);
+  font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  font-variant-numeric:tabular-nums}
+a{color:var(--amb);text-decoration:none}
+a:hover{text-decoration:underline}
+.topbar{display:flex;align-items:center;gap:16px;height:40px;padding:0 16px;
+  background:var(--panel);border-bottom:1px solid var(--border);border-top:2px solid var(--amb);
+  position:sticky;top:0;z-index:5;white-space:nowrap;overflow:hidden}
+.brand{font-weight:700;letter-spacing:.14em}
+.brand b{color:var(--amb)}
+.live{display:inline-flex;align-items:center;gap:6px;color:var(--pos);font-size:10px;letter-spacing:.12em}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--pos);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.sub{color:var(--mut);font-size:11px;overflow:hidden;text-overflow:ellipsis}
+.stale{color:var(--neg);font-size:11px;letter-spacing:.08em;opacity:0;transition:opacity .8s ease}
+.clock{margin-left:auto;color:var(--mut)}
+.tape{height:26px;line-height:26px;overflow:hidden;white-space:nowrap;
+  background:var(--panel);border-bottom:1px solid var(--border);padding:0 12px;color:var(--mut)}
+.tape b{color:var(--txt);font-weight:600}
+.tape .sep{color:#3a3c40;padding:0 10px}
+.v-ok{color:var(--pos)}.v-bad{color:var(--neg)}.v-mid{color:var(--amb)}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px;padding:10px;max-width:1500px;margin:0 auto}
+.panel{background:var(--panel);border:1px solid var(--border);overflow:hidden;display:flex;flex-direction:column}
+.panel h2{margin:0;padding:8px 12px;font-size:10px;font-weight:700;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--amb);background:var(--raised);
+  border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:8px;white-space:nowrap;overflow:hidden}
+.panel h2 .hint{color:var(--mut);font-weight:400;letter-spacing:.04em;text-transform:none;overflow:hidden;text-overflow:ellipsis}
+.pbody{padding:10px 12px;flex:1;overflow-y:auto;overflow-x:hidden}
+.p-network{grid-column:span 7;height:420px}
+.p-treemap{grid-column:span 5;height:420px}
+.p-tx{grid-column:span 4;height:312px}
+.p-act{grid-column:span 4;height:312px}
+.p-health{grid-column:span 4;height:312px}
+.p-eco{grid-column:span 12;height:320px}
+@media(max-width:980px){.panel{grid-column:span 12!important}}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.stat{background:var(--raised);border:1px solid var(--border);padding:6px 10px;height:52px;overflow:hidden}
+.stat .k{color:var(--mut);font-size:9px;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+.stat .sv{font-size:18px;font-weight:700;margin-top:2px}
+table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:11px}
+th{color:var(--mut);text-transform:uppercase;font-size:9px;letter-spacing:.1em;font-weight:600;
+  text-align:left;padding:3px 8px;border-bottom:1px solid var(--border);background:var(--raised);white-space:nowrap}
+td{padding:4px 8px;border-bottom:1px solid #1b1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:27px}
+th.n,td.n{text-align:right;font-variant-numeric:tabular-nums}
+.pos{color:var(--pos)}.neg{color:var(--neg)}.amb{color:var(--amb)}.mut{color:var(--mut)}
+.n.pos{color:var(--pos)}.n.neg{color:var(--neg)}.n.mut{color:var(--mut)}
+.kv{display:flex;justify-content:space-between;align-items:baseline;height:26px;line-height:26px;
+  border-bottom:1px solid #1b1c1e;overflow:hidden}
+.kv .k{color:var(--mut);font-size:10px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.kv .kvv{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-left:12px;text-align:right;font-variant-numeric:tabular-nums}
+.big{font-size:15px;font-weight:700}
+td,.kv .kvv,.stat .sv,.badge{transition:background-color .8s ease}
+.flash{transition:none!important;background-color:rgba(245,166,35,.28)!important}
+.badge{display:inline-block;min-width:48px;text-align:center;padding:0 8px;font-size:10px;font-weight:700;
+  letter-spacing:.08em;border:1px solid var(--border)}
+.b-ok{color:var(--pos);background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.35)}
+.b-warn{color:var(--amb);background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.35)}
+.b-down{color:var(--neg);background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.35)}
+.agrid{display:grid;grid-template-columns:repeat(12,1fr);gap:3px}
+.acell{aspect-ratio:1/1;background:#101112;border:1px solid var(--border);
+  transition:background-color .8s ease,border-color .8s ease}
+.legend{margin-top:8px;color:var(--mut);font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+  display:flex;gap:12px;white-space:nowrap;overflow:hidden}
+.sw{display:inline-block;width:8px;height:8px;margin-right:4px}
+canvas#tm{width:100%;height:auto;display:block;background:#101112;border:1px solid var(--border)}
+.spark{width:60px;height:20px;display:block}
+.spark polyline{fill:none;stroke:var(--amb);stroke-width:1.5}
+footer{color:#5a5e66;font-size:10px;text-align:center;padding:12px;letter-spacing:.06em}
 </style></head><body>
-<div class=topbar>
-  <span class=dot></span><span class=brand>0n1x // NETWORK MATRIX</span>
-  <span id=asof>connecting…</span>
-  <span id=stale class=stale>[STALE — retrying]</span>
-  <span class=clock id=clock></span>
-</div>
-<div class="tape" id=tape><span class=item>loading verdict tape…</span></div>
-<div class=grid id=grid>
-  <div class="panel" id=p-network><h2>Network</h2><div id=c-network>loading…</div></div>
-  <div class="panel" id=p-transactions><h2>Transactions</h2><div id=c-transactions>loading…</div></div>
-  <div class="panel" id=p-health><h2>Health / Self-Healing</h2><div id=c-health>loading…</div></div>
-  <div class="panel" id=p-ecosystem><h2>Ecosystem</h2><div id=c-ecosystem>loading…</div></div>
-</div>
-<footer>0n1x — signed facts, not judgments · <a href="/matrix.json">/matrix.json</a> · <a href="/verify">/verify</a> · <a href="/stats">/stats</a> · <a href="/rank">/rank</a></footer>
+<header class=topbar>
+  <span class=live><span class=dot></span>LIVE</span>
+  <span class=brand><b>0N1X</b> // NETWORK MATRIX</span>
+  <span class=sub id=asof>CONNECTING&#8230;</span>
+  <span class=stale id=stale>&#9888; STALE &#8212; RETRYING</span>
+  <span class=clock id=clock>&#8212;</span>
+</header>
+<div class=tape id=tape><span class=mut>loading verdict tape&#8230;</span></div>
+<main class=grid>
+  <section class="panel p-network"><h2>Network &#8212; OnyxRank Leaderboard<span class=hint>reputation-weighted signed outcomes</span></h2><div class=pbody>
+    <div class=stats>
+      <div class=stat><div class=k>Citizens</div><div class=sv id=n-cit>&#8212;</div></div>
+      <div class=stat><div class=k>Proven Key</div><div class=sv id=n-key>&#8212;</div></div>
+      <div class=stat><div class=k>Signed Outcomes</div><div class=sv id=n-out>&#8212;</div></div>
+      <div class=stat><div class=k>Endorsed</div><div class=sv id=n-end>&#8212;</div></div>
+    </div>
+    <table><colgroup><col style="width:34px"><col style="width:56px"><col><col style="width:76px"><col style="width:76px"><col style="width:88px"><col style="width:44px"></colgroup>
+    <thead><tr><th>#</th><th>&#916;</th><th>Agent</th><th class=n>Rep</th><th>Trend</th><th class=n>Outcomes</th><th>Key</th></tr></thead>
+    <tbody id=lb></tbody></table>
+  </div></section>
+  <section class="panel p-treemap"><h2>Reputation Mass &#8212; Top 10<span class=hint>squarified treemap</span></h2><div class=pbody>
+    <canvas id=tm width=560 height=330></canvas>
+  </div></section>
+  <section class="panel p-tx"><h2>Transactions / Treasury</h2><div class=pbody>
+    <div class=kv><span class=k>Network</span><span class=kvv id=t-net>&#8212;</span></div>
+    <div class=kv><span class=k>Treasury (live, on-chain)</span><span class="kvv big" id=t-bal>&#8212;</span></div>
+    <div class=kv><span class=k>Signed verdict / outcome records</span><span class=kvv id=t-rec>&#8212;</span></div>
+    <div class=kv><span class=k>Resolved outcomes</span><span class=kvv id=t-res>&#8212;</span></div>
+    <div class=kv><span class=k>Block precision</span><span class=kvv id=t-prec>&#8212;</span></div>
+    <div class=kv><span class=k>Public discovery index</span><span class=kvv id=t-listed>&#8212;</span></div>
+    <div class=kv><span class=k>Receive address</span><span class="kvv mut" id=t-addr>&#8212;</span></div>
+  </div></section>
+  <section class="panel p-act"><h2>Activity &#8212; Verdict Grid<span class=hint>1 cell = 1 signed record</span></h2><div class=pbody>
+    <div class=agrid id=agrid></div>
+    <div class=legend>
+      <span><span class=sw style="background:rgba(34,197,94,.9)"></span>pass</span>
+      <span><span class=sw style="background:rgba(239,68,68,.9)"></span>block</span>
+      <span><span class=sw style="background:rgba(245,166,35,.9)"></span>other</span>
+      <span><span class=sw style="background:#101112;border:1px solid #232426"></span>empty &#183; brightness = recency</span>
+    </div>
+  </div></section>
+  <section class="panel p-health"><h2>Health / Self-Healing</h2><div class=pbody>
+    <div class=kv><span class=k>Overall</span><span class=kvv><span class="badge b-warn" id=h-overall>&#8212;</span></span></div>
+    <div class=kv><span class=k>Routes up</span><span class=kvv id=h-up>&#8212;</span></div>
+    <div class=kv><span class=k>Process uptime</span><span class=kvv id=h-upt>&#8212;</span></div>
+    <table><colgroup><col><col style="width:96px"></colgroup>
+    <thead><tr><th>Route</th><th>Status</th></tr></thead>
+    <tbody id=hr></tbody></table>
+  </div></section>
+  <section class="panel p-eco"><h2>Ecosystem &#8212; CDP x402 Census<span class=hint>competitor map</span></h2><div class=pbody>
+    <div class=kv><span class=k>Census sampled</span><span class=kvv id=e-samp>&#8212;</span></div>
+    <div class=kv><span class=k>0n1x lane</span><span class=kvv id=e-lane>&#8212;</span></div>
+    <div class=kv><span class=k>Top terms</span><span class="kvv mut" id=e-terms>&#8212;</span></div>
+    <table><colgroup><col style="width:180px"><col style="width:110px"><col></colgroup>
+    <thead><tr><th>Competitor</th><th>Status</th><th>Lane</th></tr></thead>
+    <tbody id=er></tbody></table>
+  </div></section>
+</main>
+<footer>0n1x &#8212; signed facts, not judgments &#183; <a href="/matrix.json">/matrix.json</a> &#183; <a href="/verify">/verify</a> &#183; <a href="/stats">/stats</a> &#183; <a href="/rank">/rank</a></footer>
 <script>
-function esc(s){return (s===undefined||s===null)?'':String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
-function badge(status){
-  var cls = status==='OK' ? 'ok' : (status==='DOWN' ? 'down-b' : 'warn');
-  return '<span class="badge '+cls+'">'+esc(status)+'</span>';
+'use strict';
+function g(id){return document.getElementById(id)}
+function esc(s){return (s===undefined||s===null)?'':String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})}
+function fmt(v,dp){
+  var n=Number(v);
+  if(v===null||v===undefined||!isFinite(n))return '—';
+  return n.toLocaleString('en-US',{minimumFractionDigits:dp||0,maximumFractionDigits:dp||0});
 }
-function moveArrow(m){
-  if(m==='UP') return '<span class=up>&#9650;</span>';
-  if(m==='DOWN') return '<span class=down>&#9660;</span>';
-  if(m==='NEW') return '<span class=new>NEW</span>';
-  return '<span class=flat>&#8211;</span>';
+/* setTxt: in-place text update; on change, flash-fade background (color/opacity only, no reflow) */
+function setTxt(el,txt,cls){
+  if(typeof el==='string')el=g(el);
+  txt=String(txt);
+  if(el._v===txt&&(cls===undefined||el._c===cls))return;
+  el._v=txt;
+  if(cls!==undefined&&el._c!==cls){el._c=cls;el.className=cls;}
+  el.textContent=txt;
+  if(el._f){el.classList.add('flash');void el.offsetWidth;el.classList.remove('flash');}
+  el._f=true;
+}
+/* quiet update (clock / timestamps / uptime): no flash */
+function q(el,txt){if(typeof el==='string')el=g(el);txt=String(txt);if(el._v===txt)return;el._v=txt;el.textContent=txt;}
+function vcls(v){
+  v=String(v||'').toUpperCase();
+  if(/BLOCK|FAIL|REJECT|DENY|SCAM|FAKE/.test(v))return 'v-bad';
+  if(/ALLOW|PASS|OK|TRUE|LEGIT|VERIF|GOOD/.test(v))return 'v-ok';
+  return 'v-mid';
+}
+function vrgb(v){
+  var c=vcls(v);
+  return c==='v-bad'?'239,68,68':(c==='v-ok'?'34,197,94':'245,166,35');
+}
+function upt(s){
+  s=Math.max(0,Math.round(Number(s)||0));
+  var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),ss=s%60;
+  function p(n){return String(n).length<2?'0'+n:String(n)}
+  return (d>0?d+'d ':'')+p(h)+':'+p(m)+':'+p(ss);
+}
+var S={hist:{},ring:new Array(60).fill(null),ringIdx:0,seen:{},seenCount:0,fail:0};
+/* ---- build fixed DOM skeleton once: nothing is ever added/removed after this ---- */
+(function build(){
+  var h='',i;
+  for(i=0;i<10;i++){
+    h+='<tr><td class="n mut" id=lb'+i+'r>—</td><td class=mut id=lb'+i+'m>—</td>'+
+       '<td class=mut id=lb'+i+'a>—</td><td class="n mut" id=lb'+i+'p>—</td>'+
+       '<td><svg class=spark viewBox="0 0 60 20"><polyline id=lb'+i+'s points=""/></svg></td>'+
+       '<td class="n mut" id=lb'+i+'o>—</td><td class=mut id=lb'+i+'k>—</td></tr>';
+  }
+  g('lb').innerHTML=h;
+  h='';for(i=0;i<10;i++)h+='<tr><td class=mut id=hr'+i+'p>—</td><td class=mut id=hr'+i+'s>—</td></tr>';
+  g('hr').innerHTML=h;
+  h='';for(i=0;i<6;i++)h+='<tr><td class=mut id=er'+i+'n>—</td><td class=mut id=er'+i+'s>—</td><td class=mut id=er'+i+'l>—</td></tr>';
+  g('er').innerHTML=h;
+  h='';for(i=0;i<60;i++)h+='<div class=acell id=ac'+i+'></div>';
+  g('agrid').innerHTML=h;
+})();
+/* ---- sparkline: rolling per-agent history, fixed 60x20 SVG ---- */
+function drawSpark(poly,arr){
+  if(!arr||!arr.length){poly.setAttribute('points','');return;}
+  var a=arr.length<2?[arr[0],arr[0]]:arr;
+  var mn=Math.min.apply(null,a),mx=Math.max.apply(null,a),sp=(mx-mn)||1;
+  var pts='',i,x,y;
+  for(i=0;i<a.length;i++){
+    x=2+56*i/(a.length-1);
+    y=17-14*((a[i]-mn)/sp);
+    pts+=(i?' ':'')+x.toFixed(1)+','+y.toFixed(1);
+  }
+  poly.setAttribute('points',pts);
+  var last=a[a.length-1],first=a[0];
+  poly.style.stroke=last>first?'#22c55e':(last<first?'#ef4444':'#f5a623');
 }
 function renderNetwork(n){
-  if(!n||!n.available) return '<div class=kv><span>status</span><span>unavailable</span></div>';
-  var rows = (n.top10||[]).map(function(r){
-    return '<tr><td>'+r.rank+'</td><td>'+moveArrow(r.move)+'</td><td>'+esc(r.agent)+'</td>'+
-           '<td class=n>'+r.reputation.toFixed(3)+'</td><td class=n>'+r.signed_outcomes+'</td></tr>';
-  }).join('') || '<tr><td colspan=5>no proven citizens yet</td></tr>';
-  return '<div class=kv><span>citizens (total)</span><span class=big>'+n.citizens_total+'</span></div>'+
-    '<div class=kv><span>proven-key</span><span>'+n.proven_key+'</span></div>'+
-    '<div class=kv><span>with signed outcomes</span><span>'+n.with_signed_outcomes+'</span></div>'+
-    '<table><tr><th>#</th><th>&#916;</th><th>agent</th><th>rep</th><th>outcomes</th></tr>'+rows+'</table>';
+  n=n||{};
+  setTxt('n-cit',fmt(n.citizens_total));
+  setTxt('n-key',fmt(n.proven_key));
+  setTxt('n-out',fmt(n.with_signed_outcomes));
+  setTxt('n-end',fmt(n.with_endorsements));
+  var top=n.top10||[],i,r;
+  for(i=0;i<10;i++){
+    r=top[i];
+    var poly=g('lb'+i+'s');
+    if(r){
+      setTxt('lb'+i+'r',fmt(r.rank),'n');
+      var mv=r.move==='UP'?['▲ +'+r.delta,'pos']:
+             r.move==='DOWN'?['▼ -'+r.delta,'neg']:
+             r.move==='NEW'?['NEW','amb']:['0','mut'];
+      setTxt('lb'+i+'m',mv[0],mv[1]);
+      setTxt('lb'+i+'a',r.agent||'?','');
+      setTxt('lb'+i+'p',fmt(r.reputation,3),'n');
+      setTxt('lb'+i+'o',fmt(r.signed_outcomes),'n');
+      setTxt('lb'+i+'k',r.proven_key?'✓':'—',r.proven_key?'pos':'mut');
+      var nm=String(r.agent||('#'+r.rank));
+      var arr=S.hist[nm]||(S.hist[nm]=[]);
+      arr.push(Number(r.reputation)||0);
+      if(arr.length>30)arr.shift();
+      drawSpark(poly,arr);
+    }else{
+      setTxt('lb'+i+'r','—','n mut');setTxt('lb'+i+'m','—','mut');
+      setTxt('lb'+i+'a',i===0?'no proven citizens yet':'—','mut');
+      setTxt('lb'+i+'p','—','n mut');setTxt('lb'+i+'o','—','n mut');
+      setTxt('lb'+i+'k','—','mut');
+      drawSpark(poly,[]);
+    }
+  }
 }
 function renderTx(t){
-  if(!t||!t.available) return '<div class=kv><span>status</span><span>unavailable</span></div>';
-  var bal = (t.usdc_treasury_live!==null && t.usdc_treasury_live!==undefined) ? t.usdc_treasury_live.toFixed(6)+' USDC' : ('unavailable ('+esc(t.usdc_treasury_error)+')');
-  return '<div class=kv><span>network</span><span>'+esc(t.network)+'</span></div>'+
-    '<div class=kv><span>treasury (live, on-chain)</span><span class=big>'+bal+'</span></div>'+
-    '<div class=kv><span>signed verdict/outcome records</span><span>'+t.signed_verdict_outcome_records+'</span></div>'+
-    '<div class=kv><span>resolved outcomes</span><span>'+t.resolved_outcomes+'</span></div>'+
-    '<div class=kv><span>listed in public discovery index</span><span>'+(t.bazaar_listed?'yes':'no (0)')+'</span></div>';
+  t=t||{};
+  setTxt('t-net',t.network||'—');
+  if(t.usdc_treasury_live!==null&&t.usdc_treasury_live!==undefined){
+    var b=Number(t.usdc_treasury_live);
+    setTxt('t-bal',fmt(b,(b>0&&b<1)?6:2)+' USDC','kvv big '+(b>0?'pos':'mut'));
+  }else{
+    setTxt('t-bal','UNAVAIL','kvv big amb');
+  }
+  setTxt('t-rec',fmt(t.signed_verdict_outcome_records));
+  setTxt('t-res',fmt(t.resolved_outcomes));
+  var p=t.block_precision,pt='—';
+  if(typeof p==='number')pt=(p*100).toFixed(1)+'%';
+  else if(p&&typeof p==='object'&&typeof p.precision==='number')pt=(p.precision*100).toFixed(1)+'%';
+  else if(p!==null&&p!==undefined)pt=String(typeof p==='object'?JSON.stringify(p):p).slice(0,26);
+  setTxt('t-prec',pt);
+  setTxt('t-listed',t.bazaar_listed?'YES':'NO (0)','kvv '+(t.bazaar_listed?'pos':'amb'));
+  var a=String(t.receive_address||'');
+  q('t-addr',a.length>12?a.slice(0,6)+'…'+a.slice(-4):(a||'—'));
 }
 function renderHealth(h){
-  if(!h||!h.available) return '<div class=kv><span>status</span><span>unavailable</span></div>';
-  var routes = h.routes||{};
-  var rows = Object.keys(routes).map(function(p){
-    return '<tr><td>'+esc(p)+'</td><td>'+(routes[p]?'<span class=up>&#9679; live</span>':'<span class=down>&#9679; missing</span>')+'</td></tr>';
-  }).join('');
-  return '<div class=kv><span>overall</span><span>'+badge(h.overall)+'</span></div>'+
-    '<div class=kv><span>routes up</span><span>'+h.routes_up+' / '+h.routes_total+'</span></div>'+
-    '<div class=kv><span>process uptime</span><span>'+Math.round(h.process_uptime_seconds)+'s</span></div>'+
-    '<div class=kv><span>worker model</span><span style="white-space:normal;text-align:right;max-width:60%">'+esc(h.worker_model)+'</span></div>'+
-    '<table>'+rows+'</table>';
+  h=h||{};
+  var ov=h.overall||'—';
+  setTxt('h-overall',ov,'badge '+(ov==='OK'?'b-ok':(ov==='DOWN'?'b-down':'b-warn')));
+  setTxt('h-up',fmt(h.routes_up)+' / '+fmt(h.routes_total));
+  q('h-upt',upt(h.process_uptime_seconds));
+  var routes=h.routes||{},keys=Object.keys(routes).sort(),i;
+  for(i=0;i<10;i++){
+    var k=keys[i];
+    if(k!==undefined){
+      setTxt('hr'+i+'p',k,'');
+      setTxt('hr'+i+'s',routes[k]?'● LIVE':'● MISSING',routes[k]?'pos':'neg');
+    }else{
+      setTxt('hr'+i+'p','—','mut');setTxt('hr'+i+'s','—','mut');
+    }
+  }
 }
 function renderEco(e){
-  if(!e||!e.available) return '<div class=kv><span>status</span><span>unavailable</span></div>';
-  var cats = (e.census_top_categories||[]).map(function(c){return c.term+'('+c.count+')'}).join(', ');
-  var comp = (e.competitor_map||[]).map(function(c){
-    return '<tr><td>'+esc(c.name)+'</td><td>'+(c.verified?'<span class=up>verified</span>':'<span class=flat>unverified</span>')+'</td><td style="white-space:normal">'+esc(c.lane)+'</td></tr>';
-  }).join('');
-  return '<div class=kv><span>CDP census sampled</span><span>'+(e.census_ok?e.census_sampled:'unavailable')+'</span></div>'+
-    '<div class=kv><span>top terms</span><span style="white-space:normal;text-align:right;max-width:65%">'+esc(cats)+'</span></div>'+
-    '<table><tr><th>competitor</th><th>status</th><th>lane</th></tr>'+comp+'</table>';
+  e=e||{};
+  setTxt('e-samp',e.census_ok?fmt(e.census_sampled):'unavailable');
+  setTxt('e-lane',e.onyx_lane||'—');
+  var terms=(e.census_top_categories||[]).map(function(c){return c.term+' ('+fmt(c.count)+')'}).join(' · ');
+  setTxt('e-terms',terms||'—');
+  var comp=e.competitor_map||[],i,c;
+  for(i=0;i<6;i++){
+    c=comp[i];
+    if(c){
+      setTxt('er'+i+'n',c.name||'?','');
+      setTxt('er'+i+'s',c.verified?'VERIFIED':'UNVERIFIED',c.verified?'pos':'mut');
+      setTxt('er'+i+'l',c.lane||'—','mut');
+    }else{
+      setTxt('er'+i+'n','—','mut');setTxt('er'+i+'s','—','mut');setTxt('er'+i+'l','—','mut');
+    }
+  }
 }
 function renderTape(rows){
-  if(!rows||!rows.length){document.getElementById('tape').innerHTML='<span class=item>no recent verdict records</span>';return}
-  document.getElementById('tape').innerHTML = rows.map(function(r){
-    return '<span class=item><b>'+esc(r.tool)+'</b> '+esc(r.verdict||'?')+' &rarr; '+esc(r.outcome||'?')+' &middot; '+esc(r.verdict_id)+'</span>';
-  }).join('');
+  var el=g('tape'),html;
+  if(!rows||!rows.length){html='<span class=mut>no recent verdict records</span>';}
+  else{
+    html=rows.map(function(r){
+      return '<b>'+esc(r.tool)+'</b> <span class="'+vcls(r.verdict)+'">'+esc(r.verdict||'?')+
+             '</span> → '+esc(r.outcome||'?')+' <span class=mut>'+esc(r.verdict_id||'')+'</span>';
+    }).join('<span class=sep>|</span>');
+  }
+  if(el._h!==html){el._h=html;el.innerHTML=html;}
 }
-var failCount = 0;
+/* ---- mempool-style activity grid: 60-slot ring buffer, fills L→R T→B, overwrites oldest ---- */
+function updateActivity(rows){
+  rows=(rows||[]).slice().sort(function(a,b){return (a.at||0)-(b.at||0)});
+  rows.forEach(function(r){
+    var k=String(r.verdict_id||'')+'|'+String(r.at||'')+'|'+String(r.tool||'');
+    if(S.seen[k])return;
+    S.seen[k]=1;S.seenCount++;
+    r._k=k;
+    S.ring[S.ringIdx]=r;
+    S.ringIdx=(S.ringIdx+1)%60;
+  });
+  if(S.seenCount>600){
+    S.seen={};S.seenCount=0;
+    S.ring.forEach(function(ev){if(ev&&ev._k){S.seen[ev._k]=1;S.seenCount++;}});
+  }
+  var now=Date.now()/1000,i,ev,cell;
+  for(i=0;i<60;i++){
+    ev=S.ring[i];cell=g('ac'+i);
+    if(!ev){
+      cell.style.backgroundColor='#101112';cell.style.borderColor='#232426';cell.title='';
+    }else{
+      var age=Math.max(0,now-(Number(ev.at)||now));
+      var alpha=Math.max(0.18,1-age/43200); /* fade over 12h, floor .18 */
+      var rgb=vrgb(ev.verdict);
+      cell.style.backgroundColor='rgba('+rgb+','+alpha.toFixed(2)+')';
+      cell.style.borderColor='rgba('+rgb+','+Math.min(1,alpha+0.15).toFixed(2)+')';
+      cell.title=(ev.tool||'?')+' '+(ev.verdict||'?')+' → '+(ev.outcome||'?');
+    }
+  }
+}
+/* ---- squarified treemap over top-10 reputation mass, fixed-size canvas ---- */
+function worst(row,sum,side){
+  var mx=0,mn=Infinity,i;
+  for(i=0;i<row.length;i++){if(row[i].a>mx)mx=row[i].a;if(row[i].a<mn)mn=row[i].a;}
+  var s2=sum*sum,sd2=side*side;
+  return Math.max(sd2*mx/s2,s2/(sd2*mn));
+}
+function squarify(nodes,x,y,w,h){
+  var rects=[],i=0;
+  while(i<nodes.length&&w>0&&h>0){
+    var row=[nodes[i]],rowSum=nodes[i].a;i++;
+    var side=Math.min(w,h),wNow=worst(row,rowSum,side);
+    while(i<nodes.length){
+      var cand=rowSum+nodes[i].a;
+      var w2=worst(row.concat([nodes[i]]),cand,side);
+      if(w2>wNow)break;
+      row.push(nodes[i]);rowSum=cand;wNow=w2;i++;
+    }
+    var j,n;
+    if(w>=h){
+      var sw=rowSum/h,yy=y;
+      for(j=0;j<row.length;j++){n=row[j];rects.push({n:n,x:x,y:yy,w:sw,h:n.a/sw});yy+=n.a/sw;}
+      x+=sw;w-=sw;
+    }else{
+      var sh=rowSum/w,xx=x;
+      for(j=0;j<row.length;j++){n=row[j];rects.push({n:n,x:xx,y:y,w:n.a/sh,h:sh});xx+=n.a/sh;}
+      y+=sh;h-=sh;
+    }
+  }
+  return rects;
+}
+function truncText(ctx,s,w){while(s.length>1&&ctx.measureText(s).width>w)s=s.slice(0,-1);return s;}
+function drawTreemap(top){
+  var c=g('tm'),ctx=c.getContext('2d'),W=c.width,H=c.height;
+  ctx.fillStyle='#101112';ctx.fillRect(0,0,W,H);
+  var items=(top||[]).filter(function(r){return r&&Number(r.reputation)>0})
+    .map(function(r){return {name:String(r.agent||'?'),v:Number(r.reputation)}})
+    .sort(function(a,b){return b.v-a.v});
+  ctx.font='10px ui-monospace,Consolas,monospace';
+  if(!items.length){
+    ctx.fillStyle='#8a8f98';ctx.textAlign='center';
+    ctx.fillText('no ranked citizens yet',W/2,H/2);
+    ctx.textAlign='left';return;
+  }
+  var total=0,i;
+  for(i=0;i<items.length;i++)total+=items[i].v;
+  for(i=0;i<items.length;i++)items[i].a=items[i].v*(W-2)*(H-2)/total;
+  var rects=squarify(items,1,1,W-2,H-2);
+  for(i=0;i<rects.length;i++){
+    var rc=rects[i];
+    ctx.fillStyle='hsl(145,42%,'+Math.max(10,24-i*1.6)+'%)';
+    ctx.fillRect(rc.x,rc.y,rc.w,rc.h);
+    ctx.strokeStyle='#232426';ctx.lineWidth=1;
+    ctx.strokeRect(rc.x+0.5,rc.y+0.5,Math.max(0,rc.w-1),Math.max(0,rc.h-1));
+    if(rc.w>64&&rc.h>28){
+      ctx.fillStyle='#eaeaea';
+      ctx.fillText(truncText(ctx,rc.n.name,rc.w-12),rc.x+6,rc.y+14);
+      if(rc.h>44){ctx.fillStyle='#8a8f98';ctx.fillText(fmt(rc.n.v,3),rc.x+6,rc.y+28);}
+    }
+  }
+}
 function poll(){
   fetch('/matrix.json',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){
-    failCount = 0;
-    document.getElementById('stale').style.display='none';
-    document.getElementById('asof').textContent = 'as of ' + (d.as_of_iso||'?') + ' · refresh ' + (d.refresh_seconds||15) + 's';
-    document.getElementById('c-network').innerHTML = renderNetwork(d.network);
-    document.getElementById('c-transactions').innerHTML = renderTx(d.transactions);
-    document.getElementById('c-health').innerHTML = renderHealth(d.health);
-    document.getElementById('c-ecosystem').innerHTML = renderEco(d.ecosystem);
-    renderTape((d.transactions||{}).recent_facts);
+    S.fail=0;
+    g('stale').style.opacity=0;
+    q('asof','AS OF '+(d.as_of_iso||'?')+' · SERVER CACHE '+(d.refresh_seconds||30)+'S · POLL 15S');
+    renderNetwork(d.network);
+    renderTx(d.transactions);
+    renderHealth(d.health);
+    renderEco(d.ecosystem);
+    var facts=((d.transactions||{}).recent_facts)||[];
+    renderTape(facts);
+    updateActivity(facts);
+    drawTreemap((d.network||{}).top10);
   }).catch(function(){
-    failCount++;
-    if(failCount>=2) document.getElementById('stale').style.display='inline';
+    S.fail++;
+    if(S.fail>=2)g('stale').style.opacity=1;
   });
 }
-function tick(){document.getElementById('clock').textContent = new Date().toISOString().replace('T',' ').slice(0,19)+'Z';}
-setInterval(tick,1000); tick();
-poll(); setInterval(poll, 15000);
+function tick(){q('clock',new Date().toISOString().replace('T',' ').slice(0,19)+'Z');}
+setInterval(tick,1000);tick();
+poll();setInterval(poll,15000);
 </script>
 </body></html>"""
 
