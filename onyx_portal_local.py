@@ -22,6 +22,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from tools_pkg import _chat
+import onyx_a2a_gateway
 
 app = FastAPI(title="0n1x Portal (local)")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
