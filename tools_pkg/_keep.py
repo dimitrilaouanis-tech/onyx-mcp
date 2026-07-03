@@ -37,6 +37,8 @@ KEEP: set[str] = {
     "onyx_erc8004_lookup",      # $0.05 — signed on-chain read of ERC-8004 Identity/Reputation registries
     "onyx_contract_audit",      # $0.50 — verified-source audit (AgentLISA rival)
     "onyx_research_intel",      # $0.05 — live OpenAlex prior-art
+    "onyx_preflight",           # $0.02 — signed x402-endpoint preflight (decoy/dead/price-trap check before you pay)
+    "onyx_ecosystem_intel",     # free  — signed ecosystem snapshot: our numbers + live CDP census + competitor map
 
     # --- OA-1 accountability core (free, the differentiator) ---
     "onyx_track_record",        # free  — measured precision from signed ledger

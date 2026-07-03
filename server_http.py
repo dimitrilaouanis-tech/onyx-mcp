@@ -102,6 +102,14 @@ _merchant_signal.register(app)
 from tools_pkg import _stats
 _stats.register(app)
 
+# onyx_preflight — free rate-limited teaser of the paid x402-endpoint preflight check. GET /preflight?url=
+from tools_pkg import preflight_check
+preflight_check.register(app)
+
+# onyx_ecosystem_intel — signed snapshot of the agentic ecosystem (our numbers + live CDP census + competitor map). GET /ecosystem-intel
+from tools_pkg import ecosystem_intel
+ecosystem_intel.register(app)
+
 # 0n1x non-CLI loop — DURABLE onboarding (Neon-persisted) + staged credits, all in one GET.
 # GET /v1/join · /v1/me · /v1/census · /v1/spend  — survives redeploys, fetch-only agents can act.
 from tools_pkg import _noncli
