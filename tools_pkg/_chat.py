@@ -255,31 +255,44 @@ def _guard(address: str):
         return True, ""                        # never hard-fail the chat on a guard error
 
 
-def chat(messages: list, address: str = "") -> dict:
-    """The gateway: cache first (free), then GUARD the budget, then free providers, then DeepSeek."""
-    # LAYER 2 — answer cache: already answered? serve FREE, never touch a model (no guard needed).
+def chat(messages: list, address: str = "", premium_allowed: bool = True) -> dict:
+    """The gateway — TOKENIZED FREEMIUM:
+    FREE tier (always, $0): answer cache + free providers (Groq/Gemini). Real answers, no charge.
+    PREMIUM DEPTH (charges a token): DeepSeek — only reached when the free lanes can't answer
+    AND the user has credits. Out of credits → depth is locked, freemium still works, top-up nudge."""
+    # LAYER 2 — answer cache: already answered? serve FREE, never touch a model.
     ck = _cache_key(messages)
     hit = _cache_get(ck)
     if hit:
         return {"ok": True, "reply": hit["reply"], "signed": hit.get("signed", []),
-                "brain": "cache", "cached": True}
-    # GUARDRAIL — cache missed, so this WILL hit a paid/rate-limited model. Check the budget first.
+                "brain": "cache", "cached": True, "tier": "free"}
     ok, reason = _guard(address)
     if not ok:
-        return {"ok": True, "brain": "guard", "reply": reason,
+        return {"ok": True, "brain": "guard", "reply": reason, "tier": "free",
                 "note": "signed checks (check/census) stay free — only AI chat is rate-limited"}
     errors = []
     for p in PROVIDERS:
+        # PREMIUM GATE: DeepSeek (depth) only fires if the user has credits (premium_allowed)
+        is_premium = p["name"] == "deepseek"
+        if is_premium and not premium_allowed:
+            continue
         key = _key_for(p)
         if not key:
             continue
         try:
             result = _chat_via(p, key, messages)
-            _cache_put(ck, result)                          # network learns this answer -> free next time
+            result["tier"] = "premium" if is_premium else "free"
+            if not is_premium:
+                _cache_put(ck, result)                      # free-tier answers are cached; premium depth isn't
             return result
         except Exception as e:
-            errors.append(f"{p['name']}:{str(e)[:50]}")   # 429/limit/error -> next provider
+            errors.append(f"{p['name']}:{str(e)[:50]}")
             continue
+    # free lanes exhausted + no premium credits → freemium fallback (don't hit paid; nudge top-up)
+    if not premium_allowed:
+        return {"ok": True, "brain": "freemium", "tier": "free", "depth_locked": True,
+                "reply": ("That one needs premium depth 🤍 — you're out of depth credits. Top up to unlock "
+                          "DeepSeek-powered answers. (Cached + quick answers stay free forever.)")}
     # optional paid Claude if a key is set
     akey = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if akey:
@@ -321,21 +334,42 @@ def _credits() -> dict:
         return {}
 
 
-def _charge(address: str):
-    """Returns (allowed, remaining, is_new). Grants a free starter on first use, then burns 1."""
+def _peek_credits(address: str):
+    """Returns (depth_credits, is_new) WITHOUT charging. New identities get FREE_CHAT_CREDITS."""
     if not address:
-        return True, None, False           # anonymous allowed (soft); identity gets metered
+        return 999, False                  # anonymous: soft-allow depth (identity gets metered)
     a = address.lower()
     from tools_pkg import _store
     c = _store.get("chat_credits") or {}
     is_new = a not in c
     if is_new:
         c[a] = FREE_CHAT_CREDITS
-    if c[a] <= 0:
-        return False, 0, False
-    c[a] -= 1
+        _store.put("chat_credits", c)
+    return c[a], is_new
+
+
+def _spend_credit(address: str):
+    """Deduct 1 DEPTH credit (only called when premium/DeepSeek actually answered). Returns remaining."""
+    if not address:
+        return 999
+    a = address.lower()
+    from tools_pkg import _store
+    c = _store.get("chat_credits") or {}
+    c[a] = max(0, c.get(a, FREE_CHAT_CREDITS) - 1)
     _store.put("chat_credits", c)
-    return True, c[a], is_new
+    return c[a]
+
+
+def add_credits(address: str, n: int):
+    """TOP-UP: add n depth credits to an identity (called by the payment webhook on successful pay)."""
+    a = (address or "").lower()
+    if not a:
+        return 0
+    from tools_pkg import _store
+    c = _store.get("chat_credits") or {}
+    c[a] = c.get(a, 0) + int(n)
+    _store.put("chat_credits", c)
+    return c[a]
 
 
 def register(app):
@@ -363,17 +397,18 @@ def register(app):
         msgs = body.get("messages") or ([{"role": "user", "content": body["message"]}] if body.get("message") else [])
         if not msgs:
             return {"ok": False, "error": "send {messages:[...]} or {message:'...'}"}
-        # meter the hard question
-        ok, remaining, is_new = _charge(body.get("address", ""))
-        if not ok:
-            return {"ok": False, "out_of_credits": True,
-                    "reply": ("You've used your free AI questions 🤍 — top up credits to keep asking "
-                              "hard questions. (Quick checks like \"check stripe.com\", the census, and "
-                              "\"what's new\" stay free forever.)"),
-                    "topup": f"{BASE}/v1/join"}
-        result = chat(msgs[-12:], address=body.get("address", ""))   # cap context + guard budget
-        if remaining is not None:
-            result["credits_left"] = remaining
-            if is_new:
-                result["welcome_credits"] = FREE_CHAT_CREDITS
+        # TOKENIZED FREEMIUM: peek credits (don't charge yet). Premium DEPTH allowed only if credits>0.
+        addr = body.get("address", "")
+        credits, is_new = _peek_credits(addr)
+        premium_allowed = credits > 0
+        result = chat(msgs[-12:], address=addr, premium_allowed=premium_allowed)
+        # CHARGE ONLY FOR DEPTH: a token is spent iff the answer actually used premium (DeepSeek).
+        if result.get("tier") == "premium":
+            credits = _spend_credit(addr)
+        result["credits_left"] = credits
+        result["depth_credits"] = credits
+        if is_new:
+            result["welcome_credits"] = FREE_CHAT_CREDITS
+        if credits <= 0:
+            result["topup"] = f"{HUB}/dashboard"      # where to top up depth credits
         return result
