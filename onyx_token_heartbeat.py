@@ -8,6 +8,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 # 1) run the engine (fast, local, $0) — appends to the signed ledger + rewrites the feed
 r = subprocess.run([sys.executable, "onyx_token_engine.py"], capture_output=True, text=True, timeout=180)
 subprocess.run([sys.executable, "onyx_forecast.py"], capture_output=True, text=True, timeout=120)
+subprocess.run([sys.executable, "onyx_portal_pointer.py"], capture_output=True, text=True, timeout=60)  # self-heal tunnel URL
 if "REAL signed" not in r.stdout:
     print("engine failed:", (r.stderr or r.stdout)[-200:]); sys.exit(1)
 print(r.stdout.strip().splitlines()[-4])
