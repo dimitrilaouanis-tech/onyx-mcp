@@ -14,8 +14,42 @@ def _get(url, timeout=15, raw=False):
 # ── external resolvers — each returns a REAL scalar/verdict from the world, no model ──
 def r_price(sym):
     return float(_get(f"https://api.coinbase.com/v2/prices/{sym}-USD/spot")["data"]["amount"])
+def r_merchant(domain):
+    """MERCHANT-REALITY resolver (eco-voted oracle depth): real risk signals with no key, no
+    cold-start dependency. Domain AGE via RDAP is the strongest cheap fraud signal — scam
+    storefronts are days-to-weeks old; legit merchants are years old. Returns a real verdict."""
+    domain = domain.strip().lower().replace("https://", "").replace("http://", "").split("/")[0]
+    age_days = None
+    try:
+        r = _get(f"https://rdap.org/domain/{domain}", timeout=12)
+        import datetime
+        for ev in r.get("events", []):
+            if ev.get("eventAction") == "registration" and ev.get("eventDate"):
+                reg = datetime.datetime.fromisoformat(ev["eventDate"].replace("Z", "+00:00"))
+                age_days = (datetime.datetime.now(datetime.timezone.utc) - reg).days
+                break
+    except Exception:
+        pass
+    if age_days is None:
+        # fall back to the merchant API if RDAP is unavailable for this TLD
+        try:
+            v = _get(f"https://onyx-actions.onrender.com/api/check?url={domain}", timeout=25)
+            return {"band": v.get("band"), "verdict": v.get("verdict"), "source": "api/check"}
+        except Exception:
+            return {"band": "unknown", "verdict": "COULD NOT RESOLVE", "age_days": None}
+    # real risk banding from domain age (the fraud signal)
+    if age_days < 30:
+        band, verdict = "high_risk", f"HIGH RISK — domain only {age_days} days old"
+    elif age_days < 180:
+        band, verdict = "caution", f"CAUTION — young domain ({age_days} days)"
+    elif age_days < 730:
+        band, verdict = "ok", f"ESTABLISHED — {age_days} days ({age_days // 365}y)"
+    else:
+        band, verdict = "ok", f"WELL-ESTABLISHED — {age_days // 365} years old"
+    return {"band": band, "verdict": verdict, "age_days": age_days, "source": "rdap"}
+
 def r_domain(domain):
-    return _get(f"https://onyx-actions.onrender.com/api/check?url={domain}", timeout=30)
+    return r_merchant(domain)
 def r_defillama(slug):
     return float(_get(f"https://api.llama.fi/tvl/{slug}", raw=True))
 def r_fx(sym):
