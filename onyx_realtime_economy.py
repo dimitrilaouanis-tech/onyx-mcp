@@ -46,6 +46,7 @@ def tick(n_events=200, seed_ns=None):
     if len(rag) < 2:
         return {"error": "roster too small"}
     ledger = load(LEDGER, [])
+    balances = load("_local_only/_rt_balances.json", {})   # PERSISTENT net flow per address → feeds ranking
     t0 = time.time()
     # deterministic-but-varied selection without Math.random (seed from ledger length + index)
     base = len(ledger)
@@ -73,10 +74,16 @@ def tick(n_events=200, seed_ns=None):
                        "from_addr": payer["address"], "amount": amount, "work": wtype,
                        "sig": "0x" + sig.removeprefix("0x")[:20] + "…",
                        "hash": hashlib.sha256(body.encode()).hexdigest()[:16], "ts": None})
+        # accumulate PERSISTENT net flow — payee earns for the work, payer spends (this is what
+        # makes the ranking genuinely MOVE with real work, not stay genesis-static)
+        pa, pe = payer["address"].lower(), payee["address"].lower()
+        balances[pe] = balances.get(pe, 0) + amount
+        balances[pa] = balances.get(pa, 0) - amount
         settled += 1
         active.add(payer["address"]); active.add(payee["address"])
     ledger = ledger[-500:]     # keep recent window for the live tape
     json.dump(ledger, open(LEDGER, "w", encoding="utf-8"), ensure_ascii=False)
+    json.dump(balances, open("_local_only/_rt_balances.json", "w", encoding="utf-8"))
 
     dt = time.time() - t0
     metrics = {

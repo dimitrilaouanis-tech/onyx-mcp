@@ -18,19 +18,22 @@ def sync():
     feed = load(PUB + r"\token_feed.json", {})
     roster = load("_local_only/_10k_roster.json", [])
     rag = roster if isinstance(roster, list) else roster.get("agents", [])
-    ledger = load("_local_only/_ledger.json", []) or feed.get("_ledger", [])
-
-    # balances = genesis(score-derived) + net signed ledger flow (same formula as the engine)
+    # balances = genesis(score-derived) + PERSISTENT real-time work flow (the living economy).
+    # Reads _rt_balances.json — the accumulated net flow from work-tied transfers — so the
+    # ranking genuinely MOVES with real verification work, not a stale/missing ledger.
+    rt_flow = load("_local_only/_rt_balances.json", {})    # {addr_lower: net_delta}
     by_addr = {a["address"]: a for a in rag if a.get("address")}
     def genesis(a):
         salt = int(a.get("address", "0x0")[-4:], 16) % 600 if len(a.get("address", "")) >= 4 else 0
         return round(a.get("score", 0) * 11 + salt + 40)
-    bal = {a["address"]: genesis(a) for a in rag if a.get("address")}
-    flow = {}
-    for tx in (ledger if isinstance(ledger, list) else []):
-        fr, to, amt = tx.get("from"), tx.get("to"), tx.get("amount", 0)
-        if fr in bal: bal[fr] -= amt; flow[fr] = flow.get(fr, 0) - amt
-        if to in bal: bal[to] += amt; flow[to] = flow.get(to, 0) + amt
+    bal, flow = {}, {}
+    for a in rag:
+        ad = a.get("address")
+        if not ad:
+            continue
+        delta = rt_flow.get(ad.lower(), 0)
+        bal[ad] = genesis(a) + delta
+        flow[ad] = delta
 
     # THE SORT — over all 200k, sub-ms. Publish the top cohort + a fresh signed timestamp.
     ranked = sorted(bal, key=lambda ad: (bal[ad], by_addr[ad].get("score", 0)), reverse=True)
