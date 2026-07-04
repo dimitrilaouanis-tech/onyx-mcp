@@ -92,15 +92,21 @@ with open("_local_only/_token_ledger.jsonl", "a", encoding="utf-8") as f:
     for tx in ledger:
         f.write(json.dumps(tx) + "\n")
 
-# public site feed — safe fields only (no keys anywhere)
+# public site feed — safe fields only (no keys anywhere). FULL sig + the exact
+# signed fields (n, addresses, amount, ts) so any outsider can recover the
+# signer and check it equals from_addr — "VERIFIABLE" on the tape must be
+# literally true for the public, not just for our private ledger.
 feed = {
     "engine": "0n1x token engine v1",
     "note": "real transactions, each signed by the sender's own key (EIP-191) and verified on entry",
+    "verify": ("payload = JSON of {amount, from: from_addr, n, to: to_addr, ts} "
+               "with sorted keys; EIP-191 recover(payload, sig) must equal from_addr"),
     "generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     "total_verified": verified,
     "txs": [
         {"from": t["from_callsign"], "to": t["to_callsign"], "amount": t["amount"],
-         "sig": t["sig"][:24] + "…", "hash": t["payload_hash"]}
+         "from_addr": t["from"], "to_addr": t["to"], "n": t["n"], "ts": t["ts"],
+         "sig": t["sig"], "hash": t["payload_hash"]}
         for t in ledger[-60:]
     ],
 }
