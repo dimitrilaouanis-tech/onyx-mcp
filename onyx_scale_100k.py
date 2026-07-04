@@ -6,7 +6,7 @@ import json, os, time
 from eth_account import Account
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
-TARGET = 200_000
+TARGET = 1_000_000
 
 ADJ = ["Swift","Vast","Iron","Grave","Bright","Lone","Bold","True","Wild","Steel","Quiet","Prime",
        "Keen","Sharp","Stone","Onyx","Grim","Pale","Deep","Fair","Cold","Dark","Pure","Rapid"]
