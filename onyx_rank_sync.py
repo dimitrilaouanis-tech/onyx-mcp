@@ -50,7 +50,7 @@ def sync():
     except Exception:
         pass
 
-    json.dump(feed, open(PUB + r"\token_feed.json", "w"), ensure_ascii=False)
+    json.dump(feed, open(PUB + r"\token_feed.json", "w", encoding="utf-8"), ensure_ascii=False)
     return feed
 
 
