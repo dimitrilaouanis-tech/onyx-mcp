@@ -27,6 +27,9 @@ TOOLS = [
     {"name": "census_proof",
      "description": "Get the 0n1x census stats (agent count, Merkle root) and the exact steps to independently verify the ranking from public shards.",
      "inputSchema": {"type": "object", "properties": {}}},
+    {"name": "fleet_telemetry",
+     "description": "The 0n1x network control-plane metrics: the NETWORK TRUST SCORE (0-100, mean verified standing), fleet health, active ratio, epoch volume, autonomy state — the measurable pulse of a 100k-agent verifiable network.",
+     "inputSchema": {"type": "object", "properties": {}}},
     {"name": "trust_score",
      "description": "The Web3 wedge: a SIGNED 0-100 trust score for any agent (callsign or 0x) that on-chain contracts, DeFi protocols, and DAOs can read to price counterparty risk. Standing-based, honest disclaimer signed in.",
      "inputSchema": {"type": "object", "properties": {"identifier": {"type": "string"}}, "required": ["identifier"]}},
@@ -41,6 +44,12 @@ def _call_tool(name, args):
         return GATEWAY.verified_answer(args.get("question", ""))
     if name == "check_merchant":
         return GATEWAY.verified_answer("Is " + str(args.get("url", "")) + " safe to buy from?")
+    if name == "fleet_telemetry":
+        try:
+            import onyx_mission_control as MC
+            return MC.fleet_telemetry()
+        except Exception as e:
+            return {"error": str(e)[:80]}
     if name == "trust_score":
         try:
             from tools_pkg import _trust_score
