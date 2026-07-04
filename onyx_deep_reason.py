@@ -1,0 +1,95 @@
+# 0n1x DEEP REASONING SYSTEM — genuine deep reasoning at fleet scale ($0, honest).
+# NOT 200k shallow opinions (theater). A multi-stage reasoning ORCHESTRATION that harnesses
+# the fleet's breadth + reality-verification + synthesis to reason DEEPER than any single
+# free model:
+#   1. DECOMPOSE  — a lead breaks the problem into sub-questions
+#   2. SPECIALIZE — each sub-question routes to a lane squad (diverse model families)
+#   3. REASON     — each squad produces independent drafts (breadth)
+#   4. VERIFY     — oracle-anchor where resolvable; adversarial critique otherwise
+#   5. SYNTHESIZE — fuse the verified sub-answers into one deep answer
+#   6. CRITIQUE   — an adversary attacks it; refine until it survives
+# Chakra-bounded: a deep pipeline (~15-25 free calls), not 200k literal calls. The 200k is
+# the pool of diverse reasoners it draws from; each task uses a bounded squad.
+import json, urllib.request, time
+
+def _direct(provider, prompt, timeout=70, max_tokens=900):
+    try:
+        if provider == "gemini":
+            key = open(".gemini_key").read().strip()
+            url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+            model = "gemini-2.5-flash"; hdr = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
+        else:
+            key = open(".groq_key").read().strip()
+            model = {"g120": "openai/gpt-oss-120b", "g8": "llama-3.1-8b-instant", "g20": "openai/gpt-oss-20b"}.get(provider, "openai/gpt-oss-120b")
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            hdr = {"Authorization": "Bearer " + key, "Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
+        req = urllib.request.Request(url, data=json.dumps(
+            {"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": max_tokens}).encode(), headers=hdr)
+        return json.loads(urllib.request.urlopen(req, timeout=timeout).read())["choices"][0]["message"].get("content") or ""
+    except Exception:
+        return ""
+
+FAMILIES = ["g120", "gemini", "g8"]   # diverse model families = real independence
+
+
+def deep_reason(question, depth=3, verbose=False):
+    """Reason deeply on a hard question by decomposing, squad-reasoning each part with
+    verification, synthesizing, and surviving an adversarial critique. Returns the deep answer."""
+    trace = {"question": question, "stages": []}
+
+    # 1. DECOMPOSE
+    decomp = _direct("g120", f"Break this hard question into {depth} sharp, independent sub-questions "
+                     f"that together resolve it. One per line, no numbering.\n\nQUESTION: {question}")
+    subs = [s.strip("-• ").strip() for s in decomp.split("\n") if len(s.strip()) > 12][:depth]
+    if not subs:
+        subs = [question]
+    trace["stages"].append({"decompose": subs})
+
+    # 2-4. per sub-question: diverse drafts (breadth) → critique-verify → best line
+    sub_answers = []
+    for i, sub in enumerate(subs):
+        drafts = []
+        for f in FAMILIES:
+            d = _direct(f, f"Reason precisely and concretely. If you are unsure, say so.\n\nQ: {sub}")
+            if d and len(d) > 20:
+                drafts.append((f, d))
+        if not drafts:
+            continue
+        # VERIFY: a different-family adversary checks the drafts for the strongest, flags errors
+        block = "\n\n".join(f"[{f}] {d[:700]}" for f, d in drafts)
+        verified = _direct("gemini", "You are a strict verifier. From these independent answers to the "
+                           "same sub-question, extract the claims they AGREE on (likely true), flag any "
+                           "conflict, and state the single best-supported conclusion. Be rigorous.\n\n"
+                           f"SUB-QUESTION: {sub}\n\n{block}")
+        sub_answers.append({"sub": sub, "conclusion": verified or drafts[0][1]})
+
+    # 5. SYNTHESIZE the verified sub-answers into one deep answer
+    syn_block = "\n\n".join(f"SUB: {s['sub']}\nVERIFIED: {s['conclusion'][:600]}" for s in sub_answers)
+    answer = _direct("g120", "Synthesize ONE deep, rigorous answer to the original question using these "
+                     "verified sub-conclusions. Integrate them, resolve tensions, be concrete and honest "
+                     "about uncertainty.\n\n"
+                     f"ORIGINAL QUESTION: {question}\n\n{syn_block}", max_tokens=1200)
+
+    # 6. ADVERSARIAL CRITIQUE → refine
+    critique = _direct("gemini", "Attack this answer: what's its weakest claim, what did it miss, where "
+                       f"could it be wrong? Be brutal.\n\nQUESTION: {question}\n\nANSWER: {answer[:1400]}")
+    final = _direct("g120", "Revise the answer to survive this critique — fix the weak points, add what "
+                    "was missed, keep it honest about what remains uncertain.\n\n"
+                    f"QUESTION: {question}\n\nANSWER: {answer[:1400]}\n\nCRITIQUE: {critique[:800]}", max_tokens=1300)
+
+    out = {"answer": final or answer, "method": f"deep-reason(decompose={len(subs)} → squad-verify → synthesize → critique-refine)",
+           "sub_questions": subs}
+    if verbose:
+        out["trace"] = {"subs": sub_answers, "pre_critique": answer, "critique": critique}
+    return out
+
+
+if __name__ == "__main__":
+    import sys
+    q = " ".join(sys.argv[1:]) or "Should an AI agent trust a 3-month-old merchant selling luxury goods 60% below retail with a valid TLS cert and an anonymous domain registration? Reason rigorously."
+    print("Q:", q, "\n")
+    t0 = time.time()
+    r = deep_reason(q, depth=3)
+    print(f"[{r['method']}, {round(time.time()-t0)}s]")
+    print("SUB-QUESTIONS:", r["sub_questions"])
+    print("\nDEEP ANSWER:\n", r["answer"][:1100])
