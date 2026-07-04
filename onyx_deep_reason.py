@@ -55,16 +55,25 @@ def deep_reason(question, depth=3, verbose=False):
                 drafts.append((f, d))
         if not drafts:
             continue
-        # VERIFY: a different-family adversary checks the drafts for the strongest, flags errors
+        # VERIFY via JUDGE TOURNAMENT (divergence-fix): score by QUALITY, not agreement —
+        # agreement can be correlated error / false consensus. A different-family judge scores
+        # each draft on explicit criteria and picks the best; then an adversary PROBES its
+        # key claims (attacks the content, not the synthesis) to catch what agreement misses.
         block = "\n\n".join(f"[{f}] {d[:700]}" for f, d in drafts)
-        verified = _direct("gemini", "You are a strict verifier. From these independent answers to the "
-                           "same sub-question, extract the claims they AGREE on (likely true), flag any "
-                           "conflict, and state the single best-supported conclusion. Be rigorous.\n\n"
-                           f"SUB-QUESTION: {sub}\n\n{block}")
-        sub_answers.append({"sub": sub, "conclusion": verified or drafts[0][1]})
+        judged = _direct("gemini",
+            "You are a rigorous judge. Score each answer to the sub-question on: CORRECTNESS, "
+            "EVIDENCE/reasoning quality, and HONESTY about uncertainty (each 0-10). Pick the single "
+            "BEST answer by quality — NOT by how many agree (agreement can be shared error). State "
+            "the winner's conclusion, and explicitly note any claim asserted without support.\n\n"
+            f"SUB-QUESTION: {sub}\n\n{block}")
+        probe = _direct("g120",
+            "Attack the FACTUAL CLAIMS in this conclusion — which specific claim is most likely "
+            "wrong or unsupported, and why? If a claim is checkable against reality, say how.\n\n"
+            f"CONCLUSION: {(judged or drafts[0][1])[:800]}")
+        sub_answers.append({"sub": sub, "conclusion": judged or drafts[0][1], "probe": probe[:400]})
 
-    # 5. SYNTHESIZE the verified sub-answers into one deep answer
-    syn_block = "\n\n".join(f"SUB: {s['sub']}\nVERIFIED: {s['conclusion'][:600]}" for s in sub_answers)
+    # 5. SYNTHESIZE the judged sub-answers (carrying each claim-probe so weak claims are discounted)
+    syn_block = "\n\n".join(f"SUB: {s['sub']}\nBEST: {s['conclusion'][:600]}\nPROBE(discount weak claims): {s.get('probe','')[:250]}" for s in sub_answers)
     answer = _direct("g120", "Synthesize ONE deep, rigorous answer to the original question using these "
                      "verified sub-conclusions. Integrate them, resolve tensions, be concrete and honest "
                      "about uncertainty.\n\n"
