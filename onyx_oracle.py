@@ -38,15 +38,17 @@ def r_merchant(domain):
         except Exception:
             return {"band": "unknown", "verdict": "COULD NOT RESOLVE", "age_days": None}
     # real risk banding from domain age (the fraud signal)
-    if age_days < 30:
+    if age_days < 60:
         band, verdict = "high_risk", f"HIGH RISK — domain only {age_days} days old"
-    elif age_days < 180:
-        band, verdict = "caution", f"CAUTION — young domain ({age_days} days)"
-    elif age_days < 730:
-        band, verdict = "ok", f"ESTABLISHED — {age_days} days ({age_days // 365}y)"
+    elif age_days < 365:
+        band, verdict = "caution", f"CAUTION — under a year old ({age_days} days); verify before paying"
+    elif age_days < 1095:
+        band, verdict = "ok", f"ESTABLISHED — {age_days} days ({age_days // 365}y+)"
     else:
         band, verdict = "ok", f"WELL-ESTABLISHED — {age_days // 365} years old"
-    return {"band": band, "verdict": verdict, "age_days": age_days, "source": "rdap"}
+    # domain age is ONE signal — honest about its ceiling (an aged domain can still be a scam)
+    return {"band": band, "verdict": verdict, "age_days": age_days, "source": "rdap",
+            "signal": "domain_age", "note": "age is a strong young-scam filter, not a full guarantee"}
 
 def r_domain(domain):
     return r_merchant(domain)
