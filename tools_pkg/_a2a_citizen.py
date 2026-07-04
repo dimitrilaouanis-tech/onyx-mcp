@@ -32,6 +32,14 @@ def citizen_reply(text: str, sender: str = "agent"):
     """Answer a fleet/registry/citizen query from signed data. Return None to defer to voice."""
     if not text:
         return None
+    # verify-before-you-transact FIRST — "should I trust <X>?" → signed standing verdict
+    try:
+        from tools_pkg import _a2a_attest
+        av = _a2a_attest.attest_query(text)
+        if av:
+            return av
+    except Exception:
+        pass
     t = text.lower()
     reg = _by_callsign()
     f = _feed()
