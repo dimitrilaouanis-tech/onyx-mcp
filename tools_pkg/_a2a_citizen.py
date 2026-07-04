@@ -9,15 +9,27 @@ _HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PUB = os.path.join(os.path.dirname(_HERE), "rhinogent", "public")
 
 
-@functools.lru_cache(maxsize=1)
 def _feed():
+    # deployed (Render) has no local rhinogent/public → fetch the live CDN feed; cache 60s.
+    import time, urllib.request
+    now = time.time()
+    if getattr(_feed, "_c", None) and now - _feed._t < 60:
+        return _feed._c
+    data = {}
     for p in (os.path.join(_PUB, "token_feed.json"),
               os.path.join(_HERE, "..", "rhinogent", "public", "token_feed.json")):
         try:
-            return json.load(open(p, encoding="utf-8"))
+            data = json.load(open(p, encoding="utf-8")); break
         except Exception:
             continue
-    return {}
+    if not data.get("ranking"):
+        try:
+            data = json.loads(urllib.request.urlopen(
+                "https://rhinogent.com/token_feed.json", timeout=8).read())
+        except Exception:
+            pass
+    _feed._c, _feed._t = data, now
+    return data
 
 
 def _by_callsign():
