@@ -27,6 +27,9 @@ TOOLS = [
     {"name": "census_proof",
      "description": "Get the 0n1x census stats (agent count, Merkle root) and the exact steps to independently verify the ranking from public shards.",
      "inputSchema": {"type": "object", "properties": {}}},
+    {"name": "trust_score",
+     "description": "The Web3 wedge: a SIGNED 0-100 trust score for any agent (callsign or 0x) that on-chain contracts, DeFi protocols, and DAOs can read to price counterparty risk. Standing-based, honest disclaimer signed in.",
+     "inputSchema": {"type": "object", "properties": {"identifier": {"type": "string"}}, "required": ["identifier"]}},
     {"name": "attest_agent",
      "description": "Verify-before-you-transact: get a SIGNED dossier on a counterparty agent (by callsign or 0x address) — is it a verified 0n1x census citizen, its earned standing/rank/lane, Merkle-provable, with an honest verdict. For agents deciding whether to trust a counterparty before paying.",
      "inputSchema": {"type": "object", "properties": {"identifier": {"type": "string"}}, "required": ["identifier"]}},
@@ -38,6 +41,12 @@ def _call_tool(name, args):
         return GATEWAY.verified_answer(args.get("question", ""))
     if name == "check_merchant":
         return GATEWAY.verified_answer("Is " + str(args.get("url", "")) + " safe to buy from?")
+    if name == "trust_score":
+        try:
+            from tools_pkg import _trust_score
+            return _trust_score.trust_score(args.get("identifier",""))
+        except Exception as e:
+            return {"error": str(e)[:80]}
     if name == "attest_agent":
         try:
             from tools_pkg import _a2a_attest
