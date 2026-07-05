@@ -77,8 +77,20 @@ def citizen_reply(text: str, sender: str = "agent"):
 
     # 3. registry / census / count queries
     if re.search(r"how many|count|size|total|population|census", t) and re.search(r"agent|citizen|network|fleet", t):
-        n = f.get("total_verified") or len(f.get("ranking", []))
-        return f"{greet}The 0n1x network runs 100,000 verified keypair citizens; {len(f.get('ranking',[]))} are in the live signed ranking. Merkle root: {(f.get('merkle_root') or '')[:16]}…"
+        # read the TRUE current count from the census manifest (not a stale hardcode)
+        try:
+            import os as _os
+            cpath = _os.path.join(_PUB, "census_manifest.json")
+            count = json.load(open(cpath, encoding="utf-8")).get("count")
+        except Exception:
+            count = None
+        if not count:
+            try:
+                count = json.loads(urllib.request.urlopen("https://rhinogent.com/census_manifest.json", timeout=8).read()).get("count")
+            except Exception:
+                count = None
+        n = count or f.get("total_verified") or len(f.get("ranking", []))
+        return f"{greet}The 0n1x network runs {n:,} verified keypair citizens; {len(f.get('ranking',[]))} are in the live signed ranking. Merkle root: {(f.get('merkle_root') or '')[:16]}…"
 
     # 4. top / rank / leaderboard queries
     if re.search(r"top|rank|leader|best|highest|richest", t) and re.search(r"agent|citizen|token|who", t):
