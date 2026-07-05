@@ -28,7 +28,7 @@ bal = {a["address"]: genesis(a) for a in agents}
 by_addr = {a["address"]: a for a in agents}
 addrs = list(bal.keys())
 
-N_TX = 300
+N_TX = 900   # axon conductivity x3 — more of the cohort moves each epoch
 ledger, verified, rejected = [], 0, 0
 t0 = time.time()
 
@@ -79,7 +79,9 @@ for i in range(N_TX):
         rejected += 1
         continue
     verified += 1
-    burn = max(1, round(amount * 0.02)) if amount >= 2 else 0   # THE SINK: 2% burned per payment
+    # THE SINK: true 2% (no 1-token floor — the floor made small payments burn
+    # ~10%, over-draining exactly the low-rank earners redistribution should feed)
+    burn = round(amount * 0.02)
     bal[s] -= amount
     bal[r] += amount - burn
     tx["burn"] = burn
@@ -130,7 +132,7 @@ for i in range(N_MENTOR):
         continue
     verified += 1
     mentored += 1
-    burn = max(1, round(fee * 0.02)) if fee >= 2 else 0
+    burn = round(fee * 0.02)   # true 2%, no floor (same fix as the work lane)
     bal[mentee] -= fee
     bal[mentor] += fee - burn
     tx["burn"] = burn
