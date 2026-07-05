@@ -113,10 +113,17 @@ def tree_of_thought(question, breadth=3):
     m = _re.search(r"[1-9]", pick or "1")
     best = branches[(int(m.group()) - 1) % len(branches)] if m else branches[0]
     expanded = _direct("g120", "Develop this reasoning path fully into a rigorous, correct answer. Be concrete, show the steps, end with 'ANSWER: <x>'." + NL + NL + "Q: " + question + NL + NL + "PATH: " + best[:600], max_tokens=1300)
-    crit = _direct("gemini", "Find the weakest claim in this answer and whether it holds." + NL + NL + "Q: " + question + NL + NL + "A: " + expanded[:1300])
-    final = _direct("g120", "Revise to survive this critique; stay honest about uncertainty." + NL + NL + "Q: " + question + NL + NL + "A: " + expanded[:1200] + NL + NL + "CRITIQUE: " + crit[:700], max_tokens=1400)
-    return {"answer": final or expanded,
-            "method": "tree-of-thought(breadth=" + str(len(branches)) + " -> pruned -> expanded -> critiqued)",
+    # DERIVATION stage (closes the 'costume of rigor' gap): force it to ACTUALLY solve, not just set up.
+    derived = _direct("g120",
+        "The analysis below sets up a framework but may not FINISH the math. Now DERIVE it: pick concrete "
+        "representative NUMBERS for every variable, write the actual inequality/equation, COMPUTE it "
+        "step by step, and state the NUMERIC threshold/decision that falls out. If a variable is unknown, "
+        "assume a stated reasonable value and solve anyway. Do the arithmetic — do not just describe it."
+        + NL + NL + "Q: " + question + NL + NL + "SETUP: " + expanded[:1100], max_tokens=1500)
+    crit = _direct("gemini", "Check this DERIVATION: are the numbers plugged in, the equation actually computed, and the conclusion following from the arithmetic? Name any step that is asserted but not computed." + NL + NL + "Q: " + question + NL + NL + "A: " + derived[:1400])
+    final = _direct("g120", "Produce the final answer: keep the COMPUTED derivation (numbers + arithmetic + the numeric decision threshold), fix anything the check flagged, stay honest about assumptions." + NL + NL + "Q: " + question + NL + NL + "DERIVATION: " + derived[:1300] + NL + NL + "CHECK: " + crit[:700], max_tokens=1600)
+    return {"answer": final or derived or expanded,
+            "method": "tree-of-thought(branch -> prune -> expand -> DERIVE(compute) -> check)",
             "branches_explored": len(branches)}
 
 
