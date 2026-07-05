@@ -42,7 +42,7 @@ WORK = [
 def tick(n_events=200, seed_ns=None):
     """One real-time economy tick: n_events work-payments, each signed by the PAYER's own key,
     each carrying a work reason. Returns live metrics. Bounded, $0, no LLM."""
-    rag, addr2key = _roster_keys(limit=20000)   # draw payers/payees from a working set
+    rag, addr2key = _roster_keys(limit=120000)   # draw payers/payees from a working set
     if len(rag) < 2:
         return {"error": "roster too small"}
     ledger = load(LEDGER, [])
