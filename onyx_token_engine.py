@@ -87,6 +87,58 @@ for i in range(N_TX):
     tx["payload_hash"] = hashlib.sha256(payload.encode()).hexdigest()[:16]
     ledger.append(tx)
 
+# MENTOR ECONOMY (build direction 2026-07-03): rank != luck — top agents get PAID
+# to train lower ones, verified by the mentee DOING the taught skill. A mentor
+# session = mentee attempts a real ledger-signature verification (the skill);
+# only a CORRECT verification releases the mentee's payment to the mentor.
+# Same rail, same signing, kind:"mentor" — knowledge transfer as transaction.
+N_MENTOR = 30
+_rank_now = sorted(addrs, key=lambda ad: bal[ad], reverse=True)
+_top, _lower = _rank_now[:200], _rank_now[len(_rank_now)//2:]
+mentored = 0
+for i in range(N_MENTOR):
+    mentor, mentee = random.choice(_top), random.choice(_lower)
+    if mentor == mentee or not prior:
+        continue
+    # the lesson: mentee re-verifies a prior signed tx (the skill being taught)
+    job = random.choice(prior)
+    try:
+        p = json.dumps({k: job[k] for k in ("n", "from", "to", "amount", "ts")}, sort_keys=True)
+        rec_m = Account.recover_message(encode_defunct(text=p),
+                                        signature=bytes.fromhex(job["sig"].removeprefix("0x")))
+        learned = rec_m.lower() == job["from"].lower()
+    except Exception:
+        learned = False
+    if not learned:
+        continue                            # skill not demonstrated, mentor unpaid
+    fee = random.randint(2, max(2, min(8, bal[mentee] // 40)))
+    if bal[mentee] < fee:
+        continue
+    tx = {
+        "n": N_TX + i, "from": mentee, "to": mentor, "amount": fee,
+        "from_callsign": by_addr[mentee].get("callsign", "?"),
+        "to_callsign": by_addr[mentor].get("callsign", "?"),
+        "ts": round(time.time(), 2),
+        "kind": "mentor", "task": f"lesson:verify:{job.get('payload_hash', '?')}",
+    }
+    payload = json.dumps({k: tx[k] for k in ("n", "from", "to", "amount", "ts")}, sort_keys=True)
+    msg = encode_defunct(text=payload)
+    sig = Account.sign_message(msg, private_key=by_addr[mentee]["key"]).signature.hex()
+    rec = Account.recover_message(msg, signature=bytes.fromhex(sig.removeprefix("0x")))
+    if rec.lower() != mentee.lower():
+        rejected += 1
+        continue
+    verified += 1
+    mentored += 1
+    burn = max(1, round(fee * 0.02)) if fee >= 2 else 0
+    bal[mentee] -= fee
+    bal[mentor] += fee - burn
+    tx["burn"] = burn
+    tx["sig"] = "0x" + sig.removeprefix("0x")
+    tx["payload_hash"] = hashlib.sha256(payload.encode()).hexdigest()[:16]
+    ledger.append(tx)
+print(f"mentor economy: {mentored} verified lessons paid (top-200 mentors, lower-half mentees)")
+
 dt = time.time() - t0
 with open("_local_only/_token_ledger.jsonl", "a", encoding="utf-8") as f:
     for tx in ledger:
@@ -106,7 +158,7 @@ feed = {
     "txs": [
         {"from": t["from_callsign"], "to": t["to_callsign"], "amount": t["amount"],
          "from_addr": t["from"], "to_addr": t["to"], "n": t["n"], "ts": t["ts"],
-         "sig": t["sig"], "hash": t["payload_hash"]}
+         "sig": t["sig"], "hash": t["payload_hash"], "kind": t.get("kind", "work")}
         for t in ledger[-60:]
     ],
 }
