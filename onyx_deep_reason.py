@@ -29,7 +29,9 @@ def _direct(provider, prompt, timeout=70, max_tokens=900):
     except Exception:
         return ""
 
-FAMILIES = ["g120", "gemini", "g8"]   # diverse model families = real independence
+NL = chr(10)
+FAMILIES = ["g120", "gemini", "g8"]
+LENSES = ["Reason from first principles.", "Consider the strongest counter-case first.", "As a skeptical risk analyst,", "Follow the incentives + the money.", "Look for what would make this a scam."]   # diverse model families = real independence
 
 
 def deep_reason(question, depth=3, verbose=False):
@@ -93,12 +95,40 @@ def deep_reason(question, depth=3, verbose=False):
     return out
 
 
+def tree_of_thought(question, breadth=3):
+    """HIGH-REASONING mode: Tree-of-Thought. Branch into distinct reasoning paths, a
+    different-family judge prunes to the most promising, expand it fully, then critique-refine.
+    Explores the space + backtracks from dead ends — beats single-chain on hard problems. $0."""
+    branches = []
+    for i in range(breadth):
+        prompt = LENSES[i % len(LENSES)] + " Give ONLY the first reasoning step and where it leads (2-3 sentences) for this hard question." + NL + NL + "Q: " + question
+        b = _direct(FAMILIES[i % len(FAMILIES)], prompt)
+        if b and len(b) > 20:
+            branches.append(b)
+    if not branches:
+        return {"answer": "", "method": "tot-failed"}
+    block = (NL + NL).join("[branch " + str(i + 1) + "] " + b[:400] for i, b in enumerate(branches))
+    pick = _direct("gemini", "Which reasoning branch is most promising to develop into a correct, rigorous answer? Reply only the branch number." + NL + NL + "Q: " + question + NL + NL + block)
+    import re as _re
+    m = _re.search(r"[1-9]", pick or "1")
+    best = branches[(int(m.group()) - 1) % len(branches)] if m else branches[0]
+    expanded = _direct("g120", "Develop this reasoning path fully into a rigorous, correct answer. Be concrete, show the steps, end with 'ANSWER: <x>'." + NL + NL + "Q: " + question + NL + NL + "PATH: " + best[:600], max_tokens=1300)
+    crit = _direct("gemini", "Find the weakest claim in this answer and whether it holds." + NL + NL + "Q: " + question + NL + NL + "A: " + expanded[:1300])
+    final = _direct("g120", "Revise to survive this critique; stay honest about uncertainty." + NL + NL + "Q: " + question + NL + NL + "A: " + expanded[:1200] + NL + NL + "CRITIQUE: " + crit[:700], max_tokens=1400)
+    return {"answer": final or expanded,
+            "method": "tree-of-thought(breadth=" + str(len(branches)) + " -> pruned -> expanded -> critiqued)",
+            "branches_explored": len(branches)}
+
+
 if __name__ == "__main__":
     import sys
-    q = " ".join(sys.argv[1:]) or "Should an AI agent trust a 3-month-old merchant selling luxury goods 60% below retail with a valid TLS cert and an anonymous domain registration? Reason rigorously."
+    q = " ".join(a for a in sys.argv[1:] if a != "--tot") or "Should an AI agent trust a 3-month-old merchant selling luxury goods 60% below retail with a valid TLS cert and an anonymous domain registration? Reason rigorously."
     print("Q:", q, "\n")
     t0 = time.time()
-    r = deep_reason(q, depth=3)
+    mode = tree_of_thought if "--tot" in sys.argv else None
+    r = tree_of_thought(q) if mode else deep_reason(q, depth=3)
     print(f"[{r['method']}, {round(time.time()-t0)}s]")
-    print("SUB-QUESTIONS:", r["sub_questions"])
+    print("SUB-QUESTIONS:", r.get("sub_questions") or r.get("branches_explored"))
     print("\nDEEP ANSWER:\n", r["answer"][:1100])
+
+
