@@ -9,7 +9,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 r = subprocess.run([sys.executable, "onyx_token_engine.py"], capture_output=True, text=True, timeout=300)
 # side-jobs must NEVER kill the CDN push (forecast can time out at 510k scale —
 # that was silently starving the live oracle of fresh census)
-for _side, _t in (("onyx_forecast.py", 120), ("onyx_portal_pointer.py", 60)):
+for _side, _t in (("onyx_forecast.py", 180), ("onyx_portal_pointer.py", 60)):
     try:
         subprocess.run([sys.executable, _side], capture_output=True, text=True, timeout=_t)
     except Exception as _e:

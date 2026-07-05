@@ -138,9 +138,14 @@ if resolved_now:
 open_qs = [q for q in questions if not q.get("resolved")]
 if len(open_qs) < 3:
     try:
-        # categorized + PRE-FLIGHT-VERIFIED generation across all live categories
+        # categorized + PRE-FLIGHT-VERIFIED generation across all live categories.
+        # HARD TIME BUDGET: each attempt hits live price APIs (20s timeouts) —
+        # unbounded retries were blowing the heartbeat's 120s side-job window.
         q = None
+        _deadline = time.time() + 45
         for _ in range(8):
+            if time.time() > _deadline:
+                print("generation budget spent — skipping this beat"); break
             cand, reason = QB.generate(None, tuple(HORIZONS))
             if cand:
                 q = cand; break
