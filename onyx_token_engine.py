@@ -29,6 +29,7 @@ by_addr = {a["address"]: a for a in agents}
 addrs = list(bal.keys())
 
 N_TX = 900   # axon conductivity x3 — more of the cohort moves each epoch
+_burn_carry = 0.0   # fractional-burn accumulator: makes the 2% sink exact, not approximate
 ledger, verified, rejected = [], 0, 0
 t0 = time.time()
 
@@ -79,11 +80,12 @@ for i in range(N_TX):
         rejected += 1
         continue
     verified += 1
-    # THE SINK: expected 2% exactly. Integer tokens can't burn 0.2 per 10-token
-    # tx, so burn the fractional part probabilistically — unbiased at any size
-    # (the old max(1,..) floor made small payments burn ~10%).
-    _b = amount * 0.02
-    burn = int(_b) + (1 if random.random() < (_b - int(_b)) else 0)
+    # THE SINK: exactly 2% by construction (deterministic carry — the fractional
+    # remainder of each burn rolls into the next, so cumulative burn == 2% of
+    # cumulative volume to within 1 token, no randomness).
+    _burn_carry += amount * 0.02
+    burn = int(_burn_carry)
+    _burn_carry -= burn
     bal[s] -= amount
     bal[r] += amount - burn
     tx["burn"] = burn
@@ -134,8 +136,9 @@ for i in range(N_MENTOR):
         continue
     verified += 1
     mentored += 1
-    _b = fee * 0.02
-    burn = int(_b) + (1 if random.random() < (_b - int(_b)) else 0)  # expected 2%, unbiased
+    _burn_carry += fee * 0.02              # same exact-2% carry as the work lane
+    burn = int(_burn_carry)
+    _burn_carry -= burn
     bal[mentee] -= fee
     bal[mentor] += fee - burn
     tx["burn"] = burn
