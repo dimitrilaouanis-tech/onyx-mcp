@@ -323,8 +323,15 @@ class App:
                 "accepts": accepts_list,
                 # OATP-pattern bazaar extension — crawlers use this to surface
                 # input shape + output example without making a paid call.
+                # V2 Bazaar resource metadata (serviceName<=32 ascii, <=5 tags,
+                # absolute iconUrl) is what facilitator crawlers rank/display.
                 "extensions": {
                     "bazaar": {
+                        "serviceName": t.name[:32],
+                        "description": t.description,
+                        "mimeType": "application/json",
+                        "tags": ["trust", "verification", "agents", "0n1x", "attestation"],
+                        "iconUrl": "https://rhinogent.com/favicon.ico",
                         "info": {
                             "input": {
                                 "type": "http",
@@ -3487,6 +3494,11 @@ structurally cannot).
                 "mime_type": "application/json",
                 "extensions": {
                     "bazaar": {
+                        "serviceName": t.name[:32],
+                        "description": t.description[:300],
+                        "mimeType": "application/json",
+                        "tags": ["trust", "verification", "agents", "0n1x", "attestation"],
+                        "iconUrl": "https://rhinogent.com/favicon.ico",
                         "info": {
                             "input": {
                                 "type": "http",
