@@ -16,6 +16,20 @@ def callsign(addr):
     h = int(addr[2:10], 16)
     return f"{ADJ[h % len(ADJ)]}-{NOUN[(h >> 8) % len(NOUN)]}-{addr[-4:].upper()}"
 
+# SINGLETON LOCK — only one minter mints at a time; respawned/racing copies exit cleanly.
+# (concurrent os.replace on Windows = PermissionError → crash → respawn → stuck. This kills the race.)
+LOCK = "_local_only/_mint.lock"
+_now = time.time()
+try:
+    if os.path.exists(LOCK) and _now - os.path.getmtime(LOCK) < 45:
+        print("another minter holds the lock — exiting (no race)", flush=True)
+        raise SystemExit(0)
+except SystemExit:
+    raise
+except Exception:
+    pass
+open(LOCK, "w").write(str(os.getpid()))
+
 roster = json.load(open("_local_only/_10k_roster.json"))
 rag = roster if isinstance(roster, list) else roster.get("agents")
 keys = json.load(open("_local_only/_10k_keys.json"))
@@ -28,12 +42,24 @@ need = max(0, TARGET - have)
 print(f"cohort now {have:,} · minting {need:,} → {TARGET:,}", flush=True)
 t0 = time.time()
 
+def _replace_retry(src, dst, tries=6):
+    for k in range(tries):
+        try:
+            _os.replace(src, dst); return
+        except PermissionError:
+            time.sleep(0.3 * (k + 1))            # transient Windows lock — back off + retry
+    _os.replace(src, dst)                        # final attempt (raise if still locked)
+
 def save():
-    # atomic-ish checkpoint so a kill never corrupts + progress always persists
-    json.dump(rag if isinstance(roster, list) else {"agents": rag}, open("_local_only/_10k_roster.json.tmp", "w"))
-    _os.replace("_local_only/_10k_roster.json.tmp", "_local_only/_10k_roster.json")
-    json.dump(kag if isinstance(keys, list) else {"agents": kag}, open("_local_only/_10k_keys.json.tmp", "w"))
-    _os.replace("_local_only/_10k_keys.json.tmp", "_local_only/_10k_keys.json")
+    # atomic-ish checkpoint so a kill never corrupts + progress always persists.
+    # unique tmp names per-pid so concurrent writers never share a tmp file.
+    pid = _os.getpid()
+    rt, kt = f"_local_only/_10k_roster.{pid}.tmp", f"_local_only/_10k_keys.{pid}.tmp"
+    json.dump(rag if isinstance(roster, list) else {"agents": rag}, open(rt, "w"))
+    _replace_retry(rt, "_local_only/_10k_roster.json")
+    json.dump(kag if isinstance(keys, list) else {"agents": kag}, open(kt, "w"))
+    _replace_retry(kt, "_local_only/_10k_keys.json")
+    open(LOCK, "w").write(str(pid))              # refresh the lock so we keep holding it while minting
 
 for i in range(need):
     # os.urandom private key → faster than Account.create()'s entropy gathering
@@ -43,7 +69,7 @@ for i in range(need):
                 "kind": "citizen", "credential": "NEW"})
     kag.append({"address": a.address, "key": a.key.hex()})
     if (i + 1) % 10000 == 0:
-        save()                                    # CHECKPOINT — partial progress survives
+        save()                                    # CHECKPOINT — singleton lock prevents the race
         print(f"  minted {i+1:,} · saved ({time.time()-t0:.0f}s)", flush=True)
 save()
 
