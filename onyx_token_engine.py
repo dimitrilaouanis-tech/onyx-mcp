@@ -79,9 +79,11 @@ for i in range(N_TX):
         rejected += 1
         continue
     verified += 1
-    # THE SINK: true 2% (no 1-token floor — the floor made small payments burn
-    # ~10%, over-draining exactly the low-rank earners redistribution should feed)
-    burn = round(amount * 0.02)
+    # THE SINK: expected 2% exactly. Integer tokens can't burn 0.2 per 10-token
+    # tx, so burn the fractional part probabilistically — unbiased at any size
+    # (the old max(1,..) floor made small payments burn ~10%).
+    _b = amount * 0.02
+    burn = int(_b) + (1 if random.random() < (_b - int(_b)) else 0)
     bal[s] -= amount
     bal[r] += amount - burn
     tx["burn"] = burn
@@ -132,7 +134,8 @@ for i in range(N_MENTOR):
         continue
     verified += 1
     mentored += 1
-    burn = round(fee * 0.02)   # true 2%, no floor (same fix as the work lane)
+    _b = fee * 0.02
+    burn = int(_b) + (1 if random.random() < (_b - int(_b)) else 0)  # expected 2%, unbiased
     bal[mentee] -= fee
     bal[mentor] += fee - burn
     tx["burn"] = burn
