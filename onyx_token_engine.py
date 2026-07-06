@@ -173,12 +173,31 @@ feed = {
 json.dump(feed, open(r"C:\Users\intelligence\rhinogent\public\token_feed.json", "w"), indent=1)
 
 # 3) LIVE STATE — ranks move with the real ledger. Balance = genesis + ALL ledger flow.
+# INCREMENTAL: flow is checkpointed (_flow_snapshot.json holds net flow + the byte
+# offset it covers); each epoch reads only the ledger bytes appended since. Same
+# result as a full re-read, but O(epoch) instead of O(entire history) — the full
+# scan was a time bomb that grew forever (~100k lines and climbing).
 from collections import defaultdict
+LEDGER = "_local_only/_token_ledger.jsonl"
+SNAP = "_local_only/_flow_snapshot.json"
 flow = defaultdict(int)
-for line in open("_local_only/_token_ledger.jsonl", encoding="utf-8"):
-    t = json.loads(line)
-    flow[t["from"]] -= t["amount"]
-    flow[t["to"]] += t["amount"]
+_snap_off = 0
+try:
+    _s = json.load(open(SNAP, encoding="utf-8"))
+    if 0 <= _s["offset"] <= __import__("os").path.getsize(LEDGER):
+        flow.update({k: int(v) for k, v in _s["flow"].items()})
+        _snap_off = _s["offset"]
+    # else: ledger shrank/rotated — fall through to a full rebuild from 0
+except Exception:
+    pass
+with open(LEDGER, encoding="utf-8") as _lf:
+    _lf.seek(_snap_off)
+    for line in _lf:
+        t = json.loads(line)
+        flow[t["from"]] -= t["amount"]
+        flow[t["to"]] += t["amount"]
+    _snap_off = _lf.tell()
+json.dump({"offset": _snap_off, "flow": dict(flow)}, open(SNAP, "w", encoding="utf-8"))
 live_bal = {ad: genesis(by_addr[ad]) + flow.get(ad, 0) for ad in addrs}
 ranked = sorted(addrs, key=lambda ad: (live_bal[ad], by_addr[ad].get("score", 0)), reverse=True)
 feed["ranking"] = [

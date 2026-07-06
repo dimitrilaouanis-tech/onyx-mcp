@@ -6,7 +6,7 @@ import json, subprocess, base64, urllib.request, sys, os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # 1) run the engine (fast, local, $0) — appends to the signed ledger + rewrites the feed
-r = subprocess.run([sys.executable, "onyx_token_engine.py"], capture_output=True, text=True, timeout=300)
+r = subprocess.run([sys.executable, "onyx_token_engine.py"], capture_output=True, text=True, timeout=480)
 # side-jobs must NEVER kill the CDN push (forecast can time out at 510k scale —
 # that was silently starving the live oracle of fresh census)
 for _side, _t in (("onyx_forecast.py", 180), ("onyx_portal_pointer.py", 60)):
