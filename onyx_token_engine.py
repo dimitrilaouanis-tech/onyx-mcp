@@ -281,6 +281,29 @@ for si in range(0, len(ranked), SHARD):
     shard_meta.append({"file": f"census2/{fname}", "ranks": [si+1, si+len(chunk)],
                        "sha256": _h.sha256(blob.encode()).hexdigest()[:16]})
 
+# CENSUS INDEX — oracle depth beyond top-120: 256 suffix-buckets (last 2 hex of
+# address = last 2 chars of the callsign tag) so the live oracle can look up ANY
+# citizen's standing with ONE small CDN fetch. Only rewrite buckets that changed
+# so the pusher can sync just the deltas.
+os_makedirs(f"{PUB}\\census_idx", exist_ok=True)
+_buckets = {}
+for _rank_i, ad in enumerate(ranked):
+    _buckets.setdefault(ad[-2:].lower(), []).append(
+        {"c": by_addr[ad].get("callsign", "?"), "a": ad, "r": _rank_i + 1,
+         "t": live_bal[ad], "p": round(1 - _rank_i / len(ranked), 4)})
+_idx_changed = 0
+for _bk, _rows in _buckets.items():
+    _blob = json.dumps({"count": len(ranked), "agents": _rows}, separators=(",", ":"))
+    _bp = f"{PUB}\\census_idx\\{_bk}.json"
+    try:
+        if open(_bp, encoding="utf-8").read() == _blob:
+            continue
+    except Exception:
+        pass
+    open(_bp, "w", encoding="utf-8").write(_blob)
+    _idx_changed += 1
+print(f"census index: 256 buckets, {_idx_changed} changed")
+
 epoch = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 manifest = {
     "version": 2, "epoch": epoch, "count": len(ranked),

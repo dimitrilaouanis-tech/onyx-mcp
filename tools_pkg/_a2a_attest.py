@@ -37,6 +37,56 @@ ADDR_RE = re.compile(r"0x[a-fA-F0-9]{40}")
 CALLSIGN_RE = re.compile(r"[A-Z][a-z]+-[A-Z][a-z]+-[0-9A-Fa-f]{4}")
 
 
+def _bucket(suffix2: str):
+    """Census-index depth lookup: ONE small fetch resolves ANY citizen, not just
+    the top-120 tape. Buckets are keyed by the last 2 hex of the address (== last
+    2 chars of the callsign tag). Local file first (dev box), CDN second (Render)."""
+    import time, urllib.request
+    key = suffix2.lower()
+    cache = getattr(_bucket, "_c", {})
+    hit = cache.get(key)
+    if hit and time.time() - hit[0] < 120:
+        return hit[1]
+    data = None
+    for p in (os.path.join(_PUB, "census_idx", f"{key}.json"),
+              os.path.join(_HERE, "..", "rhinogent", "public", "census_idx", f"{key}.json")):
+        try:
+            data = json.load(open(p, encoding="utf-8")); break
+        except Exception:
+            continue
+    if data is None:
+        try:
+            data = json.loads(urllib.request.urlopen(
+                f"https://rhinogent.com/census_idx/{key}.json", timeout=8).read())
+        except Exception:
+            data = {}
+    cache[key] = (time.time(), data)
+    _bucket._c = cache
+    return data
+
+
+def _deep_lookup(ident: str):
+    """Resolve a citizen from the census index. Returns (row, rank, of) or (None, None, None)."""
+    addr = cs = None
+    a = ADDR_RE.search(ident)
+    if a:
+        addr = a.group(0).lower()
+        key = addr[-2:]
+    else:
+        c = CALLSIGN_RE.search(ident)
+        if not c:
+            return None, None, None
+        cs = c.group(0).lower()
+        key = cs[-2:]
+    b = _bucket(key)
+    for e in b.get("agents", []):
+        if (addr and e.get("a", "").lower() == addr) or (cs and e.get("c", "").lower() == cs):
+            row = {"callsign": e.get("c"), "address": e.get("a"),
+                   "tokens": e.get("t"), "score": None, "flow": None, "_pct": e.get("p")}
+            return row, e.get("r"), b.get("count")
+    return None, None, None
+
+
 def attest(identifier: str) -> dict:
     """Return a dossier on an agent (by callsign or 0x address) for verify-before-transact.
     Honest by construction: unknown → clearly flagged; the disclaimer is part of the payload."""
@@ -57,6 +107,13 @@ def attest(identifier: str) -> dict:
                 if r.get("callsign", "").lower() == cs.group(0).lower():
                     row, rank = r, i + 1; break
 
+    n_of = len(ranking)
+    if not row:
+        # DEPTH: not on the top-120 tape — resolve from the census index (any citizen)
+        row, rank, n_deep = _deep_lookup(ident)
+        if row:
+            n_of = n_deep or n_of
+
     base = {
         "subject": ident[:80],
         "network": "0n1x",
@@ -75,9 +132,10 @@ def attest(identifier: str) -> dict:
     except Exception:
         lane = "general"
     tokens = row.get("tokens", 0)
-    # honest, bounded verdict from earned standing (NOT a solvency/identity claim)
-    n = len(ranking)
-    pct = 1 - (rank - 1) / max(n, 1)
+    # honest, bounded verdict from earned standing (NOT a solvency/identity claim).
+    # Percentile: exact from the census index when present; else derived from the tape.
+    n = n_of
+    pct = row["_pct"] if row.get("_pct") is not None else 1 - (rank - 1) / max(n, 1)
     verdict = "STRONG-STANDING" if pct >= 0.8 else "ESTABLISHED" if pct >= 0.4 else "EMERGING"
     return {
         **base, "known": True, "verdict": verdict,
