@@ -43,16 +43,23 @@ LANE_FALLBACK = {
 def awaken(topic=None):
     """Strong nodes reason PER SPECIALIZATION → 4 different signed lessons propagate; each agent
     receives the lesson for ITS lane (VERIFY/PREDICT/CORROBORATE/WITNESS), not one broadcast."""
-    # 1. one lesson per lane (real reasoning engine when available, curated fallback otherwise)
+    # 1. one lesson per lane. PRIORITY: the SI generator's freshest signed intel for this lane
+    #    (the deepening current) → live reasoning → curated fallback. This closes the SI loop:
+    #    what the SI generator reasons+refines actually PROPAGATES into the fleet's journals.
+    si_curric = load("_local_only/_si_curriculum.json", {})
     lane_intel = {}
     for lane, lane_topic in LANE_TOPICS.items():
         intel = ""
-        try:
-            import onyx_deep_reason as DR
-            intel = DR._direct("g120", "In 4-5 crisp, transferable rules an agent can APPLY, teach: " +
-                               lane_topic + ". Rules only, numbered, concrete.", max_tokens=600)
-        except Exception:
-            intel = ""
+        si_lane = si_curric.get(lane) or []
+        if si_lane:                                   # freshest SI-generated rules for this lane
+            intel = si_lane[-1].get("intel", "")
+        if not intel or len(intel) < 40:
+            try:
+                import onyx_deep_reason as DR
+                intel = DR._direct("g120", "In 4-5 crisp, transferable rules an agent can APPLY, teach: " +
+                                   lane_topic + ". Rules only, numbered, concrete.", max_tokens=600)
+            except Exception:
+                intel = ""
         if not intel or len(intel) < 40:
             intel = LANE_FALLBACK[lane]
         lane_intel[lane] = {"topic": lane_topic, "intel": intel,
