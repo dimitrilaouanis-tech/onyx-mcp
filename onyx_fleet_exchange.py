@@ -30,7 +30,7 @@ def _sign(pk,body):
 def round(n_targets=None):
     """One exchange round: claim -> challenge -> reality resolves -> settle. Signed to the ledger."""
     import onyx_oracle as O
-    squad=_squad(200)
+    squad=_squad(5000)
     if len(squad)<10: return {"error":"roster too small"}
     tgts=TARGETS[:n_targets] if n_targets else TARGETS
     epoch=int(time.time()); exchanges=[]; settled=0

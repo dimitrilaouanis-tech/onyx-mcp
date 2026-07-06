@@ -42,20 +42,24 @@ WORK = [
 def tick(n_events=200, seed_ns=None):
     """One real-time economy tick: n_events work-payments, each signed by the PAYER's own key,
     each carrying a work reason. Returns live metrics. Bounded, $0, no LLM."""
-    rag, addr2key = _roster_keys(limit=120000)   # draw payers/payees from a working set
+    rag, addr2key = _roster_keys(limit=None)   # FULL roster — every agent eligible for real work   # draw payers/payees from a working set
     if len(rag) < 2:
         return {"error": "roster too small"}
     ledger = load(LEDGER, [])
     balances = load("_local_only/_rt_balances.json", {})   # PERSISTENT net flow per address → feeds ranking
     t0 = time.time()
-    # deterministic-but-varied selection without Math.random (seed from ledger length + index)
+    # ROTATING CURSOR — sweep the WHOLE population fairly. Each tick advances a persistent cursor
+    # through the roster so consecutive ticks activate NEW agents (not the same lucky subset).
+    # Over ceil(642k / n_events) ticks, EVERY agent participates in real work. Fair, not vanity.
+    cur = load("_local_only/_econ_cursor.json", {"pos": 0})
+    pos = cur.get("pos", 0) % len(rag)
     base = len(ledger)
     settled = 0
     active = set()
     for i in range(n_events):
         h = int(hashlib.sha256(f"{base+i}".encode()).hexdigest(), 16)
-        payer = rag[h % len(rag)]
-        payee = rag[(h // 7) % len(rag)]
+        payer = rag[(pos + i) % len(rag)]                 # cursor sweep → covers every agent in turn
+        payee = rag[(pos + i + 1 + (h % 997)) % len(rag)] # payee offset so it's not always neighbors
         if payer["address"] == payee["address"]:
             continue
         wtype, wdesc = WORK[h % len(WORK)]
@@ -84,6 +88,7 @@ def tick(n_events=200, seed_ns=None):
     ledger = ledger[-500:]     # keep recent window for the live tape
     json.dump(ledger, open(LEDGER, "w", encoding="utf-8"), ensure_ascii=False)
     json.dump(balances, open("_local_only/_rt_balances.json", "w", encoding="utf-8"))
+    json.dump({"pos": (pos + n_events) % len(rag)}, open("_local_only/_econ_cursor.json", "w"))  # advance the sweep
 
     dt = time.time() - t0
     metrics = {
