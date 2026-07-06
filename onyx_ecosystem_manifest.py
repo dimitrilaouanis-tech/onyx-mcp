@@ -95,6 +95,24 @@ ECO = {
                     "re-verification). Knowledge transfer as a signed transaction — kind:'mentor' on the tape.",
             "how": "on the token rail · same signing discipline + 2% burn · surfaced in the public ledger tape",
         },
+        "fleet_exchange": {
+            "what": "The self-sharpening truth machine: agents CHALLENGE each other's verdicts, stake, and "
+                    "the reality-oracle decides the winner. Agreement earns nothing — being CORRECT earns. "
+                    "So more agents = more truth-pressure, not echo. A signed, growing exchange ledger.",
+            "how": "onyx_fleet_exchange.py · reality-gated adversarial verification · $0",
+        },
+        "internal_divergence": {
+            "what": "0n1x's OWN reasoning panel: N diverse-lens voices reason independently, a synthesizer "
+                    "surfaces consensus AND dissent. Plus swarm-intelligence (oracle-scored tournament). The "
+                    "ecosystem reasons about itself — no external model rented.",
+            "how": "onyx_internal_divergence.py + onyx_swarm_intelligence.py · diverse families · $0",
+        },
+        "verifiable_civilization": {
+            "what": "642k→1M REAL verifiable agents forming a self-governing civilization — real economy, "
+                    "self-government, mentorship, earned reputation, adversarial truth-challenges — every "
+                    "action signed + Merkle-recompute-able. Not a game sim: a REAL, verifiable society.",
+            "how": "recompute the census Merkle root yourself · all loops signed · $0",
+        },
     },
 
     # ── ENDPOINTS — the doors ──
