@@ -33,25 +33,49 @@ def sync():
         p = os.path.join(PUB, "census_manifest.json"); m = json.load(open(p, encoding="utf-8"))
         m["count"] = shown; json.dump(m, open(p, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     except Exception: pass
-    # push both to CDN (409-retry)
+    # push both to CDN — robust landing: any-failure retry with FRESH sha + GET-verify, logged
+    feed["cdn_push"] = {}
     try:
+        import hashlib, urllib.error
         tok = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True).stdout.strip()
+        if not tok: raise RuntimeError("no gh token")
         for f in ["live_count.json", "census_manifest.json"]:
-            content = base64.b64encode(open(os.path.join(PUB, f), "rb").read()).decode()
+            raw = open(os.path.join(PUB, f), "rb").read()
+            content = base64.b64encode(raw).decode()
+            blob_sha = hashlib.sha1(b"blob %d\0" % len(raw) + raw).hexdigest()   # git blob sha of local bytes
             API = "https://api.github.com/repos/dimitrilaouanis-tech/rhinogent/contents/" + f
             def call(u, d=None, me="GET"):
                 rq = urllib.request.Request(u, data=json.dumps(d).encode() if d else None, method=me,
                     headers={"Authorization": "Bearer " + tok, "Accept": "application/vnd.github+json"})
                 return json.loads(urllib.request.urlopen(rq, timeout=30).read())
-            for _ in range(3):
+            landed, last = False, ""
+            for attempt in range(4):
                 try:
-                    sha = call(API + "?ref=gh-pages").get("sha")
-                    b = {"message": "live count+rate sync", "content": content, "branch": "gh-pages"}
-                    if sha: b["sha"] = sha
-                    call(API, b, "PUT"); break
+                    try:
+                        remote = call(API + "?ref=gh-pages")
+                    except urllib.error.HTTPError as e:
+                        if e.code != 404: raise
+                        remote = {}                              # file doesn't exist yet → CREATE it
+                    if remote.get("sha") == blob_sha:            # already identical → landed
+                        landed = True; break
+                    b = {"message": "live count+rate sync", "content": content,
+                         "branch": "gh-pages", "sha": remote.get("sha")}
+                    if not b["sha"]: b.pop("sha")
+                    r = call(API, b, "PUT")
+                    # VERIFY the push actually landed (git blob sha of what GitHub now holds)
+                    landed = (r.get("content") or {}).get("sha") == blob_sha
+                    if landed: break
+                    last = "put-ok-but-sha-mismatch"
                 except urllib.error.HTTPError as e:
-                    if e.code != 409: raise
-    except Exception: pass
+                    last = f"HTTP {e.code}"                       # 409/422 = stale sha → refetch + retry
+                except Exception as e:
+                    last = str(e)[:60]
+                time.sleep(1.5 * (attempt + 1))
+            feed["cdn_push"][f] = "landed" if landed else f"FAILED ({last})"
+            if not landed:
+                print(f"CDN PUSH FAILED for {f}: {last}")
+    except Exception as e:
+        print("CDN PUSH SKIPPED:", str(e)[:80])
     json.dump({"count": count, "ts": time.time()}, open("_local_only/_count_sync_state.json", "w"))
     return feed
 
