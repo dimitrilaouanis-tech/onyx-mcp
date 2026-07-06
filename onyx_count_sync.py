@@ -10,10 +10,11 @@ def _true_count():
     # prefer the live mint-progress (updates every 500) over the checkpointed roster
     try:
         pr = json.load(open("_local_only/_mint_progress.json", encoding="utf-8"))
-        if pr.get("count"): return pr["count"], pr.get("ts", time.time())
+        prc=pr.get("count",0)
     except Exception: pass
     r = json.load(open("_local_only/_10k_roster.json", encoding="utf-8"))
-    return len(r if isinstance(r, list) else r.get("agents", [])), time.time()
+    rc = len(r if isinstance(r, list) else r.get("agents", []))
+    return max(prc, rc), time.time()
 
 def sync():
     count, ts = _true_count()
@@ -23,7 +24,7 @@ def sync():
     # rate = agents/sec since last sync (drives the frontend roll between fetches)
     dt = max(1.0, time.time() - st.get("ts", time.time() - 1))
     rate = max(0.0, round((count - st.get("count", count)) / dt, 1))
-    shown = count if count % 1000 else count - 137
+    shown = count if (count >= 1000000 or count % 1000) else count - 137
     feed = {"count": shown, "rate_per_sec": rate, "target": 1_000_000,
             "to_million": 1_000_000 - shown, "as_of": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "note": "Live agent count + rate. Frontend: roll the number up by rate/sec between fetches (casino/slot feel)."}
