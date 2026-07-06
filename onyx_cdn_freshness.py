@@ -29,9 +29,10 @@ def log(msg):
 
 
 def cdn_age_min():
+    import calendar
     d = json.loads(urllib.request.urlopen(FEED, timeout=20).read())
     gen = time.strptime(d["generated"], "%Y-%m-%dT%H:%M:%SZ")
-    return (time.time() - time.mktime(gen) + time.timezone) / 60
+    return (time.time() - calendar.timegm(gen)) / 60   # timegm = true UTC (mktime+timezone is DST-wrong)
 
 
 def main():
