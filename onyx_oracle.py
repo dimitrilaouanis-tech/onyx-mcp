@@ -150,11 +150,18 @@ def r_merchant_multi(target):
     tls = r_tls(domain)
     http = r_http(domain)
     signals = {"age": {"band": age.get("band"), "age_days": age.get("age_days")}, "tls": tls, "http": http}
-    # totally dark: not registered / no TLS host / no HTTP answer → unresolved, high risk
-    if age.get("signal") == "not_registered" or (tls.get("tls_ok") is None and http.get("http_ok") is None):
+    host_alive = bool(tls.get("tls_ok") or http.get("http_ok"))
+    # totally dark: RDAP not-found AND no live TLS host AND no HTTP answer → unresolved, high risk.
+    # (RDAP 404 alone is NOT definitive — rdap.org can't bootstrap every TLD, e.g. some .io lookups.)
+    if (age.get("signal") == "not_registered" and not host_alive) or \
+       (tls.get("tls_ok") is None and http.get("http_ok") is None):
         return {"band": "high_risk", "kind": "domain", "score": 5, "target": domain,
                 "verdict": "UNRESOLVED — domain does not resolve or is not registered; treat as high risk",
                 "signals": signals}
+    if age.get("signal") == "not_registered" and host_alive:
+        age = {"band": "unknown", "verdict": "AGE UNKNOWN — registry RDAP not available for this TLD",
+               "age_days": None}
+        signals["age"] = {"band": "unknown", "age_days": None}
     age_score = {"high_risk": 8, "caution": 35, "ok": 88, "well-established": 92}.get(age.get("band"), 50)
     tls_score = 100 if tls.get("tls_ok") else (0 if tls.get("tls_ok") is False else 40)
     http_score = 100 if http.get("http_ok") else (0 if http.get("http_ok") is False else 40)
