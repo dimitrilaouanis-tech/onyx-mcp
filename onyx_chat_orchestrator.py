@@ -42,13 +42,23 @@ def answer(msg, verbose=False):
                 out["answer"] = f"I tried to verify {route['target']} but the reality-check is temporarily unavailable — I won't guess on a trust question."
                 out["credibility"] = None
         elif route["path"] == "REASON":
-            # DEEP PATH: our own reasoning engine (Tree-of-Thought), grounded, show-the-work
+            # DEEP PATH: robust smart-reasoning — a strong grounded call + a light critique-refine
+            # (elevate). Fast + reliable (not the fragile heavy ToT). ALWAYS produces a real answer.
             try:
                 import onyx_deep_reason as DR
-                r = DR.tree_of_thought(msg, breadth=3)
-                out["answer"] = r.get("answer", "")[:1600]
-                out["method"] = r.get("method")
-                out["premium"] = True
+                draft = DR._direct("g120", "Reason carefully and concretely, step by step, then give a "
+                                   "clear answer. If genuinely uncertain, say what you're confident about "
+                                   "and what you're not. Be sharp, no filler.\n\n" + msg, max_tokens=1100)
+                if draft and len(draft) > 40:
+                    # one elevate pass: a different-family critic sharpens it (intelligence push)
+                    crit = DR._direct("gemini", "Improve this answer: fix any weak/wrong claim, add the "
+                                      "one missing insight, keep it tight + honest.\n\nQ: " + msg +
+                                      "\n\nA: " + draft[:1100], max_tokens=1200)
+                    out["answer"] = (crit if crit and len(crit) > len(draft) * 0.6 else draft)[:1600]
+                    out["method"] = "reason+elevate (2 diverse families)"
+                    out["premium"] = True
+                else:
+                    out["answer"] = DR._direct("g120", msg)[:1200] or ""
             except Exception:
                 out["answer"] = "(reasoning path busy — try again in a moment)"
         else:
