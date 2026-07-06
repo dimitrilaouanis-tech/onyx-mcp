@@ -16,50 +16,61 @@ def callsign(addr):
     h = int(addr[2:10], 16)
     return f"{ADJ[h % len(ADJ)]}-{NOUN[(h >> 8) % len(NOUN)]}-{addr[-4:].upper()}"
 
-# SINGLETON LOCK — only one minter mints at a time; respawned/racing copies exit cleanly.
-# (concurrent os.replace on Windows = PermissionError → crash → respawn → stuck. This kills the race.)
+# SINGLETON LOCK — a REAL OS-level exclusive lock held for the process lifetime.
+# The old mtime-TTL (45s) lock EXPIRED during the multi-minute 250MB JSON load, so scheduled
+# respawns raced each other. msvcrt.locking cannot expire: second minter exits instantly.
 LOCK = "_local_only/_mint.lock"
-_now = time.time()
+_lock_fh = open(LOCK, "a+")
 try:
-    if os.path.exists(LOCK) and _now - os.path.getmtime(LOCK) < 45:
-        print("another minter holds the lock — exiting (no race)", flush=True)
-        raise SystemExit(0)
-except SystemExit:
-    raise
-except Exception:
-    pass
-open(LOCK, "w").write(str(os.getpid()))
+    import msvcrt
+    msvcrt.locking(_lock_fh.fileno(), msvcrt.LK_NBLCK, 1)   # held until process exit
+except OSError:
+    print("another minter holds the lock — exiting (no race)", flush=True)
+    raise SystemExit(0)
+except ImportError:
+    pass                                          # non-Windows fallback: proceed (dev only)
+_lock_fh.seek(0); _lock_fh.truncate(); _lock_fh.write(str(os.getpid())); _lock_fh.flush()
 
 roster = json.load(open("_local_only/_10k_roster.json"))
 rag = roster if isinstance(roster, list) else roster.get("agents")
 keys = json.load(open("_local_only/_10k_keys.json"))
 kag = keys if isinstance(keys, list) else list(keys.values())[0]
 
-import random, os as _os
+import random, os as _os, glob as _glob
 random.seed()
+for _t in _glob.glob("_local_only/_10k_*.tmp"):     # clear orphaned tmps from crashed runs
+    try: _os.remove(_t)
+    except Exception: pass
 have = len(rag)
 need = max(0, TARGET - have)
 print(f"cohort now {have:,} · minting {need:,} → {TARGET:,}", flush=True)
 t0 = time.time()
 
-def _replace_retry(src, dst, tries=6):
+def _replace_retry(src, dst, tries=12):
+    """Windows: os.replace fails Access-denied while ANY reader (count_sync/journal/consensus
+    scheduled tasks) holds the 130MB dst JSON open. NEVER raise — the raise here was THE stall:
+    it killed the minter mid-run, keepalive respawned it, and each respawn re-loaded 250MB for
+    minutes before crashing again. On failure we defer: keep minting, retry at next checkpoint."""
     for k in range(tries):
         try:
-            _os.replace(src, dst); return
+            _os.replace(src, dst); return True
         except PermissionError:
-            time.sleep(0.3 * (k + 1))            # transient Windows lock — back off + retry
-    _os.replace(src, dst)                        # final attempt (raise if still locked)
+            time.sleep(0.5 * (k + 1) + random.random())   # jittered backoff past reader windows
+    print(f"  save deferred: {dst} busy (readers) — will retry next checkpoint", flush=True)
+    try: _os.remove(src)
+    except Exception: pass
+    return False
 
 def save():
     # atomic-ish checkpoint so a kill never corrupts + progress always persists.
-    # unique tmp names per-pid so concurrent writers never share a tmp file.
     pid = _os.getpid()
+    ok = True
     rt, kt = f"_local_only/_10k_roster.{pid}.tmp", f"_local_only/_10k_keys.{pid}.tmp"
     json.dump(rag if isinstance(roster, list) else {"agents": rag}, open(rt, "w"))
-    _replace_retry(rt, "_local_only/_10k_roster.json")
+    ok &= _replace_retry(rt, "_local_only/_10k_roster.json")
     json.dump(kag if isinstance(keys, list) else {"agents": kag}, open(kt, "w"))
-    _replace_retry(kt, "_local_only/_10k_keys.json")
-    open(LOCK, "w").write(str(pid))              # refresh the lock so we keep holding it while minting
+    ok &= _replace_retry(kt, "_local_only/_10k_keys.json")
+    return ok
 
 for i in range(need):
     # os.urandom private key → faster than Account.create()'s entropy gathering
@@ -72,9 +83,12 @@ for i in range(need):
         import json as _j, time as _t
         _j.dump({'count': have + i + 1, 'ts': _t.time()}, open('_local_only/_mint_progress.json','w'))
     if (i + 1) % 9973 == 0:
-        save()                                    # CHECKPOINT — singleton lock prevents the race
+        save()                                    # CHECKPOINT — non-fatal; defers if readers hold the file
         print(f"  minted {i+1:,} · saved ({time.time()-t0:.0f}s)", flush=True)
-save()
+# FINAL save must land — keep trying past reader windows
+for _k in range(20):
+    if save(): break
+    time.sleep(10)
 
 # timeline event — 100k is a network milestone
 EV = "_local_only/_timeline_events.json"
