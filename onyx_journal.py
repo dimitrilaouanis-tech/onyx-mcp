@@ -51,10 +51,53 @@ def ingest():
     return journals, added
 
 
+def measured_quality():
+    """MEASURED per-agent quality 0..1 per lane — skill can only RISE on real measured outcomes:
+    PREDICT  → Brier score from the forecast market (_forecast_scores.json)
+    VERIFY / CORROBORATE → accuracy x volume of signed reality-verified facts (_exchange_ledger.jsonl)
+    WITNESS  → claimant claims that matched reality in the exchange ledger."""
+    q = {}
+    fs = load("_local_only/_forecast_scores.json", {})
+    for addr, s in fs.items():
+        cs, n = s.get("callsign"), s.get("n", 0)
+        if cs and n:
+            brier = s.get("brier_sum", 0.25 * n) / n
+            q.setdefault(cs, {})["PREDICT"] = round(max(0.0, min(1.0, 1 - brier / 0.25)), 3)
+    stats = {}   # callsign -> {"chal_n","chal_ok","corr_n","corr_ok","claim_n","claim_ok"}
+    try:
+        for line in open("_local_only/_exchange_ledger.jsonl", encoding="utf-8"):
+            try: r = json.loads(line)
+            except Exception: continue
+            c = stats.setdefault(r.get("claimant"), {})
+            c["claim_n"] = c.get("claim_n", 0) + 1
+            c["claim_ok"] = c.get("claim_ok", 0) + (1 if r.get("claim_correct") else 0)
+            for ch in r.get("challengers", []):
+                s = stats.setdefault(ch.get("agent"), {})
+                lane = "corr" if ch.get("verdict") == "CORROBORATE" else "chal"
+                s[lane + "_n"] = s.get(lane + "_n", 0) + 1
+                s[lane + "_ok"] = s.get(lane + "_ok", 0) + (1 if ch.get("correct") else 0)
+    except FileNotFoundError:
+        pass
+    for cs, s in stats.items():
+        if not cs: continue
+        vn, vo = s.get("chal_n", 0) + s.get("corr_n", 0), s.get("chal_ok", 0) + s.get("corr_ok", 0)
+        if vn:   # accuracy x evidence-volume ramp (n=1 can't max a skill anymore)
+            q.setdefault(cs, {})["VERIFY"] = round((vo / vn) * min(1.0, vn / 5), 3)
+        if s.get("corr_n"):
+            q.setdefault(cs, {})["CORROBORATE"] = round((s.get("corr_ok", 0) / s["corr_n"]) * min(1.0, s["corr_n"] / 5), 3)
+        if s.get("claim_n"):
+            q.setdefault(cs, {})["WITNESS"] = round((s.get("claim_ok", 0) / s["claim_n"]) * min(1.0, s["claim_n"] / 5), 3)
+    return q
+
+
+UNMEASURED_FLOOR = 0.2   # activity without measured outcomes earns at most this multiplier
+
 def derive_profiles(journals):
-    """From each agent's journal, compute a SKILL VECTOR + earned SPECIALIZATION (decay-weighted).
-    This is what makes agents genuinely differ — earned from work history, not assigned."""
+    """From each agent's journal, compute a SKILL VECTOR + earned SPECIALIZATION.
+    skill = activity share (decay-weighted) x MEASURED quality — n=1 placeholders can no longer
+    read as 1.0 mastery; skill rises only with reality-verified outcomes (Brier, verified facts)."""
     now_epoch = int(time.time()) // 60
+    quality = measured_quality()
     profiles = {}
     for agent, entries in journals.items():
         if not entries:
@@ -66,12 +109,14 @@ def derive_profiles(journals):
             w = 2.718 ** (-age / HALF_LIFE)          # exponential decay
             skill[lane] = skill.get(lane, 0.0) + w
         total = sum(skill.values()) or 1
-        skill_pct = {k: round(v / total, 3) for k, v in skill.items()}
-        # specialization = the lane the agent has done most (if it dominates)
-        top = max(skill_pct, key=skill_pct.get)
-        spec = top if skill_pct[top] >= 0.5 else "generalist"
-        profiles[agent] = {"missions": len(entries), "skill": skill_pct,
-                           "specialization": spec, "updated_epoch": now_epoch}
+        activity = {k: round(v / total, 3) for k, v in skill.items()}
+        aq = quality.get(agent, {})
+        skill_pct = {k: round(v * aq.get(k, UNMEASURED_FLOOR), 3) for k, v in activity.items()}
+        # specialization = the lane the agent has done most (if it dominates its activity)
+        top = max(activity, key=activity.get)
+        spec = top if activity[top] >= 0.5 else "generalist"
+        profiles[agent] = {"missions": len(entries), "skill": skill_pct, "activity": activity,
+                           "measured": aq, "specialization": spec, "updated_epoch": now_epoch}
     json.dump(profiles, open(PROFILES, "w", encoding="utf-8"), ensure_ascii=False)
     return profiles
 
