@@ -35,19 +35,19 @@ def consensus_check(target, n=100):
     squad = _squad(n)
     if not squad:
         return {"error": "no agents"}
-    # ONE real reality check (RDAP, with the retry-don't-alarm fix); the N agents each ATTEST to it
-    # independently (multi-agent consensus over the signal). Real signal, N independent signatures.
+    # ONE real MULTI-SIGNAL reality check (RDAP age + TLS cert validity + HTTP reachability,
+    # fused in onyx_oracle.r_merchant_multi); the N agents each ATTEST to it independently.
     signal = {}
     for attempt in range(3):
         try:
-            signal = O.r_merchant(target)
-            if signal.get("band") in ("ok", "well-established", "high_risk", "caution"): break
+            signal = O.r_merchant_multi(target)
+            if signal.get("band") in ("ok", "high_risk", "caution", "unverified"): break
         except Exception: pass
         time.sleep(0.7 * (attempt + 1))
-    band = signal.get("band", "unverified")
-    verdict = signal.get("verdict", "AGE UNVERIFIED (not a risk signal)")
-    # map band -> a 0-100 trust score
-    score = {"well-established": 92, "ok": 88, "caution": 32, "high_risk": 8}.get(band, 50)
+    band = signal.get("band") or "unverified"
+    verdict = signal.get("verdict", "UNVERIFIED (not a risk signal)")
+    score = signal.get("score", {"ok": 88, "caution": 32, "high_risk": 8}.get(band, 50))
+    fused_signals = signal.get("signals", {})
 
     attestations, leaves, agree = [], [], 0
     for agent, pk in squad:
@@ -67,7 +67,8 @@ def consensus_check(target, n=100):
         "verdict": verdict,
         "band": band,
         "agent_count": agree,                 # how many agents signed this consensus
-        "agreement": "100%" if agree else "0%",   # single-signal → full agreement (multi-signal fusion = next)
+        "agreement": "100%" if agree else "0%",
+        "signals": fused_signals,             # the fused evidence: RDAP age + TLS + HTTP
         "consensus_proof": root,              # Merkle root of ALL agent attestations — recompute it
         "sample_signatures": attestations,
         "as_of": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
