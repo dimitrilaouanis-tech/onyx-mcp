@@ -68,7 +68,10 @@ for i in range(need):
     rag.append({"address": a.address, "callsign": cs, "score": random.randint(1, 60),
                 "kind": "citizen", "credential": "NEW"})
     kag.append({"address": a.address, "key": a.key.hex()})
-    if (i + 1) % 10000 == 0:
+    if (i + 1) % 500 == 0:
+        import json as _j, time as _t
+        _j.dump({'count': have + i + 1, 'ts': _t.time()}, open('_local_only/_mint_progress.json','w'))
+    if (i + 1) % 9973 == 0:
         save()                                    # CHECKPOINT — singleton lock prevents the race
         print(f"  minted {i+1:,} · saved ({time.time()-t0:.0f}s)", flush=True)
 save()
