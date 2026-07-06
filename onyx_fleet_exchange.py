@@ -10,8 +10,9 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 PUB = r"C:\Users\intelligence\rhinogent\public"
 LEDGER = "_local_only/_exchange_ledger.jsonl"
 
-TARGETS = ["shopify.com","rayban.cc","stripe.com","temu.com","gucci.com","binance.com",
+TARGETS_FALLBACK = ["shopify.com","rayban.cc","stripe.com","temu.com","gucci.com","binance.com",
            "opensea.io","aliexpress.com","coinbase.com","shein.com","ledger.com","metamask.io"]
+TARGETS = (lambda:__import__("json").load(open("_local_only/_longtail_targets.json")) if __import__("os").path.exists("_local_only/_longtail_targets.json") else TARGETS_FALLBACK)()
 
 def load(p,d):
     try: return json.load(open(p,encoding="utf-8"))
@@ -34,36 +35,59 @@ def round(n_targets=None):
     if len(squad)<10: return {"error":"roster too small"}
     tgts=TARGETS[:n_targets] if n_targets else TARGETS
     epoch=int(time.time()); exchanges=[]; settled=0
+    # winrate per target-band from history → what "high-winrate consensus" currently believes
+    hist={}
+    if os.path.exists(LEDGER):
+        for line in open(LEDGER,encoding="utf-8"):
+            try:
+                r=json.loads(line); hist.setdefault(r["target"],[]).append(r.get("reality"))
+            except Exception: pass
+    diversity=load("_local_only/_viewpoint_diversity.json",{})
+    def _band(t):
+        """Never-None verdict: multi-signal fused; 0x contract addresses -> 'unverified'."""
+        try: return O.r_merchant_multi(t).get("band") or "unverified"
+        except Exception: return "unverified"
     for i,tgt in enumerate(tgts):
         claimant,cpk = squad[i % len(squad)]
-        # claimant commits a verdict
-        try: truth=O.r_merchant(tgt); real_band=truth.get("band")
-        except Exception: real_band=None
-        # claimant's CLAIM (may be right or, to create real exchange, sometimes a deliberate stress-claim)
-        claim_band = real_band
-        # 3 challengers dispute-or-corroborate; each independently checks reality + stakes
+        real_band=_band(tgt)
+        claim_band=real_band
+        # the standing consensus for this target (what the high-winrate crowd believes)
+        past=hist.get(tgt,[]); consensus_band=max(set(past),key=past.count) if past else None
+        consensus_strength=(past.count(consensus_band)/len(past)) if past else 0.0
         challengers=[]
         for j in range(3):
             chal,ppk = squad[(i*7+j+1) % len(squad)]
-            try: cb=O.r_merchant(tgt).get("band")
-            except Exception: cb=None
+            cb=_band(tgt)
             verdict="CORROBORATE" if cb==claim_band else "DISPUTE"
+            correct=(cb==real_band)
+            # ANTI-ECHO-CHAMBER (B3): overturning an entrenched (>=80% winrate) consensus
+            # AND being right pays 3x. Agreeing with the crowd never earns the bonus.
+            overturn = bool(consensus_band and consensus_strength>=0.8 and cb!=consensus_band and correct)
+            reward = (15 if overturn else 5) if correct else 0
             body=json.dumps({"target":tgt,"claim":claim_band,"challenger_finds":cb,"verdict":verdict,"by":chal["address"]},sort_keys=True)
             challengers.append({"agent":chal["callsign"],"finds":cb,"verdict":verdict,
-                                "sig":_sign(ppk,body),"correct":(cb==real_band)})
-        # reality settles: claimant right iff claim matches reality; challengers scored vs reality
-        claim_correct = (claim_band==real_band)
+                                "sig":_sign(ppk,body),"correct":correct,
+                                "reward":reward,"overturned_consensus":overturn})
+            # viewpoint-diversity score: fraction of verdicts that DISSENT from standing consensus
+            d=diversity.setdefault(chal["callsign"],{"n":0,"dissent":0})
+            d["n"]+=1
+            if consensus_band and cb!=consensus_band: d["dissent"]+=1
+            d["diversity"]=__import__("builtins").round(d["dissent"]/d["n"],3)   # `round` name is shadowed by this function
+        claim_correct=(claim_band==real_band)
         winners=[c for c in challengers if c["correct"]]
         rec={"target":tgt,"claimant":claimant["callsign"],"claim":claim_band,"reality":real_band,
              "claim_correct":claim_correct,"challengers":challengers,"winners":len(winners),
+             "consensus_band":consensus_band,"consensus_strength":__import__("builtins").round(consensus_strength,2),
              "epoch":epoch,"hash":hashlib.sha256((tgt+str(claim_band)+str(epoch)).encode()).hexdigest()[:16]}
         open(LEDGER,"a",encoding="utf-8").write(json.dumps(rec)+"\n")
         exchanges.append(rec); settled+=1+len(challengers)
+    json.dump(diversity,open("_local_only/_viewpoint_diversity.json","w",encoding="utf-8"))
     total=sum(1 for _ in open(LEDGER,encoding="utf-8")) if os.path.exists(LEDGER) else 0
     snap={"as_of":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()),"targets":len(tgts),
           "signed_exchanges_this_round":settled,"ledger_total":total,"latest":exchanges[-6:],
-          "note":"Fleet reasoning exchange: agents challenge each others verdicts, reality (RDAP) "
-                 "decides the winner. Agreement earns nothing; being CORRECT earns. Reality-gated, signed."}
+          "note":"Fleet reasoning exchange: agents challenge each others verdicts; multi-signal reality "
+                 "(RDAP age + TLS + HTTP) decides the winner. Being CORRECT earns; correctly OVERTURNING "
+                 "an entrenched consensus earns 3x. Per-agent viewpoint-diversity tracked. Signed."}
     json.dump(snap,open(PUB+r"\fleet_exchange.json","w",encoding="utf-8"),ensure_ascii=False,indent=1)
     return snap
 
