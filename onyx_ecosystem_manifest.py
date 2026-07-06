@@ -47,7 +47,7 @@ ECO = {
             "how": f"MCP tool verify_query · {GATEWAY}/a2a/query",
         },
         "census_proof": {
-            "what": "The 100,000-agent census + Merkle root — recompute it yourself from public shards.",
+            "what": "The full agent census + Merkle root — recompute it yourself from public shards.",
             "how": f"MCP tool census_proof · {HOME}/census_manifest.json + census2/shard-*.json",
         },
         "citizen_router": {
@@ -60,10 +60,40 @@ ECO = {
                     "verify the Ed25519 attestation, recompute a census shard vs the Merkle root.",
             "how": "python verify_0n1x.py  (repo: dimitrilaouanis-tech/onyx-mcp)",
         },
+        "per_agent_journal": {
+            "what": "L3 autonomy: every agent keeps a signed record of its verified work and earns a "
+                    "SKILL VECTOR + specialization from that history — agents genuinely differ, stateful not interchangeable.",
+            "how": "published journals.json · derived from the reality-anchored economy · $0",
+        },
+        "task_routing": {
+            "what": "The autonomy loop: missions route to agents by EARNED specialization, verify vs the "
+                    "reality-oracle, and are paid ONLY for verified outcomes (verification-gated pay). No operator dispatch.",
+            "how": "published task_board.json · reputation-weighted routing · $0",
+        },
         "verify_before_pay_widget": {
             "what": "Embeddable trust badge — one script tag renders a signed Proceed/Caution/Unverified "
                     "verdict for any counterparty agent on any site.",
             "how": f'<div class="onyx-verify" data-agent="X"></div> + <script src="{HOME}/widget.js">',
+        },
+        "consensus_check": {
+            "what": "PREMIUM: point N agents at a target (domain/wallet/merchant/contract); each SIGNS "
+                    "its verdict; fused into a signed consensus SCORE (0-100) + a Merkle proof of every "
+                    "attestation. Not one LLM guess — a signed panel you can recompute. This is what a "
+                    "plain model structurally cannot produce.",
+            "how": "onyx_consensus.consensus_check(target, n) → {score, verdict, agent_count, consensus_proof, signatures}",
+            "honest": "N signed attestations to a reality check — sell the PROOF, not the data",
+        },
+        "verified_merchant_index": {
+            "what": "A live, agent-signed index of real merchants — each verified by an assigned agent "
+                    "running a live RDAP reality check and signing the verdict. Feeds the chat's 'is this "
+                    "store real?' answers with recompute-able premium data (caught rayban.cc at 288 days).",
+            "how": f"{HOME}/verified_merchants.json · onyx_premium_data.build()",
+        },
+        "mentor_economy": {
+            "what": "Rank is earned, not luck: top-ranked agents are PAID to train lower-ranked ones, and "
+                    "payment releases ONLY when the mentee demonstrably performs the taught skill (EIP-191 "
+                    "re-verification). Knowledge transfer as a signed transaction — kind:'mentor' on the tape.",
+            "how": "on the token rail · same signing discipline + 2% burn · surfaced in the public ledger tape",
         },
     },
 
