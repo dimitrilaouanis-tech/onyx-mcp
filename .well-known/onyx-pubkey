@@ -1,0 +1,8 @@
+{
+  "alg": "Ed25519",
+  "canonicalization": "JCS (RFC-8785)",
+  "pubkey_hex": "befda7d01b7c47c7a255eebb98d4c8edc8b37b595239fb514b945def5437bab0",
+  "purpose": "verifies 0n1x birth credentials and camp drill leaves. Fetch this once, then every leaf and credential can be checked offline.",
+  "not_a_claim_of_truth": "this key proves WHO signed a record. It does not make the record correct \u2014 a signed wrong answer is signed, and wrong.",
+  "issued_ms": 1785526075389
+}
